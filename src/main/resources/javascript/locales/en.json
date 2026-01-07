@@ -1,0 +1,98 @@
+{
+    "label": "OSGi Config Manager",
+    "app": {
+        "title": "OSGi Configurations Manager",
+        "selectConfig": "Select a configuration file to edit",
+        "save": "Save Changes",
+        "searchPlaceholder": "Filter configs...",
+        "unsaved": "Unsaved Changes"
+    },
+    "modal": {
+        "cancel": "Cancel",
+        "ok": "OK",
+        "create": {
+            "title": "Create new configuration",
+            "message": "Enter the new filename (e.g. org.test.config.yml):"
+        },
+        "unsaved": {
+            "title": "Unsaved Changes",
+            "message": "You have unsaved changes which will be lost if you switch files. Do you want to discard changes and continue?",
+            "confirm": "Discard Changes",
+            "cancel": "Keep Editing"
+        },
+        "deleteFile": {
+            "title": "Delete configuration",
+            "message": "Are you sure you want to delete {{name}}?"
+        },
+        "deleteProp": {
+            "title": "Delete Property",
+            "message": "Are you sure you want to delete {{name}}?"
+        },
+        "addProp": {
+            "title": "Add Property",
+            "message": "Enter property name:"
+        },
+        "addItem": {
+            "title": "Add Item",
+            "message": "Enter item value (keep empty for complex structure):"
+        },
+        "error": {
+            "title": "Error",
+            "save": "Error saving: {{error}}",
+            "toggle": "Error toggling: {{error}}",
+            "create": "Error creating file: {{error}}",
+            "delete": "Error deleting: {{error}}",
+            "invalidYaml": "The YAML content is invalid. Please fix syntax errors before saving.",
+            "invalidYaml": "The YAML content is invalid. Please fix syntax errors before saving.",
+            "propertyExists": "Property '{{name}}' already exists.",
+            "invalidExtension": "Filename must end with .cfg, .yml, .cfg.disabled or .yml.disabled",
+            "invalidExtensionUpload": "Only .cfg and .yml files are supported."
+        },
+        "conflict": {
+            "title": "File exists",
+            "message": "The file '{{name}}' already exists. What do you want to do?",
+            "overwrite": "Overwrite",
+            "rename": "Rename"
+        },
+        "rename": {
+            "title": "Rename uploaded file",
+            "message": "Enter new filename:"
+        }
+    },
+    "editor": {
+        "header": {
+            "property": "Property / Key",
+            "value": "Value",
+            "security": "Security",
+            "actions": "Actions"
+        },
+        "button": {
+            "addProperty": "Add Property",
+            "addComment": "Add Comment",
+            "addEmptyLine": "Add Empty Line",
+            "undo": "Undo",
+            "redo": "Redo",
+            "format": "Format"
+        },
+        "empty": "empty",
+        "emptyLine": "Empty Line"
+    },
+    "tooltip": {
+        "downloadFile": "Download current file (Raw Data)",
+        "uploadFile": "Upload configuration file (.yml, .cfg)",
+        "save": "Save changes",
+        "createFile": "Create a new configuration file",
+        "deleteFile": "Delete this file",
+        "toggleFile": "Enable or disable this configuration",
+        "addProperty": "Add a new property",
+        "addComment": "Add a comment",
+        "deleteProperty": "Delete this property",
+        "undo": "Undo last change",
+        "redo": "Redo reversed change",
+        "format": "Format YAML code"
+    },
+    "sidebar": {
+        "on": "On",
+        "off": "Off"
+    }
+}

@@ -1,0 +1,97 @@
+{
+    "label": "Gerenciador de Config OSGi",
+    "app": {
+        "title": "Gerenciador de Configurações OSGi",
+        "selectConfig": "Selecione um arquivo de configuração para editar",
+        "save": "Salvar alterações",
+        "searchPlaceholder": "Filtrar configurações...",
+        "unsaved": "Alterações não salvas"
+    },
+    "modal": {
+        "cancel": "Cancelar",
+        "ok": "OK",
+        "create": {
+            "title": "Criar nova configuração",
+            "message": "Digite o nome do arquivo (ex: org.test.config.yml):"
+        },
+        "unsaved": {
+            "title": "Alterações não salvas",
+            "message": "Você tem alterações não salvas que serão perdidas se trocar de arquivo. Deseja descartar as alterações e continuar?",
+            "confirm": "Descartar alterações",
+            "cancel": "Continuar editando"
+        },
+        "deleteFile": {
+            "title": "Excluir configuração",
+            "message": "Tem certeza que deseja excluir {{name}}?"
+        },
+        "deleteProp": {
+            "title": "Excluir propriedade",
+            "message": "Tem certeza que deseja excluir {{name}}?"
+        },
+        "addProp": {
+            "title": "Adicionar propriedade",
+            "message": "Digite o nome da propriedade:"
+        },
+        "addItem": {
+            "title": "Adicionar item",
+            "message": "Digite o valor do item (deixe vazio para estrutura complexa):"
+        },
+        "error": {
+            "title": "Erro",
+            "save": "Erro ao salvar: {{error}}",
+            "toggle": "Erro ao alternar: {{error}}",
+            "create": "Erro ao criar: {{error}}",
+            "delete": "Erro ao excluir: {{error}}",
+            "invalidYaml": "O conteúdo YAML é inválido. Corrija os erros de sintaxe antes de salvar.",
+            "propertyExists": "A propriedade '{{name}}' já existe.",
+            "invalidExtension": "O nome do arquivo deve terminar com .cfg, .yml, .cfg.disabled ou .yml.disabled",
+            "invalidExtensionUpload": "Apenas arquivos .cfg e .yml são suportados."
+        },
+        "conflict": {
+            "title": "Arquivo existente",
+            "message": "O arquivo '{{name}}' já existe. O que você deseja fazer?",
+            "overwrite": "Sobrescrever",
+            "rename": "Renomear"
+        },
+        "rename": {
+            "title": "Renomear arquivo",
+            "message": "Digite o novo nome:"
+        }
+    },
+    "editor": {
+        "header": {
+            "property": "Propriedade / Chave",
+            "value": "Valor",
+            "security": "Segurança",
+            "actions": "Ações"
+        },
+        "button": {
+            "addProperty": "Adicionar Propriedade",
+            "addComment": "Adicionar Comentário",
+            "addEmptyLine": "Adicionar Linha Vazia",
+            "undo": "Desfazer",
+            "redo": "Refazer",
+            "format": "Formatar"
+        },
+        "empty": "vazio",
+        "emptyLine": "Linha Vazia"
+    },
+    "tooltip": {
+        "downloadFile": "Baixar arquivo atual (Dados brutos)",
+        "uploadFile": "Carregar arquivo de configuração (.yml, .cfg)",
+        "save": "Salvar alterações",
+        "createFile": "Criar um novo arquivo de configuração",
+        "deleteFile": "Excluir este arquivo",
+        "toggleFile": "Habilitar ou desabilitar esta configuração",
+        "addProperty": "Adicionar uma nova propriedade",
+        "addComment": "Adicionar um comentário",
+        "deleteProperty": "Excluir esta propriedade",
+        "undo": "Desfazer última alteração",
+        "redo": "Refazer alteração desfeita",
+        "format": "Formatar código YAML"
+    },
+    "sidebar": {
+        "on": "Ligado",
+        "off": "Desligado"
+    }
+}
