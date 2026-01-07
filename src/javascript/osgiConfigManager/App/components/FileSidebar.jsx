@@ -8,7 +8,7 @@ import {
     TableBody,
     TableRow,
     TableBodyCell,
-    Close,
+    Delete,
     Add,
     Switch,
     CloudDownload,
@@ -96,52 +96,90 @@ export const FileSidebar = ({
         setHoveredFile(f.name);
     };
 
+    // Helper to get the full file object currently selected (to access 'enabled' state up-to-date)
+    const currentFile = selectedFile ? files.find(f => f.name === selectedFile.name) : null;
+
     return (
         <Paper style={{ width: '350px', display: 'flex', flexDirection: 'column', padding: '10px', height: '100%' }}>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+            {/* Toolbar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', minHeight: '40px' }}>
+                {/* Left: Context Actions */}
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <div title={t('tooltip.toggleFile')}>
+                        <Switch
+                            checked={currentFile ? currentFile.enabled : false}
+                            onChange={() => currentFile && handleToggleFile(currentFile)}
+                            disabled={!currentFile}
+                        />
+                    </div>
+                    <Button
+                        size="big"
+                        color="danger"
+                        variant="ghost"
+                        icon={<Delete size="big" />}
+                        onClick={() => currentFile && handleDeleteFile(currentFile)}
+                        disabled={!currentFile}
+                        title={t('tooltip.deleteFile')}
+                    />
+                </div>
+
+                {/* Right: Global Actions */}
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                    <Button
+                        size="big"
+                        icon={<CloudUpload size="big" />}
+                        color="primary"
+                        onClick={handleUploadClick}
+                        title={t('tooltip.uploadFile')}
+                    />
+                    <Button
+                        size="big"
+                        icon={<CloudDownload size="big" />}
+                        color="primary"
+                        onClick={handleDownload}
+                        disabled={!currentFile}
+                        title={t('tooltip.downloadFile')}
+                    />
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        style={{ display: 'none' }}
+                        accept=".yml,.cfg"
+                        onChange={onFileChange}
+                    />
+                    <Button
+                        size="big"
+                        icon={<Add size="big" />}
+                        color="accent"
+                        onClick={onCreateClick}
+                        title={t('tooltip.createFile')}
+                    />
+                </div>
+            </div>
+
+            {/* Filter */}
+            <div style={{ marginBottom: '10px' }}>
                 <SearchInput
                     value={searchTerm}
                     placeholder={t('app.searchPlaceholder')}
                     onChange={e => setSearchTerm(e.target.value)}
                     onClear={() => setSearchTerm('')}
                 />
-                <Button
-                    icon={<CloudDownload />}
-                    variant="ghost"
-                    onClick={handleDownload}
-                    disabled={!selectedFile}
-                    title={t('tooltip.downloadFile')}
-                />
-                <Button
-                    icon={<CloudUpload />}
-                    variant="ghost"
-                    onClick={handleUploadClick}
-                    title={t('tooltip.uploadFile')}
-                />
-                <input
-                    type="file"
-                    ref={fileInputRef}
-                    style={{ display: 'none' }}
-                    accept=".yml,.cfg"
-                    onChange={onFileChange}
-                />
-                <Button icon={<Add />} color="accent" onClick={onCreateClick} title={t('tooltip.createFile')} />
             </div>
 
+            {/* File List */}
             <div style={{ flex: 1, overflowY: 'auto' }} onScroll={() => setHoveredFile(null)}>
-                <Table style={{ width: '100%', tableLayout: 'auto', overflow: 'visible' }}>
-                    <TableBody style={{ overflow: 'visible' }}>
+                <Table style={{ width: '100%', tableLayout: 'fixed', overflow: 'hidden' }}>
+                    <TableBody>
                         {files
                             .filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()))
                             .sort((a, b) => {
-                                // Extract type (ignoring .disabled)
                                 const getExt = (name) => {
                                     const clean = name.replace('.disabled', '');
                                     return clean.substring(clean.lastIndexOf('.') + 1);
                                 };
                                 const extA = getExt(a.name);
                                 const extB = getExt(b.name);
-
                                 if (extA !== extB) return extA.localeCompare(extB);
                                 return a.name.localeCompare(b.name);
                             })
@@ -150,10 +188,10 @@ export const FileSidebar = ({
                                     key={f.path}
                                     isHighlighted={selectedFile?.name === f.name}
                                     onClick={() => handleFileClick(f)}
-                                    style={{ overflow: 'visible', position: 'relative' }}
+                                    style={{ cursor: 'pointer' }}
                                 >
-                                    <TableBodyCell style={{ overflow: 'visible', whiteSpace: 'nowrap' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'visible', height: '100%' }}>
+                                    <TableBodyCell>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
                                             <div style={{
                                                 width: '10px',
                                                 height: '10px',
@@ -164,12 +202,9 @@ export const FileSidebar = ({
                                             <div
                                                 style={{
                                                     position: 'relative',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    overflow: 'visible',
                                                     flex: 1,
                                                     minWidth: 0,
-                                                    cursor: 'pointer'
+                                                    overflow: 'hidden'
                                                 }}
                                                 onMouseEnter={(e) => handleMouseEnter(e, f)}
                                                 onMouseLeave={() => setHoveredFile(null)}
@@ -178,57 +213,31 @@ export const FileSidebar = ({
                                                     <div style={{
                                                         position: 'fixed',
                                                         top: hoverPos.top,
-                                                        left: hoverPos.left - 4,
-                                                        height: hoverPos.height,
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        backgroundColor: selectedFile?.name === f.name ? '#00a0e3' : '#fff',
-                                                        color: selectedFile?.name === f.name ? '#fff' : (f.name.endsWith('.yml') ? '#00a0e3' : (f.enabled ? '#333' : '#666')),
-                                                        padding: '0 8px',
+                                                        left: hoverPos.left + 20, // Offset slightly
+                                                        padding: '4px 8px',
+                                                        backgroundColor: '#333',
+                                                        color: '#fff',
+                                                        borderRadius: '4px',
                                                         zIndex: 1000000,
                                                         whiteSpace: 'nowrap',
-                                                        pointerEvents: 'none',
-                                                        width: 'max-content',
-                                                        fontWeight: 'bold',
                                                         fontSize: '0.875rem',
-                                                        boxShadow: '4px 0 8px rgba(0,0,0,0.1)'
+                                                        boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+                                                        pointerEvents: 'none'
                                                     }}>
                                                         {f.name}
                                                     </div>,
                                                     document.body
                                                 )}
-                                                <Typography variant="caption" weight="bold" style={{
-                                                    wordBreak: 'break-all',
+                                                <Typography variant="body" weight={selectedFile?.name === f.name ? "bold" : "default"} style={{
                                                     whiteSpace: 'nowrap',
                                                     overflow: 'hidden',
                                                     textOverflow: 'ellipsis',
-                                                    color: selectedFile?.name === f.name
-                                                        ? 'inherit'
-                                                        : (f.name.endsWith('.yml') ? '#00a0e3' : (f.enabled ? '#333' : '#666')),
+                                                    color: selectedFile?.name === f.name ? 'inherit' : (f.name.endsWith('.yml') ? '#00a0e3' : '#333'),
                                                     textDecoration: f.enabled ? 'none' : 'line-through'
                                                 }}>
                                                     {f.name}
                                                 </Typography>
                                             </div>
-                                        </div>
-                                    </TableBodyCell>
-                                    <TableBodyCell width="70px" style={{ overflow: 'visible' }}>
-                                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
-                                            <div title={t('tooltip.toggleFile')} onClick={(e) => e.stopPropagation()}>
-                                                <Switch
-                                                    checked={f.enabled}
-                                                    onChange={() => handleToggleFile(f)}
-                                                />
-                                            </div>
-                                            <Button
-                                                size="small"
-                                                color="danger"
-                                                variant="ghost"
-                                                icon={<Close />}
-                                                style={{ minWidth: '24px', padding: '0', background: 'transparent' }}
-                                                onClick={(e) => { e.stopPropagation(); handleDeleteFile(f); }}
-                                                title={t('tooltip.deleteFile')}
-                                            />
                                         </div>
                                     </TableBodyCell>
                                 </TableRow>

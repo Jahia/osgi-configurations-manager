@@ -151,7 +151,16 @@ export const useOsgiConfigs = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'toggle', filename: f.name })
             });
-            fetchFiles();
+            await fetchFiles(); // Wait for files to refresh
+
+            // Calculate new name to preserve selection
+            const isDisabled = f.name.endsWith('.disabled');
+            const newName = isDisabled ? f.name.replace('.disabled', '') : f.name + '.disabled';
+
+            // If the toggled file was selected, update selection to the new name
+            if (selectedFile && selectedFile.name === f.name) {
+                setSelectedFile({ ...f, name: newName, enabled: !f.enabled });
+            }
         } catch (e) {
             setModalConfig({
                 type: 'confirm',
@@ -206,7 +215,19 @@ export const useOsgiConfigs = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'create', filename })
             });
-            fetchFiles();
+            await fetchFiles(); // Refresh list to get the new file
+
+            // Auto-select the newly created file
+            // Assuming default enabled properties, or we could find it in the refreshed list if we returned it, 
+            // but setting it manually matches how we did toggle.
+            // Note: Use 'enabled: true' as default for new files usually? Or check extension.
+            // Safe bet: find it in the "files" state? 
+            // Actually, "files" state won't be updated in this render cycle if we just called fetchFiles.
+            // But we can just set the object. 
+            // Better: just set the object. 'fetchFileContent' in the useEffect will trigger load.
+            const isEnabled = !filename.endsWith('.disabled');
+            setSelectedFile({ name: filename, enabled: isEnabled });
+
         } catch (e) {
             setModalConfig({
                 type: 'confirm',
@@ -260,12 +281,27 @@ export const useOsgiConfigs = () => {
                         body: JSON.stringify(payload)
                     });
 
-                    fetchFiles();
+                    // If we are "overwriting" a file that had a different name (e.g. .disabled variant), 
+                    // we should probably delete the old one to avoid duplicates.
+                    // Check if there was an existing conflict with a different name
+                    const baseName = filename.replace(/\.disabled$/, '');
+                    const existingConflict = files.find(f => f.name !== filename && (f.name === baseName || f.name === baseName + '.disabled'));
 
-                    // If we overwrote the currently selected file, reload it
-                    if (selectedFile && selectedFile.name === filename) {
-                        fetchFileContent(filename);
+                    if (existingConflict) {
+                        // Delete the conflicting variant to avoid duplicates (e.g. having both foo.cfg and foo.cfg.disabled)
+                        await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'delete', filename: existingConflict.name })
+                        });
                     }
+
+                    await fetchFiles(); // Refresh list
+
+                    // Auto-select uploaded file
+                    const isEnabled = !filename.endsWith('.disabled');
+                    setSelectedFile({ name: filename, enabled: isEnabled });
+
                 } catch (err) {
                     setModalConfig({
                         type: 'confirm',
@@ -279,15 +315,16 @@ export const useOsgiConfigs = () => {
         };
 
         const targetName = file.name;
-        // Check if file exists
-        const exists = files.some(f => f.name === targetName);
+        // Check for ANY existing file with same base name (enabled or disabled)
+        const baseName = targetName.replace(/\.disabled$/, '');
+        const existing = files.find(f => f.name === baseName || f.name === baseName + '.disabled');
 
-        if (exists) {
+        if (existing) {
             setModalConfig({
                 type: 'confirm',
                 severity: 'warning',
                 title: t('modal.conflict.title'),
-                message: t('modal.conflict.message', { name: targetName }),
+                message: t('modal.conflict.message', { name: existing.name }), // Show the ACTUAL existing name
                 confirmLabel: t('modal.conflict.overwrite'),
                 otherLabel: t('modal.conflict.rename'),
                 cancelLabel: t('modal.cancel'),
@@ -383,10 +420,17 @@ export const useOsgiConfigs = () => {
         // Try to resolve display name if it's an array index
         if (Array.isArray(properties) && typeof key === 'number') {
             const items = properties;
-            if (items[key] && items[key].key) {
-                displayName = items[key].key.value || items[key].key;
-            } else if (items[key] && items[key].type && items[key].type.value === 'comment') {
-                displayName = 'Comment';
+            // Check if there is a KEY and it has a VALUE
+            if (items[key] && items[key].key && items[key].key.value) {
+                displayName = items[key].key.value;
+            } else if (items[key] && items[key].type) {
+                // If no key value, check type
+                const typeVal = items[key].type.value || items[key].type; // Handle both object and string potential
+                if (typeVal === 'comment') {
+                    displayName = t('editor.button.addComment');
+                } else if (typeVal === 'empty') {
+                    displayName = t('editor.button.addEmptyLine');
+                }
             }
         }
 

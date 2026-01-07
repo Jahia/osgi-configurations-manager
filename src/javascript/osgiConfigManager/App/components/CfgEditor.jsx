@@ -135,12 +135,23 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
     };
 
     const handleRowClick = (index) => {
-        setSelectedIndex(index === selectedIndex ? null : index);
+        setSelectedIndex(index);
     };
 
     const handleAdd = (type, key, value) => {
-        const insertIndex = selectedIndex !== null ? selectedIndex : undefined;
+        // Insert AFTER the selected index, or at the end if nothing selected
+        const insertIndex = selectedIndex !== null ? selectedIndex + 1 : undefined;
         handleAddCfgEntry({ type, key, value }, insertIndex);
+        // Move selection to the new item (optional, but good UX)
+        if (insertIndex !== undefined) {
+            setSelectedIndex(insertIndex);
+        } else if (Array.isArray(entries)) {
+            setSelectedIndex(entries.length);
+        }
+    };
+
+    const handleInputFocus = (index) => {
+        setSelectedIndex(index);
     };
 
     return (
@@ -231,7 +242,7 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
 
                             const rowStyle = {
                                 cursor: 'default',
-                                backgroundColor: isSelected ? 'var(--color-primary_light10)' : 'transparent',
+                                backgroundColor: isSelected ? '#E3F2FD' : 'transparent',
                                 borderBottom: '1px solid var(--color-gray_light40)',
                                 height: 'auto',
                                 minHeight: '48px',
@@ -292,6 +303,7 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                                                     <AutoResizeTextArea
                                                         value={commentValue}
                                                         onChange={e => onUpdate(index, 'value', '# ' + e.target.value)}
+                                                        onFocus={() => handleInputFocus(index)}
                                                         style={{
                                                             color: 'var(--color-success)',
                                                             fontStyle: 'italic',
@@ -321,6 +333,7 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                                                     <AutoResizeTextArea
                                                         value={key}
                                                         onChange={e => onUpdate(index, 'key', e.target.value)}
+                                                        onFocus={() => handleInputFocus(index)}
                                                         placeholder="Key"
                                                         style={textInputStyle}
                                                     />
@@ -346,6 +359,7 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                                                             <Input
                                                                 value={value}
                                                                 onChange={e => onUpdate(index, 'value', e.target.value)}
+                                                                onFocus={() => handleInputFocus(index)}
                                                                 placeholder="Value"
                                                                 type={!isSecretVisible ? 'password' : 'text'}
                                                                 style={{ ...textInputStyle, width: '100%' }}
@@ -355,6 +369,7 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                                                         <AutoResizeTextArea
                                                             value={value}
                                                             onChange={e => onUpdate(index, 'value', e.target.value)}
+                                                            onFocus={() => handleInputFocus(index)}
                                                             placeholder="Value"
                                                             style={textInputStyle}
                                                         />
