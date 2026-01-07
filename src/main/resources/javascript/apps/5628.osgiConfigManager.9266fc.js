@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk_jahia_osgi_configurations_manager=self.webpackChunk_jahia_osgi_configurations_manager||[]).push([[5628],{45628(a,i,s){s.r(i)}}]);

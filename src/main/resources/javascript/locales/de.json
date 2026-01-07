@@ -1,0 +1,97 @@
+{
+    "label": "OSGi Konfigurations-Manager",
+    "app": {
+        "title": "OSGi Konfigurations-Manager",
+        "selectConfig": "Wählen Sie eine Konfigurationsdatei zum Bearbeiten aus",
+        "save": "Änderungen speichern",
+        "searchPlaceholder": "Konfigurationen filtern...",
+        "unsaved": "Ungespeicherte Änderungen"
+    },
+    "modal": {
+        "cancel": "Abbrechen",
+        "ok": "OK",
+        "create": {
+            "title": "Neue Konfiguration erstellen",
+            "message": "Geben Sie den neuen Dateinamen ein (z.B. org.test.config.yml):"
+        },
+        "unsaved": {
+            "title": "Ungespeicherte Änderungen",
+            "message": "Sie haben ungespeicherte Änderungen, die verloren gehen, wenn Sie die Datei wechseln. Möchten Sie die Änderungen verwerfen und fortfahren?",
+            "confirm": "Änderungen verwerfen",
+            "cancel": "Weiter bearbeiten"
+        },
+        "deleteFile": {
+            "title": "Konfiguration löschen",
+            "message": "Sind Sie sicher, dass Sie {{name}} löschen möchten?"
+        },
+        "deleteProp": {
+            "title": "Eigenschaft löschen",
+            "message": "Sind Sie sicher, dass Sie {{name}} löschen möchten?"
+        },
+        "addProp": {
+            "title": "Eigenschaft hinzufügen",
+            "message": "Eigenschaftsname eingeben:"
+        },
+        "addItem": {
+            "title": "Element hinzufügen",
+            "message": "Elementwert eingeben (leer lassen für komplexe Struktur):"
+        },
+        "error": {
+            "title": "Fehler",
+            "save": "Fehler beim Speichern: {{error}}",
+            "toggle": "Fehler beim Umschalten: {{error}}",
+            "create": "Fehler beim Erstellen der Datei: {{error}}",
+            "delete": "Fehler beim Löschen: {{error}}",
+            "invalidYaml": "Der YAML-Inhalt ist ungültig. Bitte korrigieren Sie Syntaxfehler vor dem Speichern.",
+            "propertyExists": "Die Eigenschaft '{{name}}' existiert bereits.",
+            "invalidExtension": "Der Dateiname muss mit .cfg, .yml, .cfg.disabled oder .yml.disabled enden",
+            "invalidExtensionUpload": "Nur .cfg und .yml Dateien werden unterstützt."
+        },
+        "conflict": {
+            "title": "Datei existiert",
+            "message": "Die Datei '{{name}}' existiert bereits. Was möchten Sie tun?",
+            "overwrite": "Überschreiben",
+            "rename": "Umbenennen"
+        },
+        "rename": {
+            "title": "Datei umbenennen",
+            "message": "Neuen Dateinamen eingeben:"
+        }
+    },
+    "editor": {
+        "header": {
+            "property": "Eigenschaft / Schlüssel",
+            "value": "Wert",
+            "security": "Sicherheit",
+            "actions": "Aktionen"
+        },
+        "button": {
+            "addProperty": "Eigenschaft hinzufügen",
+            "addComment": "Kommentar hinzufügen",
+            "addEmptyLine": "Leerzeile hinzufügen",
+            "undo": "Rückgängig",
+            "redo": "Wiederherstellen",
+            "format": "Formatieren"
+        },
+        "empty": "leer",
+        "emptyLine": "Leerzeile"
+    },
+    "tooltip": {
+        "downloadFile": "Aktuelle Datei herunterladen (Rohdaten)",
+        "uploadFile": "Konfigurationsdatei hochladen (.yml, .cfg)",
+        "save": "Änderungen speichern",
+        "createFile": "Neue Konfigurationsdatei erstellen",
+        "deleteFile": "Diese Datei löschen",
+        "toggleFile": "Diese Konfiguration aktivieren oder deaktivieren",
+        "addProperty": "Neue Eigenschaft hinzufügen",
+        "addComment": "Kommentar hinzufügen",
+        "deleteProperty": "Diese Eigenschaft löschen",
+        "undo": "Letzte Änderung rückgängig machen",
+        "redo": "Rückgängig gemachte Änderung wiederherstellen",
+        "format": "YAML-Code formatieren"
+    },
+    "sidebar": {
+        "on": "Ein",
+        "off": "Aus"
+    }
+}
