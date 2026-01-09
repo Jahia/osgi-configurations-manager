@@ -194,6 +194,7 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                     label={t('editor.button.addComment')}
                     icon={<Comments />}
                     variant="outlined"
+                    style={{ color: 'var(--color-success)', borderColor: 'var(--color-success)' }}
                     onClick={() => handleAdd('comment', undefined, '# ')}
                     title={t('tooltip.addComment')}
                 />

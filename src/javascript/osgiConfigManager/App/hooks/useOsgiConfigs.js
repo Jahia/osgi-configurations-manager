@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { parseData, prepareDataForSave, updateStateDeep } from '../utils/configUtils';
 import { useTranslation } from 'react-i18next';
 
@@ -24,10 +24,16 @@ export const useOsgiConfigs = () => {
 
     const hasUnsaved = JSON.stringify(properties) !== JSON.stringify(originalProperties) || rawContent !== originalRawContent;
 
-    const fetchFiles = useCallback(async () => {
+    const [searchInContent, setSearchInContent] = useState(false);
+
+    const fetchFiles = useCallback(async (query = '', deep = false) => {
         setLoadingFiles(true);
         try {
-            const res = await fetch(apiUrl);
+            let url = apiUrl;
+            if (deep && query) {
+                url += `?search=${encodeURIComponent(query)}`;
+            }
+            const res = await fetch(url);
             const data = await res.json();
             if (data.files) {
                 setFiles(data.files);
@@ -90,9 +96,24 @@ export const useOsgiConfigs = () => {
         setLoadingFile(false);
     }, [apiUrl]);
 
+    const prevSearchInContent = useRef(searchInContent);
+
+    // Debounce search when in Deep Search mode
     useEffect(() => {
-        fetchFiles();
-    }, [fetchFiles]);
+        const timer = setTimeout(() => {
+            if (searchInContent) {
+                fetchFiles(searchTerm, true);
+            } else {
+                // If we just switched FROM deep search (true -> false), reload all files
+                // OR if we haven't loaded any files yet (initial load), fetch them.
+                if (prevSearchInContent.current === true || files.length === 0) {
+                    fetchFiles();
+                }
+            }
+            prevSearchInContent.current = searchInContent;
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [fetchFiles, searchInContent, searchTerm, files.length]);
 
     useEffect(() => {
         if (selectedFile) {
@@ -540,6 +561,9 @@ export const useOsgiConfigs = () => {
         setModalConfig,
         apiUrl,
         isYamlValid,
-        setIsYamlValid
+        setIsYamlValid,
+        searchInContent,
+        setSearchInContent,
+        fetchFiles
     };
 };

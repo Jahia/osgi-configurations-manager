@@ -5,6 +5,8 @@
         "selectConfig": "Selecciona un archivo de configuración para editar",
         "save": "Guardar cambios",
         "searchPlaceholder": "Filtrar configuraciones...",
+        "searchDeep": "Buscar en contenido",
+        "searchDeepTooltip": "Habilitar para buscar dentro de los archivos",
         "unsaved": "Cambios no guardados"
     },
     "modal": {
@@ -42,7 +44,6 @@
             "toggle": "Error al cambiar: {{error}}",
             "create": "Error al crear: {{error}}",
             "delete": "Error al eliminar: {{error}}",
-            "invalidYaml": "El contenido YAML no es válido. Por favor, corrija los errores de sintaxis antes de guardar.",
             "invalidYaml": "El contenido YAML no es válido. Por favor, corrija los errores de sintaxis antes de guardar.",
             "propertyExists": "La propiedad '{{name}}' ya existe.",
             "invalidExtension": "El nombre del archivo debe terminar en .cfg, .yml, .cfg.disabled o .yml.disabled",

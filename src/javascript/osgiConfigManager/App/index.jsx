@@ -51,7 +51,9 @@ const App = () => {
         setIsYamlValid,
         handleAddCfgEntry,
         handleReorder,
-        handleUploadFile
+        handleUploadFile,
+        searchInContent,
+        setSearchInContent
     } = useOsgiConfigs();
 
     const handleFileClick = (f) => {
@@ -91,6 +93,8 @@ const App = () => {
                             handleUploadFile={handleUploadFile}
                             rawContent={rawContent}
                             hasUnsaved={hasUnsaved}
+                            searchInContent={searchInContent}
+                            setSearchInContent={setSearchInContent}
                         />
 
                         {/* RIGHT PANE: Editor */}

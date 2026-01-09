@@ -2,7 +2,7 @@
     "name": "@jahia/osgi-configurations-manager",
     "version": "1.0.0",
     "scripts": {
-        "build": "webpack --mode=production --stats messages",
+        "build": "webpack --mode=production --stats minimal",
         "build:production": "webpack --mode=production --stats verbose",
         "dev": "webpack --watch",
         "webpack": "webpack"
