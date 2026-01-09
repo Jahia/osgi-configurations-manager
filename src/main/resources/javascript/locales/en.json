@@ -5,6 +5,8 @@
         "selectConfig": "Select a configuration file to edit",
         "save": "Save Changes",
         "searchPlaceholder": "Filter configs...",
+        "searchDeep": "Search in content",
+        "searchDeepTooltip": "Enable to search within the file content",
         "unsaved": "Unsaved Changes"
     },
     "modal": {
@@ -42,7 +44,6 @@
             "toggle": "Error toggling: {{error}}",
             "create": "Error creating file: {{error}}",
             "delete": "Error deleting: {{error}}",
-            "invalidYaml": "The YAML content is invalid. Please fix syntax errors before saving.",
             "invalidYaml": "The YAML content is invalid. Please fix syntax errors before saving.",
             "propertyExists": "Property '{{name}}' already exists.",
             "invalidExtension": "Filename must end with .cfg, .yml, .cfg.disabled or .yml.disabled",

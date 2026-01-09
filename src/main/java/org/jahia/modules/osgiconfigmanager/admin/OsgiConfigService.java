@@ -151,6 +151,7 @@ public class OsgiConfigService {
         return result;
     }
 
+    @SuppressWarnings("unchecked")
     public void saveFile(String filename, Map<String, Object> content) throws IOException {
         File file = new File(karafEtcDir, filename);
         String type = getFileType(filename);

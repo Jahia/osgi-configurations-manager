@@ -29,7 +29,9 @@ export const FileSidebar = ({
     setModalConfig,
     handleUploadFile,
     hasUnsaved,
-    rawContent // Need rawContent for download if selectedFile is loaded
+    rawContent,
+    searchInContent,
+    setSearchInContent
 }) => {
     const { t } = useTranslation('osgi-configurations-manager');
     const [hoveredFile, setHoveredFile] = React.useState(null);
@@ -157,14 +159,35 @@ export const FileSidebar = ({
                 </div>
             </div>
 
-            {/* Filter */}
-            <div style={{ marginBottom: '10px' }}>
+            {/* Search & Filter Section */}
+            <div style={{
+                backgroundColor: '#f5f5f5',
+                padding: '10px',
+                borderRadius: '4px',
+                marginBottom: '10px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+            }}>
                 <SearchInput
                     value={searchTerm}
                     placeholder={t('app.searchPlaceholder')}
                     onChange={e => setSearchTerm(e.target.value)}
                     onClear={() => setSearchTerm('')}
                 />
+
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginLeft: '2px'
+                }} title={t('app.searchDeepTooltip')}>
+                    <Switch
+                        checked={searchInContent}
+                        onChange={() => setSearchInContent(!searchInContent)}
+                    />
+                    <Typography variant="body">{t('app.searchDeep')}</Typography>
+                </div>
             </div>
 
             {/* File List */}
@@ -172,7 +195,10 @@ export const FileSidebar = ({
                 <Table style={{ width: '100%', tableLayout: 'fixed', overflow: 'hidden' }}>
                     <TableBody>
                         {files
-                            .filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                            .filter(f => {
+                                if (searchInContent) return true;
+                                return f.name.toLowerCase().includes(searchTerm.toLowerCase());
+                            })
                             .sort((a, b) => {
                                 const getExt = (name) => {
                                     const clean = name.replace('.disabled', '');

@@ -61,7 +61,40 @@ public class OsgiConfigAction extends Action {
                     result.put("data", fileContent);
                 } else {
                     // List all files
-                    result.put("files", configService.listFiles());
+                    List<Map<String, Object>> allFiles = configService.listFiles();
+                    String search = req.getParameter("search");
+
+                    if (search != null && !search.isEmpty()) {
+                        logger.debug("Deep Search: Requested search for term '{}'", search);
+                        String lowerSearch = search.toLowerCase();
+                        List<Map<String, Object>> filteredFiles = new java.util.ArrayList<>();
+
+                        for (Map<String, Object> file : allFiles) {
+                            String name = (String) file.get("name");
+                            try {
+                                // For search, we need to read the content.
+                                Map<String, Object> content = configService.readFile(name);
+                                String raw = (String) content.get("rawContent");
+
+                                boolean nameMatch = name.toLowerCase().contains(lowerSearch);
+                                boolean contentMatch = raw != null && raw.toLowerCase().contains(lowerSearch);
+
+                                if (contentMatch) {
+                                    logger.debug("Deep Search: Match found in content of '{}'", name);
+                                }
+
+                                if (nameMatch || contentMatch) {
+                                    filteredFiles.add(file);
+                                }
+                            } catch (Exception e) {
+                                logger.warn("Deep Search: Failed to read file {} during search", name, e);
+                            }
+                        }
+                        logger.debug("Deep Search: Found {} matching files", filteredFiles.size());
+                        result.put("files", filteredFiles);
+                    } else {
+                        result.put("files", allFiles);
+                    }
                 }
             } else if ("POST".equals(method)) {
                 StringBuilder buffer = new StringBuilder();

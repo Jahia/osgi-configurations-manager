@@ -5,6 +5,8 @@
         "selectConfig": "Seleziona un file di configurazione da modificare",
         "save": "Salva modifiche",
         "searchPlaceholder": "Filtra configurazioni...",
+        "searchDeep": "Cerca nel contenuto",
+        "searchDeepTooltip": "Abilita per cercare all'interno dei file",
         "unsaved": "Modifiche non salvate"
     },
     "modal": {
@@ -42,7 +44,6 @@
             "toggle": "Errore durante il passaggio: {{error}}",
             "create": "Errore durante la creazione: {{error}}",
             "delete": "Errore durante l'eliminazione: {{error}}",
-            "invalidYaml": "Il contenuto YAML non è valido. Correggi gli errori di sintassi prima di salvare.",
             "invalidYaml": "Il contenuto YAML non è valido. Correggi gli errori di sintassi prima di salvare.",
             "propertyExists": "La proprietà '{{name}}' esiste già.",
             "invalidExtension": "Il nome del file deve terminare con .cfg, .yml, .cfg.disabled o .yml.disabled",

@@ -5,6 +5,8 @@
         "selectConfig": "Selecione um arquivo de configuração para editar",
         "save": "Salvar alterações",
         "searchPlaceholder": "Filtrar configurações...",
+        "searchDeep": "Pesquisar no conteúdo",
+        "searchDeepTooltip": "Habilitar para pesquisar dentro dos arquivos",
         "unsaved": "Alterações não salvas"
     },
     "modal": {
