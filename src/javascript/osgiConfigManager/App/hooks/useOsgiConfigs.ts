@@ -516,11 +516,8 @@ export const useOsgiConfigs = () => {
                         filename: filename
                     };
 
-                    if (isYml) {
+                    if (isYml || isCfg) {
                         payload.rawContent = content;
-                    } else if (isCfg) {
-                        const { parseCfgContent } = await import('../utils/configUtils');
-                        payload.properties = parseCfgContent(content);
                     }
 
                     await osgiService.save(payload);
