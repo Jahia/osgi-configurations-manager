@@ -154,16 +154,47 @@ public class OsgiConfigService {
     @SuppressWarnings("unchecked")
     public void saveFile(String filename, Map<String, Object> content) throws IOException {
         File file = new File(karafEtcDir, filename);
-        String type = getFileType(filename);
 
-        if (content.containsKey("rawContent") && "yml".equals(type)) {
+        // Auto-Backup Logic
+        if (file.exists()) {
+            try {
+                File backupFile = new File(karafEtcDir, filename + ".bak");
+                java.nio.file.Files.copy(file.toPath(), backupFile.toPath(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                logger.info("Created backup for {}: {}", filename, backupFile.getName());
+            } catch (IOException e) {
+                logger.error("Failed to create backup for " + filename, e);
+            }
+        }
+
+        // Universal Raw Content Handling
+        // If the frontend sends "rawContent", we trust it completely and write it to
+        // disk.
+        // This allows the frontend to handle encryption, formatting, and comments.
+        if (content.containsKey("rawContent")) {
             String raw = (String) content.get("rawContent");
+            // Ensure we don't write null if specifically sent as null? Frontend should send
+            // string.
+            if (raw == null)
+                raw = "";
             java.nio.file.Files.write(file.toPath(), raw.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             return;
         }
 
+        String type = getFileType(filename);
+
         if ("cfg".equals(type)) {
             Object propertiesObj = content.get("properties");
+
+            if (propertiesObj == null) {
+                // If no rawContent and no properties, we can't save anything meaningful.
+                // To avoid NPE, we might warn or write empty.
+                logger.warn("No properties or rawContent provided for .cfg save. Writing empty file.");
+                try (java.io.BufferedWriter writer = new java.io.BufferedWriter(new java.io.FileWriter(file))) {
+                    writer.write("");
+                }
+                return;
+            }
 
             // Handle legacy map format if for some reason we get it (backward compat)
             if (propertiesObj instanceof Map) {
@@ -192,6 +223,8 @@ public class OsgiConfigService {
                 }
             }
         } else if ("yml".equals(type)) {
+            // YML fallback if no rawContent sent (unlikely given frontend logic, but good
+            // for completeness)
             DumperOptions options = new DumperOptions();
             options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
             Yaml yaml = new Yaml(options);

@@ -9,6 +9,13 @@
         "searchDeepTooltip": "Activer pour rechercher à l'intérieur des fichiers",
         "unsaved": "Modifications non enregistrées"
     },
+    "notification": {
+        "saveSuccess": "Configuration enregistrée avec succès",
+        "toggleSuccess": "Statut de {{name}} modifié",
+        "deleteSuccess": "{{name}} supprimé",
+        "createSuccess": "{{name}} créé",
+        "uploadSuccess": "{{name}} téléchargé"
+    },
     "modal": {
         "cancel": "Annuler",
         "ok": "OK",
@@ -47,7 +54,8 @@
             "invalidYaml": "Le contenu YAML est invalide. Veuillez corriger les erreurs de syntaxe avant d'enregistrer.",
             "propertyExists": "La propriété '{{name}}' existe déjà.",
             "invalidExtension": "Le nom du fichier doit se terminer par .cfg, .yml, .cfg.disabled ou .yml.disabled",
-            "invalidExtensionUpload": "Seuls les fichiers .cfg et .yml sont supportés."
+            "invalidExtensionUpload": "Seuls les fichiers .cfg et .yml sont supportés.",
+            "duplicateKeys": "Clés dupliquées trouvées : {{keys}}"
         },
         "conflict": {
             "title": "Fichier existant",
@@ -58,6 +66,9 @@
         "rename": {
             "title": "Renommer le fichier",
             "message": "Entrez le nouveau nom :"
+        },
+        "diff": {
+            "title": "Vérifier les modifications : {{name}}"
         }
     },
     "editor": {
@@ -73,7 +84,11 @@
             "addEmptyLine": "Ajouter une ligne vide",
             "undo": "Annuler",
             "redo": "Rétablir",
-            "format": "Formater"
+            "format": "Formater",
+            "modeRaw": "Mode Texte",
+            "modeVisual": "Mode Visuel",
+            "encrypt": "Chiffrer",
+            "decrypt": "Déchiffrer"
         },
         "empty": "vide",
         "emptyLine": "Ligne vide"
@@ -90,7 +105,11 @@
         "deleteProperty": "Supprimer cette propriété",
         "undo": "Annuler la dernière action",
         "redo": "Rétablir l'action annulée",
-        "format": "Formater le code YAML"
+        "format": "Formater le code YAML",
+        "modeRaw": "Passer en mode texte",
+        "modeVisual": "Passer en mode visuel",
+        "encryptSelection": "Chiffrer la valeur de la ligne ou la sélection",
+        "decryptSelection": "Déchiffrer le texte sélectionné"
     },
     "sidebar": {
         "on": "On",

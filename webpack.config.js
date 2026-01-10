@@ -23,13 +23,18 @@ module.exports = (env, argv) => {
         },
         resolve: {
             mainFields: ['module', 'main'],
-            extensions: ['.mjs', '.js', '.jsx', '.json']
+            extensions: ['.mjs', '.js', '.jsx', '.json', '.ts', '.tsx']
         },
         module: {
             rules: [
                 {
                     test: /\.m?js$/,
                     type: 'javascript/auto'
+                },
+                {
+                    test: /\.tsx?$/,
+                    use: 'ts-loader',
+                    exclude: /node_modules/,
                 },
                 {
                     test: /\.jsx?$/,
