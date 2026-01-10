@@ -9,6 +9,13 @@
         "searchDeepTooltip": "Abilita per cercare all'interno dei file",
         "unsaved": "Modifiche non salvate"
     },
+    "notification": {
+        "saveSuccess": "Configurazione salvata con successo",
+        "toggleSuccess": "Stato di {{name}} modificato",
+        "deleteSuccess": "{{name}} eliminato",
+        "createSuccess": "{{name}} creato",
+        "uploadSuccess": "{{name}} caricato"
+    },
     "modal": {
         "cancel": "Annulla",
         "ok": "OK",
@@ -58,6 +65,9 @@
         "rename": {
             "title": "Rinomina file",
             "message": "Inserisci nuovo nome:"
+        },
+        "diff": {
+            "title": "Revisione modifiche: {{name}}"
         }
     },
     "editor": {
@@ -71,7 +81,9 @@
             "addProperty": "Aggiungi proprietà",
             "undo": "Annulla",
             "redo": "Ripeti",
-            "format": "Formatta"
+            "format": "Formatta",
+            "modeRaw": "Modalità Testo",
+            "modeVisual": "Modalità Visuale"
         },
         "empty": "vuoto"
     },
@@ -86,7 +98,9 @@
         "deleteProperty": "Elimina questa proprietà",
         "undo": "Annulla l'ultima azione",
         "redo": "Ripeti l'azione annullata",
-        "format": "Formatta il codice YAML"
+        "format": "Formatta il codice YAML",
+        "modeRaw": "Passa all'editor di testo",
+        "modeVisual": "Passa all'editor visuale"
     },
     "sidebar": {
         "on": "On",

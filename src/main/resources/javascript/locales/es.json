@@ -1,13 +1,20 @@
 {
     "label": "Gestor de Config OSGi",
     "app": {
-        "title": "Gestor de Configuraciones OSGi",
-        "selectConfig": "Selecciona un archivo de configuración para editar",
+        "title": "Administrador de configuraciones OSGi",
+        "selectConfig": "Seleccione un archivo de configuración para editar",
         "save": "Guardar cambios",
         "searchPlaceholder": "Filtrar configuraciones...",
         "searchDeep": "Buscar en contenido",
         "searchDeepTooltip": "Habilitar para buscar dentro de los archivos",
         "unsaved": "Cambios no guardados"
+    },
+    "notification": {
+        "saveSuccess": "Configuración guardada con éxito",
+        "toggleSuccess": "Estado cambiado para {{name}}",
+        "deleteSuccess": "{{name}} eliminado",
+        "createSuccess": "{{name}} creado",
+        "uploadSuccess": "{{name}} subido"
     },
     "modal": {
         "cancel": "Cancelar",
@@ -58,6 +65,9 @@
         "rename": {
             "title": "Renombrar archivo",
             "message": "Introduce nuevo nombre:"
+        },
+        "diff": {
+            "title": "Revisar cambios: {{name}}"
         }
     },
     "editor": {
@@ -71,7 +81,9 @@
             "addProperty": "Añadir propiedad",
             "undo": "Deshacer",
             "redo": "Rehacer",
-            "format": "Formato"
+            "format": "Formato",
+            "modeRaw": "Modo Texto",
+            "modeVisual": "Modo Visual"
         },
         "empty": "vacío"
     },
@@ -86,7 +98,9 @@
         "deleteProperty": "Eliminar esta propiedad",
         "undo": "Deshacer último cambio",
         "redo": "Rehacer cambio deshecho",
-        "format": "Formatear código YAML"
+        "format": "Formatear código YAML",
+        "modeRaw": "Cambiar a editor de texto",
+        "modeVisual": "Cambiar a editor visual"
     },
     "sidebar": {
         "on": "On",
