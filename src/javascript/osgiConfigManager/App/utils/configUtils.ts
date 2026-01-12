@@ -77,20 +77,29 @@ export const prepareDataForSave = async (data: any): Promise<any> => {
 };
 
 export const parseCfgContent = (content: string): any[] => {
-    const lines = content.split(/\r?\n/);
-    // Fix: Strings ending in \n produce a trailing empty string in split().
-    // We should ignore this specific empty string to avoid creating an "empty" node for the EOF.
-    if (lines.length > 0 && lines[lines.length - 1] === '') {
-        lines.pop();
+    const rawLines = content.split(/\r?\n/);
+    if (rawLines.length > 0 && rawLines[rawLines.length - 1] === '') {
+        rawLines.pop();
     }
-    return lines.map(line => {
-        const trimmed = line.trim();
-        if (trimmed === '') {
-            return { type: { value: 'empty', isLeaf: true } };
+
+    const results: any[] = [];
+    let logicalLine = '';
+    let inContinuation = false;
+
+    // Helper to count trailing backslashes to detect escaped backslash vs continuation
+    const countTrailingBackslashes = (str: string): number => {
+        let count = 0;
+        let i = str.length - 1;
+        while (i >= 0 && str[i] === '\\') {
+            count++;
+            i--;
         }
-        if (trimmed.startsWith('#')) {
-            return { type: { value: 'comment', isLeaf: true }, value: { value: line, isLeaf: true } };
-        }
+        return count;
+    };
+
+    const parsePropertyLine = (line: string) => {
+        // Edge case: if continuation resulted in empty line, treat as empty?
+        // But invalid property usually.
 
         let separatorIndex = -1;
         const eqIndex = line.indexOf('=');
@@ -109,10 +118,6 @@ export const parseCfgContent = (content: string): any[] => {
             const value = line.substring(separatorIndex + 1).trim();
             let isEncrypted = false;
 
-            // Direct Encryption Check
-            // Relaxed check: Just looking for ENC( prefix. 
-            // Strict endsWith(')') can fail if there are trailing invisible chars or minor malformations,
-            // resulting in accidental decryption/cleartext exposure in Text Mode.
             if (value.startsWith('ENC(')) {
                 isEncrypted = true;
             }
@@ -124,8 +129,64 @@ export const parseCfgContent = (content: string): any[] => {
             };
         }
 
+        // If it looks like a property but has no separator, it's treated as comment by original code?
+        // Or maybe just invalid property text. Original code returned comment type.
         return { type: { value: 'comment', isLeaf: true }, value: { value: line, isLeaf: true } };
-    });
+    };
+
+    for (let i = 0; i < rawLines.length; i++) {
+        const line = rawLines[i];
+        const trimmed = line.trim();
+
+        // Check for comment or empty line
+        // NOTE: Standard Props says "Natural line ... is comment if starts with # or !". 
+        // These are ignored and do not participate in continuation.
+        if (trimmed.startsWith('#') || trimmed.startsWith('!')) {
+            results.push({
+                type: { value: 'comment', isLeaf: true },
+                value: { value: line, isLeaf: true }
+            });
+            continue;
+        }
+
+        if (trimmed === '') {
+            results.push({ type: { value: 'empty', isLeaf: true } });
+            continue;
+        }
+
+        // It is a content line
+        if (inContinuation) {
+            // Continuation behavior: 
+            // Standard Properties spec trims leading whitespace. 
+            // BUT user wants to preserve file layout/indentation in Visual Mode.
+            // Since standard parser IGNORES this whitespace anyway, it is safe to keep it in the string 
+            // so that when we write it back, the indentation is preserved.
+            logicalLine += line; // Do not trimStart()
+        } else {
+            logicalLine = line;
+        }
+
+        // Check for continuation marker
+        const slashCount = countTrailingBackslashes(logicalLine);
+        // Odd number of slashes means the last one is NOT escaped, so it IS a continuation
+        if (slashCount % 2 === 1) {
+            inContinuation = true;
+            // Preserving behavior: keep backslash and append newline
+            logicalLine += '\n';
+        } else {
+            inContinuation = false;
+            // Parse completed logical line
+            results.push(parsePropertyLine(logicalLine));
+            logicalLine = '';
+        }
+    }
+
+    // Flush remaining
+    if (inContinuation && logicalLine !== '') {
+        results.push(parsePropertyLine(logicalLine));
+    }
+
+    return results;
 };
 
 
