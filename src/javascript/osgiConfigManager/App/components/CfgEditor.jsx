@@ -461,7 +461,7 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                                                             value={value}
                                                             onChange={e => onUpdate(index, 'value', e.target.value)}
                                                             onFocus={() => handleInputFocus(index)}
-                                                            preventNewlines={true}
+                                                            // preventNewlines={true} // Allow newlines for values!
                                                             placeholder="Value"
                                                             style={textInputStyle}
                                                         />

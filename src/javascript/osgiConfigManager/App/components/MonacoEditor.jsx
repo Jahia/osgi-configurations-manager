@@ -46,7 +46,15 @@ monaco.languages.setMonarchTokensProvider('properties', {
             [/[^=:\n]+/, 'key']
         ],
         value: [
-            // In value state, match everything until end of the line as a string
+            // Rule 1: Empty continuation (just slashes)
+            // ^ (Start) (Pairs) \ (End)
+            [/^(\\\\)*\\\s*$/, 'string'],
+
+            // Rule 2: Content then continuation
+            // .* (Content) [Non-Slash] (Pairs) \ (End)
+            [/.*[^\\](\\\\)*\\\s*$/, 'string'],
+
+            // Rule 3: End of value (Pop)
             [/.*$/, { token: 'string', next: '@pop' }]
         ]
     }
@@ -71,16 +79,85 @@ try {
         provideDocumentFormattingEdits: (model) => {
             const text = model.getValue();
             const lines = text.split('\n');
+            let inContinuation = false;
+            let currentIndent = ''; // String of spaces for alignment
+
             const formattedLines = lines.map(line => {
                 const trimmed = line.trim();
-                if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('!') || trimmed.indexOf('=') === -1) {
-                    return trimmed;
+
+                // If comment or empty, preserve line (user might have indentation)
+                if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('!')) {
+                    // Reset continuation state on empty/comment lines (assuming comments break properties)
+                    inContinuation = false;
+                    return line;
                 }
-                // Split only on first =
-                const parts = trimmed.split('=');
-                const key = parts.shift().trim();
-                const value = parts.join('=').trim();
-                return `${key} = ${value}`;
+
+                // Detection logic:
+                // If we are already in a continuation block, we MUST preserve this line AS IS (indentation matters).
+                // Or maybe we want to normalize indentation?
+                // User requirement: "formatter removes indentation... [in] table mode".
+                // Implying they WANT indentation.
+                // So if inContinuation, return `line` (raw).
+
+                if (inContinuation) {
+                    // Check if THIS line ends continuation?
+                    // Count backslashes at end of RAW line or TRIMMED line?
+                    // Trimmed line usually safest for checking trailing char.
+
+                    let slashCount = 0;
+                    for (let i = trimmed.length - 1; i >= 0; i--) {
+                        if (trimmed[i] === '\\') slashCount++;
+                        else break;
+                    }
+                    if (slashCount % 2 === 0) {
+                        inContinuation = false;
+                    }
+
+                    // Align with the previous line's value start
+                    return currentIndent + trimmed;
+                }
+
+                // Not in continuation. Is this a new property?
+                const hasSeparator = trimmed.indexOf('=') !== -1 || trimmed.indexOf(':') !== -1;
+
+                if (!hasSeparator) {
+                    // No separator. Could be key-only property OR a line that should have been continuation but wasn't detected?
+                    // Treat as raw line.
+                    return line;
+                }
+
+                // Check if this line starts a continuation
+                let slashCount = 0;
+                for (let i = trimmed.length - 1; i >= 0; i--) {
+                    if (trimmed[i] === '\\') slashCount++;
+                    else break;
+                }
+                if (slashCount % 2 === 1) {
+                    inContinuation = true;
+                }
+
+                // Format "Key = Value"
+                // Split on first = or :
+                const eqIdx = line.indexOf('=');
+                const colIdx = line.indexOf(':');
+                let sepIdx = eqIdx;
+                let sepChar = '=';
+
+                if (eqIdx === -1) { sepIdx = colIdx; sepChar = ':'; }
+                else if (colIdx !== -1 && colIdx < eqIdx) { sepIdx = colIdx; sepChar = ':'; }
+
+                const key = line.substring(0, sepIdx).trim();
+                const value = line.substring(sepIdx + 1).trim();
+
+                const formattedLine = `${key} ${sepChar} ${value}`;
+
+                // Calculate indent for next lines: length of key + sep + spaces
+                // "key = " -> length is key.length + 1 (space) + 1 (sep) + 1 (space)
+                // If using tabs? assuming spaces for now.
+                const indentLength = key.length + 3; // " = " is 3 chars
+                currentIndent = ' '.repeat(indentLength);
+
+                return formattedLine;
             });
             const formattedText = formattedLines.join('\n');
 
@@ -161,55 +238,86 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
                     const markers = [];
                     const seenKeys = new Map(); // key -> lineIndex
 
+                    const countTrailingBackslashes = (str) => {
+                        let count = 0;
+                        let i = str.length - 1;
+                        while (i >= 0 && str[i] === '\\') {
+                            count++;
+                            i--;
+                        }
+                        return count;
+                    };
+
+                    let inContinuation = false;
+
                     lines.forEach((line, index) => {
                         const trimmed = line.trim();
+
+                        // Comments are ignored and do not interrupt continuation logic in standard java properties,
+                        // assuming they are removed from the stream.
+                        if (trimmed && (trimmed.startsWith('#') || trimmed.startsWith('!'))) {
+                            return;
+                        }
+
+                        if (!trimmed) {
+                            return;
+                        }
+
+                        if (inContinuation) {
+                            // Check if this line continues
+                            const slashCount = countTrailingBackslashes(line);
+                            if (slashCount % 2 === 0) {
+                                inContinuation = false;
+                            }
+                            // No validation needed for continuation line content
+                            return;
+                        }
+
                         // Check for lines starting with separator = or : (invalid key)
                         // OR lines without any separator (invalid format, key must have value assignment)
                         // But ignore comments (#, !) and empty lines
-                        if (trimmed && !trimmed.startsWith('#') && !trimmed.startsWith('!')) {
-                            if (trimmed.startsWith('=') || trimmed.startsWith(':')) {
+                        if (trimmed.startsWith('=') || trimmed.startsWith(':')) {
+                            markers.push({
+                                severity: monaco.MarkerSeverity.Error,
+                                startLineNumber: index + 1,
+                                startColumn: 1,
+                                endLineNumber: index + 1,
+                                endColumn: line.length + 1,
+                                message: 'Property must have a key before the separator',
+                            });
+                        } else {
+                            let key = '';
+                            const eqIdx = line.indexOf('=');
+                            const colIdx = line.indexOf(':');
+                            if (eqIdx === -1 && colIdx === -1) {
+                                // key with empty value (technically valid per spec 4.4)
+                                key = trimmed;
+                            } else {
+                                // Extract key
+                                let sepIdx = eqIdx;
+                                if (eqIdx === -1) sepIdx = colIdx;
+                                else if (colIdx !== -1) sepIdx = Math.min(eqIdx, colIdx);
+
+                                key = line.substring(0, sepIdx).trim();
+                            }
+
+                            if (seenKeys.has(key)) {
                                 markers.push({
-                                    severity: monaco.MarkerSeverity.Error,
+                                    severity: monaco.MarkerSeverity.Warning,
                                     startLineNumber: index + 1,
                                     startColumn: 1,
                                     endLineNumber: index + 1,
                                     endColumn: line.length + 1,
-                                    message: 'Property must have a key before the separator',
+                                    message: `Duplicate key '${key}'`,
                                 });
                             } else {
-                                let key = '';
-                                const eqIdx = line.indexOf('=');
-                                const colIdx = line.indexOf(':');
-                                if (eqIdx === -1 && colIdx === -1) {
-                                    markers.push({
-                                        severity: monaco.MarkerSeverity.Error,
-                                        startLineNumber: index + 1,
-                                        startColumn: 1,
-                                        endLineNumber: index + 1,
-                                        endColumn: line.length + 1,
-                                        message: 'Property must include a separator (= or :)',
-                                    });
-                                } else {
-                                    // Extract key
-                                    let sepIdx = eqIdx;
-                                    if (eqIdx === -1) sepIdx = colIdx;
-                                    else if (colIdx !== -1) sepIdx = Math.min(eqIdx, colIdx);
+                                seenKeys.set(key, index);
+                            }
 
-                                    key = line.substring(0, sepIdx).trim();
-
-                                    if (seenKeys.has(key)) {
-                                        markers.push({
-                                            severity: monaco.MarkerSeverity.Error,
-                                            startLineNumber: index + 1,
-                                            startColumn: 1,
-                                            endLineNumber: index + 1,
-                                            endColumn: sepIdx + 1,
-                                            message: `Duplicate key '${key}'`,
-                                        });
-                                    } else {
-                                        seenKeys.set(key, index);
-                                    }
-                                }
+                            // Check if this new property initiates a continuation
+                            const slashCount = countTrailingBackslashes(line);
+                            if (slashCount % 2 === 1) {
+                                inContinuation = true;
                             }
                         }
                     });
@@ -217,7 +325,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
                     monaco.editor.setModelMarkers(model, 'properties', markers);
 
                     if (onValidate) {
-                        onValidate(markers.length === 0);
+                        onValidate(markers.length === 0); // Always valid for save, just warnings
                     }
                 };
 
@@ -430,4 +538,3 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
         </div>
     );
 };
-
