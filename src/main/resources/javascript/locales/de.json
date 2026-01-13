@@ -5,7 +5,16 @@
         "selectConfig": "Wählen Sie eine Konfigurationsdatei zum Bearbeiten aus",
         "save": "Änderungen speichern",
         "searchPlaceholder": "Konfigurationen filtern...",
+        "searchDeep": "Im Inhalt suchen",
+        "searchDeepTooltip": "Aktivieren, um innerhalb des Dateiinhalts zu suchen",
         "unsaved": "Ungespeicherte Änderungen"
+    },
+    "notification": {
+        "saveSuccess": "Konfiguration erfolgreich gespeichert",
+        "toggleSuccess": "Status für {{name}} geändert",
+        "deleteSuccess": "{{name}} gelöscht",
+        "createSuccess": "{{name}} erstellt",
+        "uploadSuccess": "{{name}} hochgeladen"
     },
     "modal": {
         "cancel": "Abbrechen",
@@ -56,6 +65,9 @@
         "rename": {
             "title": "Datei umbenennen",
             "message": "Neuen Dateinamen eingeben:"
+        },
+        "diff": {
+            "title": "Änderungen überprüfen: {{name}}"
         }
     },
     "editor": {
@@ -71,7 +83,9 @@
             "addEmptyLine": "Leerzeile hinzufügen",
             "undo": "Rückgängig",
             "redo": "Wiederherstellen",
-            "format": "Formatieren"
+            "format": "Formatieren",
+            "modeRaw": "Textmodus",
+            "modeVisual": "Visueller Modus"
         },
         "empty": "leer",
         "emptyLine": "Leerzeile"
@@ -88,7 +102,9 @@
         "deleteProperty": "Diese Eigenschaft löschen",
         "undo": "Letzte Änderung rückgängig machen",
         "redo": "Rückgängig gemachte Änderung wiederherstellen",
-        "format": "YAML-Code formatieren"
+        "format": "YAML-Code formatieren",
+        "modeRaw": "In Texteditor wechseln",
+        "modeVisual": "In visuellen Editor wechseln"
     },
     "sidebar": {
         "on": "Ein",

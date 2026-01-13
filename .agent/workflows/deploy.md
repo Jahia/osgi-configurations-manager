@@ -1,18 +1,17 @@
 ---
-description: Deploy the module to the local Jahia instance
+description: Build and deploy the module to the specific local filesystem modules folder
 ---
 
-To deploy the module, use the `installBundle.sh` script logic. Since the agent might not have access to run the script directly if it depends on relative paths outside the workspace, use the direct API call which is robust.
+As per user request, systematically build and deploy to the specified modules directory when making corrections.
 
-1. Build the project (if not already done):
+1. Build the project:
+   // turbo
    ```bash
    mvn clean install
    ```
 
-2. Deploy via API:
+2. Deploy to the specific modules folder:
    // turbo
    ```bash
-   curl -v -u root:welcome1 -X POST "http://localhost:8080/modules/api/bundles" -F bundle=@target/osgi-configurations-manager-1.0.0-SNAPSHOT.jar
+   cp target/osgi-configurations-manager-1.0.0-SNAPSHOT.jar /Users/dgigon/Tickets/LICENSE_SERVER/digital-factory-data/modules/
    ```
-
-   *Note: Credentials are usually `root` / `welcome1` for local dev environment.*

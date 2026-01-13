@@ -5,7 +5,16 @@
         "selectConfig": "Selecione um arquivo de configuração para editar",
         "save": "Salvar alterações",
         "searchPlaceholder": "Filtrar configurações...",
+        "searchDeep": "Pesquisar no conteúdo",
+        "searchDeepTooltip": "Habilitar para pesquisar dentro dos arquivos",
         "unsaved": "Alterações não salvas"
+    },
+    "notification": {
+        "saveSuccess": "Configuração salva com sucesso",
+        "toggleSuccess": "Status alterado para {{name}}",
+        "deleteSuccess": "{{name}} excluído",
+        "createSuccess": "{{name}} criado",
+        "uploadSuccess": "{{name}} enviado"
     },
     "modal": {
         "cancel": "Cancelar",
@@ -56,6 +65,9 @@
         "rename": {
             "title": "Renomear arquivo",
             "message": "Digite o novo nome:"
+        },
+        "diff": {
+            "title": "Revisar alterações: {{name}}"
         }
     },
     "editor": {
@@ -71,7 +83,9 @@
             "addEmptyLine": "Adicionar Linha Vazia",
             "undo": "Desfazer",
             "redo": "Refazer",
-            "format": "Formatar"
+            "format": "Formatar",
+            "modeRaw": "Modo Texto",
+            "modeVisual": "Modo Visual"
         },
         "empty": "vazio",
         "emptyLine": "Linha Vazia"
@@ -88,7 +102,9 @@
         "deleteProperty": "Excluir esta propriedade",
         "undo": "Desfazer última alteração",
         "redo": "Refazer alteração desfeita",
-        "format": "Formatar código YAML"
+        "format": "Formatar código YAML",
+        "modeRaw": "Alternar para editor de texto",
+        "modeVisual": "Alternar para editor visual"
     },
     "sidebar": {
         "on": "Ligado",

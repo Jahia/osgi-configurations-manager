@@ -29,7 +29,9 @@ export const FileSidebar = ({
     setModalConfig,
     handleUploadFile,
     hasUnsaved,
-    rawContent // Need rawContent for download if selectedFile is loaded
+    rawContent,
+    searchInContent,
+    setSearchInContent
 }) => {
     const { t } = useTranslation('osgi-configurations-manager');
     const [hoveredFile, setHoveredFile] = React.useState(null);
@@ -99,6 +101,57 @@ export const FileSidebar = ({
     // Helper to get the full file object currently selected (to access 'enabled' state up-to-date)
     const currentFile = selectedFile ? files.find(f => f.name === selectedFile.name) : null;
 
+    // Memoize the filtered and sorted list to enable index-based navigation
+    const processedFiles = React.useMemo(() => {
+        return files
+            .filter(f => {
+                if (searchInContent) return true;
+                return f.name.toLowerCase().includes(searchTerm.toLowerCase());
+            })
+            .sort((a, b) => {
+                const getExt = (name) => {
+                    const clean = name.replace('.disabled', '');
+                    return clean.substring(clean.lastIndexOf('.') + 1);
+                };
+                const extA = getExt(a.name);
+                const extB = getExt(b.name);
+                if (extA !== extB) return extA.localeCompare(extB);
+                return a.name.localeCompare(b.name);
+            });
+    }, [files, searchTerm, searchInContent]);
+
+    // Auto-scroll to selected file
+    React.useEffect(() => {
+        if (selectedFile) {
+            // sanitize name for ID? usually Names are filenames, safe-ish but good to be careful.
+            // encodeURIComponent might be safer if filenames have weird chars
+            const safeId = 'file-row-' + encodeURIComponent(selectedFile.name);
+            const el = document.getElementById(safeId);
+            if (el) {
+                el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+        }
+    }, [selectedFile]);
+
+    const handleKeyDown = (e) => {
+        if (!processedFiles.length) return;
+
+        const currentIndex = selectedFile
+            ? processedFiles.findIndex(f => f.name === selectedFile.name)
+            : -1;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const nextIndex = currentIndex < processedFiles.length - 1 ? currentIndex + 1 : 0;
+            // The useEffect will handle scrolling after selection update
+            handleFileClick(processedFiles[nextIndex]);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            const prevIndex = currentIndex > 0 ? currentIndex - 1 : processedFiles.length - 1;
+            handleFileClick(processedFiles[prevIndex]);
+        }
+    };
+
     return (
         <Paper style={{ width: '350px', display: 'flex', flexDirection: 'column', padding: '10px', height: '100%' }}>
             {/* Toolbar */}
@@ -157,91 +210,106 @@ export const FileSidebar = ({
                 </div>
             </div>
 
-            {/* Filter */}
-            <div style={{ marginBottom: '10px' }}>
+            {/* Search & Filter Section */}
+            <div style={{
+                backgroundColor: '#f5f5f5',
+                padding: '10px',
+                borderRadius: '4px',
+                marginBottom: '10px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+            }}>
                 <SearchInput
                     value={searchTerm}
                     placeholder={t('app.searchPlaceholder')}
                     onChange={e => setSearchTerm(e.target.value)}
                     onClear={() => setSearchTerm('')}
                 />
+
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginLeft: '2px'
+                }} title={t('app.searchDeepTooltip')}>
+                    <Switch
+                        checked={searchInContent}
+                        onChange={() => setSearchInContent(!searchInContent)}
+                    />
+                    <Typography variant="body">{t('app.searchDeep')}</Typography>
+                </div>
             </div>
 
             {/* File List */}
-            <div style={{ flex: 1, overflowY: 'auto' }} onScroll={() => setHoveredFile(null)}>
+            <div
+                style={{ flex: 1, overflowY: 'auto', outline: 'none' }}
+                onScroll={() => setHoveredFile(null)}
+                tabIndex={0}
+                onKeyDown={handleKeyDown}
+            >
                 <Table style={{ width: '100%', tableLayout: 'fixed', overflow: 'hidden' }}>
                     <TableBody>
-                        {files
-                            .filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()))
-                            .sort((a, b) => {
-                                const getExt = (name) => {
-                                    const clean = name.replace('.disabled', '');
-                                    return clean.substring(clean.lastIndexOf('.') + 1);
-                                };
-                                const extA = getExt(a.name);
-                                const extB = getExt(b.name);
-                                if (extA !== extB) return extA.localeCompare(extB);
-                                return a.name.localeCompare(b.name);
-                            })
-                            .map(f => (
-                                <TableRow
-                                    key={f.path}
-                                    isHighlighted={selectedFile?.name === f.name}
-                                    onClick={() => handleFileClick(f)}
-                                    style={{ cursor: 'pointer' }}
-                                >
-                                    <TableBodyCell>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
-                                            <div style={{
-                                                width: '10px',
-                                                height: '10px',
-                                                borderRadius: '50%',
-                                                backgroundColor: f.enabled ? '#4caf50' : '#bdbdbd',
-                                                flexShrink: 0
-                                            }} />
-                                            <div
-                                                style={{
-                                                    position: 'relative',
-                                                    flex: 1,
-                                                    minWidth: 0,
-                                                    overflow: 'hidden'
-                                                }}
-                                                onMouseEnter={(e) => handleMouseEnter(e, f)}
-                                                onMouseLeave={() => setHoveredFile(null)}
-                                            >
-                                                {hoveredFile === f.name && createPortal(
-                                                    <div style={{
-                                                        position: 'fixed',
-                                                        top: hoverPos.top,
-                                                        left: hoverPos.left + 20, // Offset slightly
-                                                        padding: '4px 8px',
-                                                        backgroundColor: '#333',
-                                                        color: '#fff',
-                                                        borderRadius: '4px',
-                                                        zIndex: 1000000,
-                                                        whiteSpace: 'nowrap',
-                                                        fontSize: '0.875rem',
-                                                        boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
-                                                        pointerEvents: 'none'
-                                                    }}>
-                                                        {f.name}
-                                                    </div>,
-                                                    document.body
-                                                )}
-                                                <Typography variant="body" weight={selectedFile?.name === f.name ? "bold" : "default"} style={{
+                        {processedFiles.map(f => (
+                            <TableRow
+                                key={f.path}
+                                id={'file-row-' + encodeURIComponent(f.name)}
+                                isHighlighted={selectedFile?.name === f.name}
+                                onClick={() => handleFileClick(f)}
+                                style={{ cursor: 'pointer' }}
+                            >
+                                <TableBodyCell>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
+                                        <div style={{
+                                            width: '10px',
+                                            height: '10px',
+                                            borderRadius: '50%',
+                                            backgroundColor: f.enabled ? '#4caf50' : '#bdbdbd',
+                                            flexShrink: 0
+                                        }} />
+                                        <div
+                                            style={{
+                                                position: 'relative',
+                                                flex: 1,
+                                                minWidth: 0,
+                                                overflow: 'hidden'
+                                            }}
+                                            onMouseEnter={(e) => handleMouseEnter(e, f)}
+                                            onMouseLeave={() => setHoveredFile(null)}
+                                        >
+                                            {hoveredFile === f.name && createPortal(
+                                                <div style={{
+                                                    position: 'fixed',
+                                                    top: hoverPos.top,
+                                                    left: hoverPos.left + 20, // Offset slightly
+                                                    padding: '4px 8px',
+                                                    backgroundColor: '#333',
+                                                    color: '#fff',
+                                                    borderRadius: '4px',
+                                                    zIndex: 1000000,
                                                     whiteSpace: 'nowrap',
-                                                    overflow: 'hidden',
-                                                    textOverflow: 'ellipsis',
-                                                    color: selectedFile?.name === f.name ? 'inherit' : (f.name.endsWith('.yml') ? '#00a0e3' : '#333'),
-                                                    textDecoration: f.enabled ? 'none' : 'line-through'
+                                                    fontSize: '0.875rem',
+                                                    boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+                                                    pointerEvents: 'none'
                                                 }}>
                                                     {f.name}
-                                                </Typography>
-                                            </div>
+                                                </div>,
+                                                document.body
+                                            )}
+                                            <Typography variant="body" weight={selectedFile?.name === f.name ? "bold" : "default"} style={{
+                                                whiteSpace: 'nowrap',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                color: selectedFile?.name === f.name ? 'inherit' : (f.name.endsWith('.yml') ? '#00a0e3' : '#333'),
+                                                textDecoration: f.enabled ? 'none' : 'line-through'
+                                            }}>
+                                                {f.name}
+                                            </Typography>
                                         </div>
-                                    </TableBodyCell>
-                                </TableRow>
-                            ))}
+                                    </div>
+                                </TableBodyCell>
+                            </TableRow>
+                        ))}
                     </TableBody>
                 </Table>
             </div>

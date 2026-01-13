@@ -7,17 +7,21 @@ import {
     Button,
     Loading,
     Warning,
-    Save
+    Save,
+    Code,
+    ViewList
 } from '@jahia/moonstone';
 import { useOsgiConfigs } from './hooks/useOsgiConfigs';
 import { FileSidebar } from './components/FileSidebar';
 import { ConfigEditor } from './components/Editor';
 import { CfgEditor } from './components/CfgEditor';
-import { YamlEditor } from './components/YamlEditor';
+import { MonacoEditor } from './components/MonacoEditor';
 import { ModalDialog } from './components/Dialogs';
+import { DiffModal } from './components/DiffModal';
 import { useTranslation } from 'react-i18next';
+import { ToastProvider } from './hooks/useToast';
 
-const App = () => {
+const AppContent = () => {
     const { t } = useTranslation('osgi-configurations-manager');
     const {
         files,
@@ -48,10 +52,18 @@ const App = () => {
         setSearchTerm,
         modalConfig,
         setModalConfig,
+        diffConfig,
+        setDiffConfig,
+        isYamlValid,
         setIsYamlValid,
         handleAddCfgEntry,
         handleReorder,
-        handleUploadFile
+        handleUploadFile,
+        searchInContent,
+        setSearchInContent,
+        isRawMode,
+        handleToggleRawMode,
+        handleToggleEncryption
     } = useOsgiConfigs();
 
     const handleFileClick = (f) => {
@@ -91,6 +103,8 @@ const App = () => {
                             handleUploadFile={handleUploadFile}
                             rawContent={rawContent}
                             hasUnsaved={hasUnsaved}
+                            searchInContent={searchInContent}
+                            setSearchInContent={setSearchInContent}
                         />
 
                         {/* RIGHT PANE: Editor */}
@@ -109,7 +123,27 @@ const App = () => {
                                         </div>
                                         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                                             {hasUnsaved && <Typography variant="caption" color="warning" weight="bold">{t('app.unsaved')}</Typography>}
-                                            <Button label={t('app.save')} color="accent" icon={<Save />} onClick={handleSave} disabled={!hasUnsaved} title={t('tooltip.save')} />
+                                            {/* Toggle Raw/Visual Mode for .cfg files */}
+                                            {(selectedFile.name.endsWith('.cfg') || selectedFile.name.endsWith('.cfg.disabled')) && (
+                                                <Button
+                                                    label={isRawMode ? t('editor.button.modeVisual') : t('editor.button.modeRaw')}
+                                                    variant="outlined"
+                                                    icon={isRawMode ? <ViewList /> : <Code />}
+                                                    onClick={handleToggleRawMode}
+                                                    title={isRawMode ? t('tooltip.modeVisual') : t('tooltip.modeRaw')}
+                                                />
+                                            )}
+                                            <Button
+                                                label={t('app.save')}
+                                                color="accent"
+                                                icon={<Save />}
+                                                onClick={() => handleSave()}
+                                                // Enable save if hasUnsaved changes. 
+                                                // Only block on isYamlValid if we are in Raw Mode (or YAML file).
+                                                // In Visual Mode (CfgEditor), we perform our own validation on save.
+                                                disabled={!hasUnsaved || ((isRawMode || selectedFile.name.endsWith('.yml') || selectedFile.name.endsWith('.yml.disabled')) && !isYamlValid)}
+                                                title={t('tooltip.save')}
+                                            />
                                         </div>
                                     </div>
 
@@ -128,19 +162,31 @@ const App = () => {
                                         ) : (
                                             <>
                                                 {(selectedFile.name.endsWith('.yml') || selectedFile.name.endsWith('.yml.disabled')) ? (
-                                                    <YamlEditor
+                                                    <MonacoEditor
                                                         value={rawContent}
                                                         onChange={handleRawUpdate}
                                                         onValidate={setIsYamlValid}
                                                     />
                                                 ) : (selectedFile.name.endsWith('.cfg') || selectedFile.name.endsWith('.cfg.disabled')) ? (
-                                                    <CfgEditor
-                                                        entries={properties} // In .cfg mode, properties is an array
-                                                        handlePropUpdate={handlePropUpdate}
-                                                        handleDeleteProperty={handleDeleteProperty}
-                                                        handleAddCfgEntry={handleAddCfgEntry}
-                                                        handleReorder={handleReorder}
-                                                    />
+                                                    isRawMode ? (
+                                                        <MonacoEditor
+                                                            value={rawContent}
+                                                            onChange={handleRawUpdate}
+                                                            onValidate={setIsYamlValid}
+                                                            language="properties"
+                                                            onSwitchMode={handleToggleRawMode}
+                                                        />
+                                                    ) : (
+                                                        <CfgEditor
+                                                            entries={properties} // In .cfg mode, properties is an array
+                                                            handlePropUpdate={handlePropUpdate}
+                                                            handleDeleteProperty={handleDeleteProperty}
+                                                            handleAddCfgEntry={handleAddCfgEntry}
+                                                            handleReorder={handleReorder}
+                                                            setModalConfig={setModalConfig}
+                                                            handleToggleEncryption={handleToggleEncryption}
+                                                        />
+                                                    )
                                                 ) : (
                                                     <ConfigEditor
                                                         properties={properties}
@@ -165,8 +211,22 @@ const App = () => {
                 config={modalConfig}
                 onClose={() => setModalConfig(null)}
             />
+            <DiffModal
+                isOpen={diffConfig.isOpen}
+                onClose={() => setDiffConfig(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={diffConfig.onConfirm}
+                originalContent={diffConfig.originalContent}
+                newContent={diffConfig.newContent}
+                filename={diffConfig.filename}
+            />
         </>
     );
 };
+
+const App = () => (
+    <ToastProvider>
+        <AppContent />
+    </ToastProvider>
+);
 
 export default App;

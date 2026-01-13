@@ -5,7 +5,16 @@
         "selectConfig": "Select a configuration file to edit",
         "save": "Save Changes",
         "searchPlaceholder": "Filter configs...",
+        "searchDeep": "Search in content",
+        "searchDeepTooltip": "Enable to search within the file content",
         "unsaved": "Unsaved Changes"
+    },
+    "notification": {
+        "saveSuccess": "Configuration saved successfully",
+        "toggleSuccess": "Toggled status for {{name}}",
+        "deleteSuccess": "Deleted {{name}}",
+        "createSuccess": "Created {{name}}",
+        "uploadSuccess": "Uploaded {{name}}"
     },
     "modal": {
         "cancel": "Cancel",
@@ -43,10 +52,10 @@
             "create": "Error creating file: {{error}}",
             "delete": "Error deleting: {{error}}",
             "invalidYaml": "The YAML content is invalid. Please fix syntax errors before saving.",
-            "invalidYaml": "The YAML content is invalid. Please fix syntax errors before saving.",
             "propertyExists": "Property '{{name}}' already exists.",
             "invalidExtension": "Filename must end with .cfg, .yml, .cfg.disabled or .yml.disabled",
-            "invalidExtensionUpload": "Only .cfg and .yml files are supported."
+            "invalidExtensionUpload": "Only .cfg and .yml files are supported.",
+            "duplicateKeys": "Duplicate keys found: {{keys}}"
         },
         "conflict": {
             "title": "File exists",
@@ -57,6 +66,9 @@
         "rename": {
             "title": "Rename uploaded file",
             "message": "Enter new filename:"
+        },
+        "diff": {
+            "title": "Review Changes: {{name}}"
         }
     },
     "editor": {
@@ -72,7 +84,11 @@
             "addEmptyLine": "Add Empty Line",
             "undo": "Undo",
             "redo": "Redo",
-            "format": "Format"
+            "format": "Format",
+            "modeRaw": "Raw Edit",
+            "modeVisual": "Visual Edit",
+            "encrypt": "Encrypt",
+            "decrypt": "Decrypt"
         },
         "empty": "empty",
         "emptyLine": "Empty Line"
@@ -89,7 +105,11 @@
         "deleteProperty": "Delete this property",
         "undo": "Undo last change",
         "redo": "Redo reversed change",
-        "format": "Format YAML code"
+        "format": "Format YAML code",
+        "modeRaw": "Switch to Raw Editor",
+        "modeVisual": "Switch to Visual Editor",
+        "encryptSelection": "Encrypt current line value or selection",
+        "decryptSelection": "Decrypt selected text"
     },
     "sidebar": {
         "on": "On",
