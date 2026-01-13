@@ -18,9 +18,10 @@ import {
     AddCircleOutline
 } from '@jahia/moonstone';
 import { useTranslation } from 'react-i18next';
+import { osgiService } from '../api/osgiService';
 
 // Internal Auto-Resizing Text Area Component
-const AutoResizeTextArea = ({ value, onChange, placeholder, style, onFocus, onBlur, ...props }) => {
+const AutoResizeTextArea = ({ value, onChange, placeholder, style, onFocus, onBlur, inputRef, preventNewlines, ...props }) => {
     const textareaRef = useRef(null);
 
     const resize = () => {
@@ -34,21 +35,38 @@ const AutoResizeTextArea = ({ value, onChange, placeholder, style, onFocus, onBl
         resize();
     }, [value]);
 
+    useEffect(() => {
+        if (inputRef && textareaRef.current) {
+            inputRef(textareaRef.current);
+        }
+    }, [inputRef]);
+
+    const handleKeyDown = (e) => {
+        if (preventNewlines && e.key === 'Enter') {
+            e.preventDefault();
+        }
+    };
+
+    const handleChange = (e) => {
+        if (preventNewlines) {
+            e.target.value = e.target.value.replace(/[\r\n]+/g, '');
+        }
+        resize();
+        onChange(e);
+    };
+
     return (
         <textarea
             ref={textareaRef}
             rows={1}
             value={value}
-            onChange={(e) => {
-                resize();
-                onChange(e);
-            }}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
             placeholder={placeholder}
             onFocus={onFocus}
             onBlur={onBlur}
             onMouseDown={(e) => e.stopPropagation()}
             style={{
-                ...style,
                 width: '100%',
                 resize: 'none',
                 overflow: 'hidden',
@@ -61,19 +79,29 @@ const AutoResizeTextArea = ({ value, onChange, placeholder, style, onFocus, onBl
                 padding: '6px 0', // Alignment with other inputs
                 lineHeight: '1.5',
                 boxSizing: 'border-box',
-                display: 'block'
+                display: 'block',
+                ...style
             }}
             {...props}
         />
     );
 };
 
-export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, handleAddCfgEntry, handleReorder }) => {
+export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, handleAddCfgEntry, handleReorder, setModalConfig, handleToggleEncryption }) => {
     const { t } = useTranslation('osgi-configurations-manager');
     const [selectedIndex, setSelectedIndex] = useState(null);
     const [draggedIndex, setDraggedIndex] = useState(null);
     const [overlay, setOverlay] = useState(null);
     const [visibleSecrets, setVisibleSecrets] = useState({});
+
+    // Refs map to store input references: { [index]: { key: HTMLElement, value: HTMLElement } }
+    const inputRefs = useRef({});
+
+    // Helper to register refs
+    const setInputRef = (index, type, el) => {
+        if (!inputRefs.current[index]) inputRefs.current[index] = {};
+        inputRefs.current[index][type] = el;
+    };
 
     // Helper to show overlay on hover if truncated
     const handleMouseEnter = (e, text) => {
@@ -139,14 +167,58 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
     };
 
     const handleAdd = (type, key, value) => {
-        // Insert AFTER the selected index, or at the end if nothing selected
-        const insertIndex = selectedIndex !== null ? selectedIndex + 1 : undefined;
+        const insertIndex = selectedIndex !== null ? selectedIndex + 1 : (Array.isArray(entries) ? entries.length : 0);
+
+        if (type === 'property') {
+            setModalConfig({
+                type: 'prompt',
+                title: t('modal.addProp.title'),
+                message: t('modal.addProp.message'),
+                onConfirm: (newKey) => {
+                    if (!newKey) return;
+
+                    const existingIndex = entries.findIndex(e => {
+                        const eType = e.type?.value ?? e.type;
+                        const eKey = e.key?.value ?? e.key;
+                        return eType === 'property' && eKey === newKey;
+                    });
+
+                    if (existingIndex !== -1) {
+                        // Focus existing
+                        setSelectedIndex(existingIndex);
+                        setTimeout(() => {
+                            // Only focus value. If value is missing (e.g. specialized type?), do nothing or user can manually click.
+                            // Focusing key is confusing as user wants to check/edit the value of the duplicate.
+                            const el = inputRefs.current[existingIndex]?.value;
+                            if (el) {
+                                el.focus();
+                                // Optional: highlight/scrollIntoView?
+                                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        }, 100);
+                    } else {
+                        // Add new
+                        handleAddCfgEntry({ type, key: newKey, value: '' }, insertIndex);
+                        setSelectedIndex(insertIndex);
+                        setTimeout(() => {
+                            const el = inputRefs.current[insertIndex]?.value;
+                            if (el) el.focus();
+                        }, 100);
+                    }
+                }
+            });
+            return;
+        }
+
+        // For comments and empty
         handleAddCfgEntry({ type, key, value }, insertIndex);
-        // Move selection to the new item (optional, but good UX)
-        if (insertIndex !== undefined) {
-            setSelectedIndex(insertIndex);
-        } else if (Array.isArray(entries)) {
-            setSelectedIndex(entries.length);
+        setSelectedIndex(insertIndex);
+
+        if (type === 'comment') {
+            setTimeout(() => {
+                const el = inputRefs.current[insertIndex]?.value;
+                if (el) el.focus();
+            }, 100);
         }
     };
 
@@ -194,6 +266,7 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                     label={t('editor.button.addComment')}
                     icon={<Comments />}
                     variant="outlined"
+                    style={{ color: 'var(--color-success)', borderColor: 'var(--color-success)' }}
                     onClick={() => handleAdd('comment', undefined, '# ')}
                     title={t('tooltip.addComment')}
                 />
@@ -230,9 +303,12 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                     </thead>
                     <TableBody>
                         {Array.isArray(entries) && entries.map((entry, index) => {
-                            const type = entry.type?.value;
-                            const key = entry.key?.value || '';
-                            const value = entry.value?.value || '';
+                            // Fix extraction logic: check for value existence before fallback
+                            // use ?? to handle empty strings correctly
+                            const type = entry.type?.value ?? entry.type;
+                            const key = entry.key?.value ?? entry.key ?? '';
+                            const value = entry.value?.value ?? entry.value ?? '';
+
                             const valueNode = entry.value;
                             const isEncrypted = valueNode?.encrypted;
                             const isSelected = selectedIndex === index;
@@ -258,6 +334,11 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
 
                             const textInputStyle = {
                                 color: '#000',
+                                border: '1px solid var(--color-gray_light40)',
+                                borderRadius: '4px',
+                                padding: '6px 8px',
+                                transition: 'border-color 0.2s',
+                                width: '100%'
                             };
 
                             const iconCellStyle = {
@@ -301,12 +382,18 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                                                     style={{ width: '100%' }}
                                                 >
                                                     <AutoResizeTextArea
+                                                        // @ts-ignore
+                                                        ref={el => setInputRef(index, 'value', el)} // Custom ref logic inside AutoResizeTextArea prop? No, forwardRef needed or pass ref prop
+                                                        inputRef={el => setInputRef(index, 'value', el)}
                                                         value={commentValue}
                                                         onChange={e => onUpdate(index, 'value', '# ' + e.target.value)}
                                                         onFocus={() => handleInputFocus(index)}
                                                         style={{
                                                             color: 'var(--color-success)',
                                                             fontStyle: 'italic',
+                                                            border: '1px solid var(--color-gray_light40)',
+                                                            borderRadius: '4px',
+                                                            padding: '6px 8px'
                                                         }}
                                                     />
                                                 </div>
@@ -331,9 +418,11 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                                                     style={{ width: '100%' }}
                                                 >
                                                     <AutoResizeTextArea
+                                                        inputRef={el => setInputRef(index, 'key', el)}
                                                         value={key}
                                                         onChange={e => onUpdate(index, 'key', e.target.value)}
                                                         onFocus={() => handleInputFocus(index)}
+                                                        preventNewlines={true}
                                                         placeholder="Key"
                                                         style={textInputStyle}
                                                     />
@@ -343,20 +432,21 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                                             <TableBodyCell style={{ ...cellStyle, flex: '1 1 auto', minWidth: 0 }}>
                                                 <div
                                                     style={{ display: 'flex', alignItems: 'flex-start', width: '100%', position: 'relative' }}
-                                                    // Only show tooltip if Encrypted AND Visible, OR if using Fixed height Input (which we are for encrypted)
-                                                    // Logic: If encrypted, verify visibility. 
                                                     onMouseEnter={(e) => (isEncrypted && isSecretVisible) ? handleMouseEnter(e, value) : null}
                                                     onMouseLeave={() => setOverlay(null)}
                                                 >
                                                     {isEncrypted ? (
                                                         <div
                                                             style={{ flex: 1, display: 'flex' }}
-                                                            // STRICT DnD and Event Blocking
                                                             onMouseDown={(e) => e.stopPropagation()}
                                                             draggable={false}
                                                             onDragStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
                                                         >
                                                             <Input
+                                                                // @ts-ignore
+                                                                inputRef={el => setInputRef(index, 'value', el)}
+                                                                // Actually Input forwards ref. We can use ref={el => ...}
+                                                                ref={el => setInputRef(index, 'value', el)}
                                                                 value={value}
                                                                 onChange={e => onUpdate(index, 'value', e.target.value)}
                                                                 onFocus={() => handleInputFocus(index)}
@@ -367,9 +457,11 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                                                         </div>
                                                     ) : (
                                                         <AutoResizeTextArea
+                                                            inputRef={el => setInputRef(index, 'value', el)}
                                                             value={value}
                                                             onChange={e => onUpdate(index, 'value', e.target.value)}
                                                             onFocus={() => handleInputFocus(index)}
+                                                            // preventNewlines={true} // Allow newlines for values!
                                                             placeholder="Value"
                                                             style={textInputStyle}
                                                         />
@@ -390,7 +482,11 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                                             <TableBodyCell style={{ ...iconCellStyle, flex: '0 0 80px', minWidth: '80px' }} title={t('editor.header.security')}>
                                                 <Checkbox
                                                     checked={isEncrypted || false}
-                                                    onChange={() => handlePropUpdate([index, 'value'], 'encrypted', !isEncrypted)}
+                                                    onChange={() => {
+                                                        // Sync toggle: Just flip the flag
+                                                        // handleToggleEncryption passed from parent handles the flag logic
+                                                        handleToggleEncryption([index, 'value'], isEncrypted, value);
+                                                    }}
                                                 />
                                             </TableBodyCell>
                                         </>

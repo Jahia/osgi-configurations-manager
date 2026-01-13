@@ -5,7 +5,16 @@
         "selectConfig": "Seleziona un file di configurazione da modificare",
         "save": "Salva modifiche",
         "searchPlaceholder": "Filtra configurazioni...",
+        "searchDeep": "Cerca nel contenuto",
+        "searchDeepTooltip": "Abilita per cercare all'interno dei file",
         "unsaved": "Modifiche non salvate"
+    },
+    "notification": {
+        "saveSuccess": "Configurazione salvata con successo",
+        "toggleSuccess": "Stato di {{name}} modificato",
+        "deleteSuccess": "{{name}} eliminato",
+        "createSuccess": "{{name}} creato",
+        "uploadSuccess": "{{name}} caricato"
     },
     "modal": {
         "cancel": "Annulla",
@@ -43,7 +52,6 @@
             "create": "Errore durante la creazione: {{error}}",
             "delete": "Errore durante l'eliminazione: {{error}}",
             "invalidYaml": "Il contenuto YAML non è valido. Correggi gli errori di sintassi prima di salvare.",
-            "invalidYaml": "Il contenuto YAML non è valido. Correggi gli errori di sintassi prima di salvare.",
             "propertyExists": "La proprietà '{{name}}' esiste già.",
             "invalidExtension": "Il nome del file deve terminare con .cfg, .yml, .cfg.disabled o .yml.disabled",
             "invalidExtensionUpload": "Sono supportati solo file .cfg e .yml."
@@ -57,6 +65,9 @@
         "rename": {
             "title": "Rinomina file",
             "message": "Inserisci nuovo nome:"
+        },
+        "diff": {
+            "title": "Revisione modifiche: {{name}}"
         }
     },
     "editor": {
@@ -70,7 +81,9 @@
             "addProperty": "Aggiungi proprietà",
             "undo": "Annulla",
             "redo": "Ripeti",
-            "format": "Formatta"
+            "format": "Formatta",
+            "modeRaw": "Modalità Testo",
+            "modeVisual": "Modalità Visuale"
         },
         "empty": "vuoto"
     },
@@ -85,7 +98,9 @@
         "deleteProperty": "Elimina questa proprietà",
         "undo": "Annulla l'ultima azione",
         "redo": "Ripeti l'azione annullata",
-        "format": "Formatta il codice YAML"
+        "format": "Formatta il codice YAML",
+        "modeRaw": "Passa all'editor di testo",
+        "modeVisual": "Passa all'editor visuale"
     },
     "sidebar": {
         "on": "On",

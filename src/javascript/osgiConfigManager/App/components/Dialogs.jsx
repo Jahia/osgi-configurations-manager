@@ -92,8 +92,13 @@ export const ModalDialog = ({ config, onClose }) => {
                             <Input
                                 autoFocus
                                 value={value}
-                                variant="text"
-                                style={{ width: '100%' }}
+                                variant="outlined"
+                                style={{
+                                    width: '100%',
+                                    fontSize: '16px',
+                                    padding: '8px 12px'
+                                    // Removed manual border to avoid double border with Moonstone's outlined variant
+                                }}
                                 onChange={(e) => setValue(e.target.value)}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') handleConfirm();
