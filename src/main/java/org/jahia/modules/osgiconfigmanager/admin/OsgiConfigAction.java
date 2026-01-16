@@ -47,6 +47,10 @@ public class OsgiConfigAction extends Action {
     public ActionResult doExecute(HttpServletRequest req, RenderContext renderContext, Resource resource,
             JCRSessionWrapper session, Map<String, List<String>> parameters, URLResolver urlResolver) throws Exception {
 
+        if (!session.getNode("/").hasPermission("canManageOsgiConfigurations")) {
+            return new ActionResult(HttpServletResponse.SC_FORBIDDEN);
+        }
+
         HttpServletResponse response = renderContext.getResponse();
 
         String method = req.getMethod();
