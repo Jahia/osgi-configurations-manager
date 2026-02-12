@@ -283,7 +283,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
                                 startColumn: 1,
                                 endLineNumber: index + 1,
                                 endColumn: line.length + 1,
-                                message: 'Property must have a key before the separator',
+                                message: t('editor.validation.missingKey'),
                             });
                         } else {
                             let key = '';
@@ -308,7 +308,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
                                     startColumn: 1,
                                     endLineNumber: index + 1,
                                     endColumn: line.length + 1,
-                                    message: `Duplicate key '${key}'`,
+                                    message: t('editor.validation.duplicateKey', { key }),
                                 });
                             } else {
                                 seenKeys.set(key, index);

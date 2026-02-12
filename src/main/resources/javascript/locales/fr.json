@@ -67,6 +67,9 @@
             "title": "Renommer le fichier",
             "message": "Entrez le nouveau nom :"
         },
+        "prompt": {
+            "placeholder": "Saisissez une valeur..."
+        },
         "diff": {
             "title": "Vérifier les modifications : {{name}}"
         }
@@ -90,6 +93,14 @@
             "encrypt": "Chiffrer",
             "decrypt": "Déchiffrer"
         },
+        "placeholder": {
+            "key": "Clé",
+            "value": "Valeur"
+        },
+        "validation": {
+            "missingKey": "La propriété doit avoir une clé avant le séparateur",
+            "duplicateKey": "Clé dupliquée '{{key}}'"
+        },
         "empty": "vide",
         "emptyLine": "Ligne vide"
     },
@@ -102,6 +113,7 @@
         "toggleFile": "Activer ou désactiver cette configuration",
         "addProperty": "Ajouter une nouvelle propriété",
         "addComment": "Ajouter un commentaire",
+        "addEmptyLine": "Ajouter une ligne vide",
         "deleteProperty": "Supprimer cette propriété",
         "undo": "Annuler la dernière action",
         "redo": "Rétablir l'action annulée",
@@ -109,7 +121,9 @@
         "modeRaw": "Passer en mode texte",
         "modeVisual": "Passer en mode visuel",
         "encryptSelection": "Chiffrer la valeur de la ligne ou la sélection",
-        "decryptSelection": "Déchiffrer le texte sélectionné"
+        "decryptSelection": "Déchiffrer le texte sélectionné",
+        "showSecret": "Afficher la valeur secrète",
+        "hideSecret": "Masquer la valeur secrète"
     },
     "sidebar": {
         "on": "On",

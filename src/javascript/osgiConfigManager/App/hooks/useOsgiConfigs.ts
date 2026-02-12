@@ -293,7 +293,7 @@ export const useOsgiConfigs = () => {
                 filename: selectedFile.name,
                 rawContent: finalContent
             });
-            success(t('toast.saveSuccess'));
+            success(t('notification.saveSuccess'));
 
             // Update origins
             // Update origins

@@ -54,7 +54,8 @@
             "invalidYaml": "Il contenuto YAML non è valido. Correggi gli errori di sintassi prima di salvare.",
             "propertyExists": "La proprietà '{{name}}' esiste già.",
             "invalidExtension": "Il nome del file deve terminare con .cfg, .yml, .cfg.disabled o .yml.disabled",
-            "invalidExtensionUpload": "Sono supportati solo file .cfg e .yml."
+            "invalidExtensionUpload": "Sono supportati solo file .cfg e .yml.",
+            "duplicateKeys": "Chiavi duplicate trovate: {{keys}}"
         },
         "conflict": {
             "title": "File esistente",
@@ -65,6 +66,9 @@
         "rename": {
             "title": "Rinomina file",
             "message": "Inserisci nuovo nome:"
+        },
+        "prompt": {
+            "placeholder": "Digita qui..."
         },
         "diff": {
             "title": "Revisione modifiche: {{name}}"
@@ -79,13 +83,26 @@
         },
         "button": {
             "addProperty": "Aggiungi proprietà",
+            "addComment": "Aggiungi commento",
+            "addEmptyLine": "Aggiungi riga vuota",
             "undo": "Annulla",
             "redo": "Ripeti",
             "format": "Formatta",
             "modeRaw": "Modalità Testo",
-            "modeVisual": "Modalità Visuale"
+            "modeVisual": "Modalità Visuale",
+            "encrypt": "Cifra",
+            "decrypt": "Decifra"
         },
-        "empty": "vuoto"
+        "placeholder": {
+            "key": "Chiave",
+            "value": "Valore"
+        },
+        "validation": {
+            "missingKey": "La proprietà deve avere una chiave prima del separatore",
+            "duplicateKey": "Chiave duplicata '{{key}}'"
+        },
+        "empty": "vuoto",
+        "emptyLine": "Riga vuota"
     },
     "tooltip": {
         "downloadFile": "Scarica file corrente (Dati grezzi)",
@@ -95,12 +112,18 @@
         "deleteFile": "Elimina questo file",
         "toggleFile": "Abilita o disabilita questa configurazione",
         "addProperty": "Aggiungi una nuova proprietà",
+        "addComment": "Aggiungi un commento",
+        "addEmptyLine": "Aggiungi una riga vuota",
         "deleteProperty": "Elimina questa proprietà",
         "undo": "Annulla l'ultima azione",
         "redo": "Ripeti l'azione annullata",
         "format": "Formatta il codice YAML",
         "modeRaw": "Passa all'editor di testo",
-        "modeVisual": "Passa all'editor visuale"
+        "modeVisual": "Passa all'editor visuale",
+        "encryptSelection": "Cifra il valore della riga corrente o la selezione",
+        "decryptSelection": "Decifra il testo selezionato",
+        "showSecret": "Mostra il valore segreto",
+        "hideSecret": "Nascondi il valore segreto"
     },
     "sidebar": {
         "on": "On",
