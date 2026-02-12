@@ -5,6 +5,7 @@ import {
     Paper,
     Typography,
     Button,
+    Tooltip,
     Loading,
     Warning,
     Save,
@@ -125,25 +126,27 @@ const AppContent = () => {
                                             {hasUnsaved && <Typography variant="caption" color="warning" weight="bold">{t('app.unsaved')}</Typography>}
                                             {/* Toggle Raw/Visual Mode for .cfg files */}
                                             {(selectedFile.name.endsWith('.cfg') || selectedFile.name.endsWith('.cfg.disabled')) && (
-                                                <Button
-                                                    label={isRawMode ? t('editor.button.modeVisual') : t('editor.button.modeRaw')}
-                                                    variant="outlined"
-                                                    icon={isRawMode ? <ViewList /> : <Code />}
-                                                    onClick={handleToggleRawMode}
-                                                    title={isRawMode ? t('tooltip.modeVisual') : t('tooltip.modeRaw')}
-                                                />
+                                                <Tooltip label={isRawMode ? t('tooltip.modeVisual') : t('tooltip.modeRaw')}>
+                                                    <Button
+                                                        label={isRawMode ? t('editor.button.modeVisual') : t('editor.button.modeRaw')}
+                                                        variant="outlined"
+                                                        icon={isRawMode ? <ViewList /> : <Code />}
+                                                        onClick={handleToggleRawMode}
+                                                    />
+                                                </Tooltip>
                                             )}
-                                            <Button
-                                                label={t('app.save')}
-                                                color="accent"
-                                                icon={<Save />}
-                                                onClick={() => handleSave()}
-                                                // Enable save if hasUnsaved changes. 
-                                                // Only block on isYamlValid if we are in Raw Mode (or YAML file).
-                                                // In Visual Mode (CfgEditor), we perform our own validation on save.
-                                                disabled={!hasUnsaved || ((isRawMode || selectedFile.name.endsWith('.yml') || selectedFile.name.endsWith('.yml.disabled')) && !isYamlValid)}
-                                                title={t('tooltip.save')}
-                                            />
+                                            <Tooltip label={t('tooltip.save')}>
+                                                <Button
+                                                    label={t('app.save')}
+                                                    color="accent"
+                                                    icon={<Save />}
+                                                    onClick={() => handleSave()}
+                                                    // Enable save if hasUnsaved changes. 
+                                                    // Only block on isYamlValid if we are in Raw Mode (or YAML file).
+                                                    // In Visual Mode (CfgEditor), we perform our own validation on save.
+                                                    disabled={!hasUnsaved || ((isRawMode || selectedFile.name.endsWith('.yml') || selectedFile.name.endsWith('.yml.disabled')) && !isYamlValid)}
+                                                />
+                                            </Tooltip>
                                         </div>
                                     </div>
 
