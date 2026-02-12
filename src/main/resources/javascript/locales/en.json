@@ -67,6 +67,9 @@
             "title": "Rename uploaded file",
             "message": "Enter new filename:"
         },
+        "prompt": {
+            "placeholder": "Type here..."
+        },
         "diff": {
             "title": "Review Changes: {{name}}"
         }
@@ -90,6 +93,14 @@
             "encrypt": "Encrypt",
             "decrypt": "Decrypt"
         },
+        "placeholder": {
+            "key": "Key",
+            "value": "Value"
+        },
+        "validation": {
+            "missingKey": "Property must have a key before the separator",
+            "duplicateKey": "Duplicate key '{{key}}'"
+        },
         "empty": "empty",
         "emptyLine": "Empty Line"
     },
@@ -102,6 +113,7 @@
         "toggleFile": "Enable or disable this configuration",
         "addProperty": "Add a new property",
         "addComment": "Add a comment",
+        "addEmptyLine": "Add an empty line",
         "deleteProperty": "Delete this property",
         "undo": "Undo last change",
         "redo": "Redo reversed change",
@@ -109,7 +121,9 @@
         "modeRaw": "Switch to Raw Editor",
         "modeVisual": "Switch to Visual Editor",
         "encryptSelection": "Encrypt current line value or selection",
-        "decryptSelection": "Decrypt selected text"
+        "decryptSelection": "Decrypt selected text",
+        "showSecret": "Show secret value",
+        "hideSecret": "Hide secret value"
     },
     "sidebar": {
         "on": "On",

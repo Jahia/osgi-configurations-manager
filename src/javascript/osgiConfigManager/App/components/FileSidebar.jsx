@@ -3,6 +3,7 @@ import {
     Paper,
     Button,
     Typography,
+    Tooltip,
     SearchInput,
     Table,
     TableBody,
@@ -153,46 +154,51 @@ export const FileSidebar = ({
     };
 
     return (
-        <Paper style={{ width: '350px', display: 'flex', flexDirection: 'column', padding: '10px', height: '100%' }}>
+        <Paper style={{ width: '350px', display: 'flex', flexDirection: 'column', padding: '16px', height: '100%' }}>
             {/* Toolbar */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', minHeight: '40px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '12px', minHeight: '56px', borderBottom: '1px solid var(--color-gray_light40)' }}>
                 {/* Left: Context Actions */}
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <div title={t('tooltip.toggleFile')}>
-                        <Switch
-                            checked={currentFile ? currentFile.enabled : false}
-                            onChange={() => currentFile && handleToggleFile(currentFile)}
+                    <Tooltip label={t('tooltip.toggleFile')}>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <Switch
+                                checked={currentFile ? currentFile.enabled : false}
+                                onChange={() => currentFile && handleToggleFile(currentFile)}
+                                disabled={!currentFile}
+                            />
+                        </div>
+                    </Tooltip>
+                    <Tooltip label={t('tooltip.deleteFile')}>
+                        <Button
+                            size="big"
+                            color="danger"
+                            variant="ghost"
+                            icon={<Delete size="big" />}
+                            onClick={() => currentFile && handleDeleteFile(currentFile)}
                             disabled={!currentFile}
                         />
-                    </div>
-                    <Button
-                        size="big"
-                        color="danger"
-                        variant="ghost"
-                        icon={<Delete size="big" />}
-                        onClick={() => currentFile && handleDeleteFile(currentFile)}
-                        disabled={!currentFile}
-                        title={t('tooltip.deleteFile')}
-                    />
+                    </Tooltip>
                 </div>
 
                 {/* Right: Global Actions */}
                 <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                    <Button
-                        size="big"
-                        icon={<CloudUpload size="big" />}
-                        color="primary"
-                        onClick={handleUploadClick}
-                        title={t('tooltip.uploadFile')}
-                    />
-                    <Button
-                        size="big"
-                        icon={<CloudDownload size="big" />}
-                        color="primary"
-                        onClick={handleDownload}
-                        disabled={!currentFile}
-                        title={t('tooltip.downloadFile')}
-                    />
+                    <Tooltip label={t('tooltip.uploadFile')}>
+                        <Button
+                            size="big"
+                            icon={<CloudUpload size="big" />}
+                            color="primary"
+                            onClick={handleUploadClick}
+                        />
+                    </Tooltip>
+                    <Tooltip label={t('tooltip.downloadFile')}>
+                        <Button
+                            size="big"
+                            icon={<CloudDownload size="big" />}
+                            color="primary"
+                            onClick={handleDownload}
+                            disabled={!currentFile}
+                        />
+                    </Tooltip>
                     <input
                         type="file"
                         ref={fileInputRef}
@@ -200,13 +206,14 @@ export const FileSidebar = ({
                         accept=".yml,.cfg"
                         onChange={onFileChange}
                     />
-                    <Button
-                        size="big"
-                        icon={<Add size="big" />}
-                        color="accent"
-                        onClick={onCreateClick}
-                        title={t('tooltip.createFile')}
-                    />
+                    <Tooltip label={t('tooltip.createFile')}>
+                        <Button
+                            size="big"
+                            icon={<Add size="big" />}
+                            color="accent"
+                            onClick={onCreateClick}
+                        />
+                    </Tooltip>
                 </div>
             </div>
 
@@ -232,11 +239,15 @@ export const FileSidebar = ({
                     alignItems: 'center',
                     gap: '8px',
                     marginLeft: '2px'
-                }} title={t('app.searchDeepTooltip')}>
-                    <Switch
-                        checked={searchInContent}
-                        onChange={() => setSearchInContent(!searchInContent)}
-                    />
+                }}>
+                    <Tooltip label={t('app.searchDeepTooltip')}>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <Switch
+                                checked={searchInContent}
+                                onChange={() => setSearchInContent(!searchInContent)}
+                            />
+                        </div>
+                    </Tooltip>
                     <Typography variant="body">{t('app.searchDeep')}</Typography>
                 </div>
             </div>
