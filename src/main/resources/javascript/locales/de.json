@@ -123,7 +123,8 @@
         "encryptSelection": "Aktuellen Zeilenwert oder Auswahl verschlüsseln",
         "decryptSelection": "Ausgewählten Text entschlüsseln",
         "showSecret": "Geheimen Wert anzeigen",
-        "hideSecret": "Geheimen Wert ausblenden"
+        "hideSecret": "Geheimen Wert ausblenden",
+        "toggleComments": "Kommentarsichtbarkeit umschalten (außer Kopfzeile)"
     },
     "sidebar": {
         "on": "Ein",

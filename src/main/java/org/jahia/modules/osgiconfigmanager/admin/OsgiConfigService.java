@@ -18,19 +18,48 @@ import java.util.stream.Collectors;
 /**
  * Service to manage OSGi configuration files in karaf/etc
  */
-@Component(service = OsgiConfigService.class)
+@Component(service = OsgiConfigService.class, configurationPid = "org.jahia.modules.osgiconfigmanager")
 public class OsgiConfigService {
 
-    private static final Logger logger = LoggerFactory.getLogger(OsgiConfigService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(OsgiConfigService.class);
     private File karafEtcDir;
+    private Set<String> blacklist = new HashSet<>();
+
+    private static final String SELF_CONFIG = "org.jahia.modules.osgiconfigmanager.cfg";
 
     public OsgiConfigService() {
         String etcPath = System.getProperty("karaf.etc");
         if (etcPath != null && !etcPath.isEmpty()) {
             karafEtcDir = new File(etcPath);
         } else {
-            logger.error("System property 'karaf.etc' not found!");
+            LOGGER.error("System property 'karaf.etc' not found!");
         }
+        // Initial self-protection
+        blacklist.add(SELF_CONFIG);
+        blacklist.add(SELF_CONFIG + ".disabled");
+    }
+
+    @org.osgi.service.component.annotations.Activate
+    @org.osgi.service.component.annotations.Modified
+    public void updateConfig(Map<String, Object> properties) {
+        Set<String> newBlacklist = new HashSet<>();
+        newBlacklist.add(SELF_CONFIG);
+        newBlacklist.add(SELF_CONFIG + ".disabled");
+
+        if (properties != null && properties.containsKey("filteredFiles")) {
+            String filteredFiles = (String) properties.get("filteredFiles");
+            if (filteredFiles != null && !filteredFiles.trim().isEmpty()) {
+                for (String f : filteredFiles.split(",")) {
+                    String trimmed = f.trim();
+                    if (!trimmed.isEmpty()) {
+                        newBlacklist.add(trimmed);
+                        newBlacklist.add(trimmed + ".disabled");
+                    }
+                }
+            }
+        }
+        this.blacklist = newBlacklist;
+        LOGGER.info("Updated blacklist: {}", blacklist);
     }
 
     /**
@@ -38,28 +67,29 @@ public class OsgiConfigService {
      */
     public List<Map<String, Object>> listFiles() {
         if (karafEtcDir == null) {
-            logger.error("karafEtcDir is null. System property 'karaf.etc' was: {}", System.getProperty("karaf.etc"));
+            LOGGER.error("karafEtcDir is null. System property 'karaf.etc' was: {}", System.getProperty("karaf.etc"));
             return Collections.emptyList();
         }
         if (!karafEtcDir.exists()) {
-            logger.error("karafEtcDir does not exist: {}", karafEtcDir.getAbsolutePath());
+            LOGGER.error("karafEtcDir does not exist: {}", karafEtcDir.getAbsolutePath());
             return Collections.emptyList();
         }
 
-        logger.info("Listing configuration files from: {}", karafEtcDir.getAbsolutePath());
+        LOGGER.info("Listing configuration files from: {}", karafEtcDir.getAbsolutePath());
 
         File[] files = karafEtcDir.listFiles((dir, name) -> {
             String lowercaseName = name.toLowerCase();
-            return (lowercaseName.endsWith(".cfg") || lowercaseName.endsWith(".yml") ||
+            boolean isConfig = (lowercaseName.endsWith(".cfg") || lowercaseName.endsWith(".yml") ||
                     lowercaseName.endsWith(".cfg.disabled") || lowercaseName.endsWith(".yml.disabled"));
+            return isConfig && !blacklist.contains(name);
         });
 
         if (files == null) {
-            logger.warn("listFiles returned null (IO error or not a directory?)");
+            LOGGER.warn("listFiles returned null (IO error or not a directory?)");
             return Collections.emptyList();
         }
 
-        logger.info("Found {} configuration files.", files.length);
+        LOGGER.info("Found {} configuration files.", files.length);
 
         return Arrays.stream(files)
                 .sorted(Comparator.comparing(File::getName))
@@ -83,6 +113,10 @@ public class OsgiConfigService {
     }
 
     public Map<String, Object> readFile(String filename) throws IOException {
+        if (blacklist.contains(filename)) {
+            throw new IOException("Access denied: " + filename + " is blacklisted.");
+        }
+
         File file = new File(karafEtcDir, filename);
         if (!file.exists()) {
             throw new IOException("File not found: " + filename);
@@ -153,6 +187,10 @@ public class OsgiConfigService {
 
     @SuppressWarnings("unchecked")
     public void saveFile(String filename, Map<String, Object> content) throws IOException {
+        if (blacklist.contains(filename)) {
+            throw new IOException("Save denied: " + filename + " is blacklisted.");
+        }
+
         File file = new File(karafEtcDir, filename);
 
         // Auto-Backup Logic
@@ -161,9 +199,9 @@ public class OsgiConfigService {
                 File backupFile = new File(karafEtcDir, filename + ".bak");
                 java.nio.file.Files.copy(file.toPath(), backupFile.toPath(),
                         java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                logger.info("Created backup for {}: {}", filename, backupFile.getName());
+                LOGGER.info("Created backup for {}: {}", filename, backupFile.getName());
             } catch (IOException e) {
-                logger.error("Failed to create backup for " + filename, e);
+                LOGGER.error("Failed to create backup for " + filename, e);
             }
         }
 
@@ -189,7 +227,7 @@ public class OsgiConfigService {
             if (propertiesObj == null) {
                 // If no rawContent and no properties, we can't save anything meaningful.
                 // To avoid NPE, we might warn or write empty.
-                logger.warn("No properties or rawContent provided for .cfg save. Writing empty file.");
+                LOGGER.warn("No properties or rawContent provided for .cfg save. Writing empty file.");
                 try (java.io.BufferedWriter writer = new java.io.BufferedWriter(new java.io.FileWriter(file))) {
                     writer.write("");
                 }
@@ -235,6 +273,10 @@ public class OsgiConfigService {
     }
 
     public void toggleFileStatus(String filename) throws IOException {
+        if (blacklist.contains(filename)) {
+            throw new IOException("Toggle denied: " + filename + " is blacklisted.");
+        }
+
         File file = new File(karafEtcDir, filename);
         if (!file.exists()) {
             throw new IOException("File not found: " + filename);
@@ -258,6 +300,10 @@ public class OsgiConfigService {
     }
 
     public void deleteFile(String filename) throws IOException {
+        if (blacklist.contains(filename)) {
+            throw new IOException("Delete denied: " + filename + " is blacklisted.");
+        }
+
         File file = new File(karafEtcDir, filename);
         if (file.exists()) {
             if (!file.delete()) {
@@ -267,6 +313,10 @@ public class OsgiConfigService {
     }
 
     public void createFile(String filename) throws IOException {
+        if (blacklist.contains(filename)) {
+            throw new IOException("Create denied: " + filename + " is blacklisted.");
+        }
+
         File file = new File(karafEtcDir, filename);
         if (file.exists()) {
             throw new IOException("File already exists: " + filename);

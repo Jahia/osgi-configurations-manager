@@ -84,6 +84,7 @@ export const useOsgiConfigs = () => {
 
     const fetchFileContent = useCallback(async (filename: string) => {
         setLoadingFile(true);
+        setError(null); // Clear previous errors
         try {
             const data = await osgiService.read(filename);
             if (data.data) {
@@ -145,9 +146,11 @@ export const useOsgiConfigs = () => {
             }
         } catch (e: any) {
             setError(e.message);
+            // If we have an error (e.g. blacklisted), refresh the files list to sync Sidebar
+            fetchFiles();
         }
         setLoadingFile(false);
-    }, []);
+    }, [fetchFiles, resetProperties]);
 
     const prevSearchInContent = useRef(searchInContent);
 
@@ -180,10 +183,33 @@ export const useOsgiConfigs = () => {
 
     // ... (rest of state)
 
-    const [isRawMode, setIsRawMode] = useState<boolean>(false);
+    const [isRawMode, setIsRawMode] = useState<boolean>(true);
+    const [showComments, setShowComments] = useState<boolean>(true);
+
+    // Initial load of user preferences
+    useEffect(() => {
+        const loadPreferences = async () => {
+            try {
+                const [modeData, commentsData] = await Promise.all([
+                    osgiService.getPreference('osgiEditorMode'),
+                    osgiService.getPreference('osgiShowComments')
+                ]);
+
+                if (modeData.value) {
+                    setIsRawMode(modeData.value === 'raw');
+                }
+                if (commentsData.value) {
+                    setShowComments(commentsData.value === 'true');
+                }
+            } catch (e) {
+                console.error("Failed to load user preferences", e);
+            }
+        };
+        loadPreferences();
+    }, []);
 
     // Helper to encrypt properties tree before saving/converting to raw
-    const encryptRecursive = async (obj: any): Promise<any> => {
+    const encryptRecursive = useCallback(async (obj: any): Promise<any> => {
         if (Array.isArray(obj)) {
             return Promise.all(obj.map(item => encryptRecursive(item)));
         } else if (obj && typeof obj === 'object') {
@@ -208,9 +234,9 @@ export const useOsgiConfigs = () => {
             return nextObj;
         }
         return obj;
-    };
+    }, []);
 
-    const handleSave = async (contentToSave?: string) => {
+    const handleSave = useCallback(async (contentToSave?: string) => {
         let finalContent = contentToSave;
 
         // If contentToSave is provided (e.g. from diff modal), use it directly.
@@ -271,10 +297,6 @@ export const useOsgiConfigs = () => {
                 } else if (selectedFile?.name.endsWith('.yml') || selectedFile?.name.endsWith('.yml.disabled')) {
                     // For YAML, we don't have a specific tree-to-yaml converter yet that handles our internal structure perfectly 
                     // unless we rely on the rawContent text editor for YAML.
-                    // IMPORTANT: The user hasn't explicitly asked for YAML tree editor support fixes, only CFG.
-                    // Logic: If isRawMode=false, we might be in Tree View for YAML? 
-                    // Actually, if YAML is loaded, we might be only supporting Raw Mode properly or Tree View is read-only?
-                    // Assuming we fallback to rawContent for YAML unless implemented.
                     finalContent = rawContent;
                 } else {
                     // For standard properties tree
@@ -296,20 +318,12 @@ export const useOsgiConfigs = () => {
             success(t('notification.saveSuccess'));
 
             // Update origins
-            // Update origins
             if (isRawMode) {
                 setOriginalRawContent(finalContent);
 
-                // Fix: Also update originalProperties/properties to reflect the saved state.
-                // Otherwise, hasUnsaved remains true because properties != originalProperties (stale).
-                // We parse the text we just saved to get the new canonical properties state.
-                // We use dynamic import for parser availability
                 const { parseCfgContent } = await import('../utils/configUtils');
-                // Note: We might want to handle generic properties vs CFG here, but parseCfgContent is robust enough for our needs
-                // or simpler: for YML we might skip this update if we don't sync YML tree yet.
                 if (selectedFile?.name.endsWith('.cfg') || selectedFile?.name.endsWith('.cfg.disabled')) {
                     const parsed = parseCfgContent(finalContent);
-                    // We must also decrypt in memory if we want the "Visual Mode" state to be correct (decrypted values)
                     const decryptRecursiveRaw = async (obj: any) => {
                         if (Array.isArray(obj)) {
                             await Promise.all(obj.map(item => decryptRecursiveRaw(item)));
@@ -332,31 +346,41 @@ export const useOsgiConfigs = () => {
 
                     resetProperties(parsed);
                     setOriginalProperties(JSON.parse(JSON.stringify(parsed)));
-                } else {
-                    // For non-cfg (e.g. YML), just syncing raw content is often enough if we don't strictly validate properties state in hasUnsaved for YML
-                    // But hasUnsaved checks (properties !== originalProperties)
-                    // So we should ideally sync them. But lacking a YML parser here, we'll leave it for now or assume YML usage is raw-centric.
                 }
 
             } else {
-                // Visual Mode:
-                // Reset "Unsaved Changes" reference to the CURRENT CLEARTEXT properties
                 setOriginalProperties(JSON.parse(JSON.stringify(properties)));
-                // Update originalRawContent to the encrypted content we just saved
                 setOriginalRawContent(finalContent || '');
-
-                // Also update rawContent to match the saved encrypted content
                 setRawContent(finalContent || '');
             }
 
         } catch (e: any) {
             toastError(e.message);
         }
-    };
+    }, [isRawMode, rawContent, selectedFile, isYamlValid, properties, t, success, toastError, resetProperties, encryptRecursive]);
 
-    const handleToggleRawMode = async () => {
+    const handleToggleComments = useCallback(async () => {
+        const newValue = !showComments;
+        setShowComments(newValue);
+
+        try {
+            await osgiService.setPreference('osgiShowComments', String(newValue));
+        } catch (e) {
+            console.error("Failed to save comment visibility preference", e);
+        }
+    }, [showComments]);
+
+    const handleToggleRawMode = useCallback(async () => {
         // Capture cleanliness state before toggle
         const wasClean = !hasUnsaved;
+        const newMode = !isRawMode;
+
+        // Persist preference
+        try {
+            await osgiService.setPreference('osgiEditorMode', newMode ? 'raw' : 'visual');
+        } catch (e) {
+            console.error("Failed to save user preference", e);
+        }
 
         if (isRawMode) {
             // Switching TO Visual Mode
@@ -420,10 +444,10 @@ export const useOsgiConfigs = () => {
                 setOriginalRawContent(formatted);
             }
         }
-        setIsRawMode(!isRawMode);
-    };
+        setIsRawMode(newMode);
+    }, [hasUnsaved, isRawMode, rawContent, encryptRecursive, properties, resetProperties]);
 
-    const handleToggleFile = async (f: OsgiFile) => {
+    const handleToggleFile = useCallback(async (f: OsgiFile) => {
         try {
             await osgiService.toggle(f.name);
             await fetchFiles(); // Wait for files to refresh
@@ -440,9 +464,9 @@ export const useOsgiConfigs = () => {
         } catch (e: any) {
             toastError(t('modal.error.toggle', { error: e.message }));
         }
-    };
+    }, [fetchFiles, selectedFile, success, t, toastError]);
 
-    const handleDeleteFile = async (f: OsgiFile) => {
+    const handleDeleteFile = useCallback(async (f: OsgiFile) => {
         setModalConfig({
             type: 'confirm',
             title: t('modal.deleteFile.title'),
@@ -458,9 +482,9 @@ export const useOsgiConfigs = () => {
                 }
             }
         });
-    };
+    }, [fetchFiles, selectedFile, success, t, toastError]);
 
-    const handleCreateFile = async (filename: string) => {
+    const handleCreateFile = useCallback(async (filename: string) => {
         const validExtensions = ['.cfg', '.yml', '.cfg.disabled', '.yml.disabled'];
         const isValid = validExtensions.some(ext => filename.toLowerCase().endsWith(ext));
 
@@ -485,9 +509,9 @@ export const useOsgiConfigs = () => {
         } catch (e: any) {
             toastError(t('modal.error.create', { error: e.message }));
         }
-    };
+    }, [fetchFiles, success, t, toastError]);
 
-    const handleUploadFile = async (file: File) => {
+    const handleUploadFile = useCallback(async (file: File) => {
         if (!file) return;
 
         const processUpload = async (fileObj: File, customName?: string) => {
@@ -574,22 +598,22 @@ export const useOsgiConfigs = () => {
         } else {
             processUpload(file);
         }
-    };
+    }, [fetchFiles, files, success, t, toastError]);
 
-    const handleRawUpdate = (val: string) => {
+    const handleRawUpdate = useCallback((val: string) => {
         setRawContent(val);
-    };
+    }, []);
 
-    const handleAddItem = (path: (string | number)[]) => {
+    const handleAddItem = useCallback((path: (string | number)[]) => {
         setModalConfig({
             type: 'prompt',
             title: t('modal.addItem.title'),
             message: t('modal.addItem.message'),
             onConfirm: (val) => addItem(path, val)
         });
-    };
+    }, [addItem, t]);
 
-    const handleAddProperty = (path: (string | number)[]) => {
+    const handleAddProperty = useCallback((path: (string | number)[]) => {
         setModalConfig({
             type: 'prompt',
             title: t('modal.addProp.title'),
@@ -610,9 +634,9 @@ export const useOsgiConfigs = () => {
                 addProperty(path, key, onError);
             }
         });
-    };
+    }, [addProperty, t]);
 
-    const handleDeleteProperty = (path: (string | number)[]) => {
+    const handleDeleteProperty = useCallback((path: (string | number)[]) => {
         const key = path[path.length - 1];
         let displayName = String(key);
 
@@ -636,7 +660,7 @@ export const useOsgiConfigs = () => {
             message: t('modal.deleteProp.message', { name: displayName }),
             onConfirm: () => deleteProperty(path)
         });
-    };
+    }, [deleteProperty, properties, t]);
 
     return {
         files,
@@ -680,6 +704,9 @@ export const useOsgiConfigs = () => {
         fetchFiles,
         isRawMode,
         handleToggleRawMode,
+        showComments,
+        setShowComments,
+        handleToggleComments,
         handleToggleEncryption
     };
 };

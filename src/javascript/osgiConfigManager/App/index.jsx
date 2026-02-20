@@ -64,6 +64,9 @@ const AppContent = () => {
         setSearchInContent,
         isRawMode,
         handleToggleRawMode,
+        showComments,
+        handleToggleComments,
+        setShowComments,
         handleToggleEncryption
     } = useOsgiConfigs();
 
@@ -188,6 +191,9 @@ const AppContent = () => {
                                                             handleReorder={handleReorder}
                                                             setModalConfig={setModalConfig}
                                                             handleToggleEncryption={handleToggleEncryption}
+                                                            showComments={showComments}
+                                                            handleToggleComments={handleToggleComments}
+                                                            setShowComments={setShowComments}
                                                         />
                                                     )
                                                 ) : (

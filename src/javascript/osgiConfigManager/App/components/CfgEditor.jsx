@@ -88,7 +88,7 @@ const AutoResizeTextArea = ({ value, onChange, placeholder, style, onFocus, onBl
     );
 };
 
-export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, handleAddCfgEntry, handleReorder, setModalConfig, handleToggleEncryption }) => {
+export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, handleAddCfgEntry, handleReorder, setModalConfig, handleToggleEncryption, showComments, handleToggleComments, setShowComments }) => {
     const { t } = useTranslation('osgi-configurations-manager');
     const [selectedIndex, setSelectedIndex] = useState(null);
     const [draggedIndex, setDraggedIndex] = useState(null);
@@ -216,6 +216,9 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
         setSelectedIndex(insertIndex);
 
         if (type === 'comment') {
+            // Unhide comments if we are adding one
+            if (!showComments) setShowComments(true);
+
             setTimeout(() => {
                 const el = inputRefs.current[insertIndex]?.value;
                 if (el) el.focus();
@@ -256,6 +259,14 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
             )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <Tooltip label={t('tooltip.toggleComments')}>
+                    <Button
+                        label={t('editor.button.toggleComments')}
+                        icon={showComments ? <Visibility /> : <Hidden />}
+                        variant="ghost"
+                        onClick={handleToggleComments}
+                    />
+                </Tooltip>
                 <Tooltip label={t('tooltip.addProperty')}>
                     <Button
                         label={t('editor.button.addProperty')}
@@ -310,6 +321,12 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                             // Fix extraction logic: check for value existence before fallback
                             // use ?? to handle empty strings correctly
                             const type = entry.type?.value ?? entry.type;
+
+                            // Filtering Logic: Hide comments if showComments=false, 
+                            // EXCEPT the absolute first line of the file (index 0)
+                            if (!showComments && type === 'comment' && index !== 0) {
+                                return null;
+                            }
                             const key = entry.key?.value ?? entry.key ?? '';
                             const value = entry.value?.value ?? entry.value ?? '';
 

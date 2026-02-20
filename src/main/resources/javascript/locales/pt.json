@@ -91,7 +91,8 @@
             "modeRaw": "Modo Texto",
             "modeVisual": "Modo Visual",
             "encrypt": "Criptografar",
-            "decrypt": "Descriptografar"
+            "decrypt": "Descriptografar",
+            "toggleComments": "Alternar comentários"
         },
         "placeholder": {
             "key": "Chave",
@@ -123,7 +124,8 @@
         "encryptSelection": "Criptografar o valor da linha atual ou seleção",
         "decryptSelection": "Descriptografar texto selecionado",
         "showSecret": "Mostrar valor secreto",
-        "hideSecret": "Ocultar valor secreto"
+        "hideSecret": "Ocultar valor secreto",
+        "toggleComments": "Alternar visibilidade dos comentários (exceto cabeçalho)"
     },
     "sidebar": {
         "on": "Ligado",

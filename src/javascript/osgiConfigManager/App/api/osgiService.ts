@@ -10,6 +10,7 @@ interface OsgiServiceResponse {
     encryptedValue?: string;
     decryptedValue?: string;
     status?: string;
+    value?: string;
 }
 
 interface OsgiPayload {
@@ -105,6 +106,18 @@ export const osgiService = {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'encrypt', value })
+        }));
+    },
+
+    getPreference: async (key: string): Promise<OsgiServiceResponse> => {
+        return handleResponse(await fetch(`${apiUrl}?action=getPreference&key=${encodeURIComponent(key)}`));
+    },
+
+    setPreference: async (key: string, value: string): Promise<OsgiServiceResponse> => {
+        return handleResponse(await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'setPreference', key, value })
         }));
     }
 };

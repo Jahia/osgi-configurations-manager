@@ -26,7 +26,7 @@ import java.io.BufferedReader;
 @Component(service = Action.class, immediate = true, property = "actionname=osgiConfigManager")
 public class OsgiConfigAction extends Action {
 
-    private static final Logger logger = LoggerFactory.getLogger(OsgiConfigAction.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(OsgiConfigAction.class);
     private OsgiConfigService configService;
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -61,6 +61,8 @@ public class OsgiConfigAction extends Action {
                 String filename = req.getParameter("filename");
                 if (filename != null && !filename.isEmpty()) {
                     // Read specific file
+                    LOGGER.debug("[AUDIT] User: {} | Action: read | File: {}", renderContext.getUser().getName(),
+                            filename);
                     Map<String, Object> fileContent = configService.readFile(filename);
                     result.put("data", fileContent);
                 } else {
@@ -69,7 +71,7 @@ public class OsgiConfigAction extends Action {
                     String search = req.getParameter("search");
 
                     if (search != null && !search.isEmpty()) {
-                        logger.debug("Deep Search: Requested search for term '{}'", search);
+                        LOGGER.debug("Deep Search: Requested search for term '{}'", search);
                         String lowerSearch = search.toLowerCase();
                         List<Map<String, Object>> filteredFiles = new java.util.ArrayList<>();
 
@@ -84,18 +86,27 @@ public class OsgiConfigAction extends Action {
                                 boolean contentMatch = raw != null && raw.toLowerCase().contains(lowerSearch);
 
                                 if (contentMatch) {
-                                    logger.debug("Deep Search: Match found in content of '{}'", name);
+                                    LOGGER.debug("Deep Search: Match found in content of '{}'", name);
                                 }
 
                                 if (nameMatch || contentMatch) {
                                     filteredFiles.add(file);
                                 }
                             } catch (Exception e) {
-                                logger.warn("Deep Search: Failed to read file {} during search", name, e);
+                                LOGGER.warn("Deep Search: Failed to read file {} during search", name, e);
                             }
                         }
-                        logger.debug("Deep Search: Found {} matching files", filteredFiles.size());
+                        LOGGER.debug("Deep Search: Found {} matching files", filteredFiles.size());
                         result.put("files", filteredFiles);
+                    } else if ("getPreference".equals(req.getParameter("action"))) {
+                        String key = req.getParameter("key");
+                        String userPath = renderContext.getUser().getLocalPath();
+                        if (session.nodeExists(userPath)) {
+                            org.jahia.services.content.JCRNodeWrapper userNode = session.getNode(userPath);
+                            if (userNode.hasProperty(key)) {
+                                result.put("value", userNode.getProperty(key).getString());
+                            }
+                        }
                     } else {
                         result.put("files", allFiles);
                     }
@@ -112,7 +123,13 @@ public class OsgiConfigAction extends Action {
                 String actionType = (String) payload.get("action");
                 String filename = (String) payload.get("filename");
 
-                logger.info("Received action: {} for filename: {}", actionType, filename);
+                if ("save".equals(actionType) || "toggle".equals(actionType) || "delete".equals(actionType)
+                        || "create".equals(actionType)) {
+                    LOGGER.info("[AUDIT] User: {} | Action: {} | File: {}", renderContext.getUser().getName(),
+                            actionType, filename);
+                } else {
+                    LOGGER.info("Received action: {} for filename: {}", actionType, filename);
+                }
 
                 if ("save".equals(actionType)) {
                     Map<String, Object> contentMap = new LinkedHashMap<>();
@@ -140,6 +157,16 @@ public class OsgiConfigAction extends Action {
                 } else if ("decrypt".equals(actionType)) {
                     String value = (String) payload.get("value");
                     result.put("decryptedValue", configService.decrypt(value));
+                } else if ("setPreference".equals(actionType)) {
+                    String key = (String) payload.get("key");
+                    String value = (String) payload.get("value");
+                    String userPath = renderContext.getUser().getLocalPath();
+                    if (session.nodeExists(userPath)) {
+                        org.jahia.services.content.JCRNodeWrapper userNode = session.getNode(userPath);
+                        userNode.setProperty(key, value);
+                        session.save();
+                        result.put("status", "preferenceSaved");
+                    }
                 } else {
                     Map<String, String> error = new HashMap<>();
                     error.put("error", "Unknown action");
@@ -157,7 +184,7 @@ public class OsgiConfigAction extends Action {
             return null;
 
         } catch (Exception e) {
-            logger.error("Error in OsgiConfigAction", e);
+            LOGGER.error("Error in OsgiConfigAction", e);
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             response.setContentType("application/json");

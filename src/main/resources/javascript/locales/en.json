@@ -91,7 +91,8 @@
             "modeRaw": "Raw Edit",
             "modeVisual": "Visual Edit",
             "encrypt": "Encrypt",
-            "decrypt": "Decrypt"
+            "decrypt": "Decrypt",
+            "toggleComments": "Toggle Comments"
         },
         "placeholder": {
             "key": "Key",
@@ -123,7 +124,8 @@
         "encryptSelection": "Encrypt current line value or selection",
         "decryptSelection": "Decrypt selected text",
         "showSecret": "Show secret value",
-        "hideSecret": "Hide secret value"
+        "hideSecret": "Hide secret value",
+        "toggleComments": "Toggle comments visibility (except header)"
     },
     "sidebar": {
         "on": "On",

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { updateStateDeep } from '../utils/configUtils';
 import { useTranslation } from 'react-i18next';
 // import { osgiService } from '../api/osgiService';
@@ -12,11 +12,11 @@ export const useProperties = () => {
         setProperties((prev: any) => updateStateDeep(prev, 0, path, field, val));
     };
 
-    const handlePropUpdate = (path: (string | number)[], field: string, val: any) => {
+    const handlePropUpdate = useCallback((path: (string | number)[], field: string, val: any) => {
         updateProp(path, field, val);
-    };
+    }, []);
 
-    const handleAddProperty = (path: (string | number)[], key: string, onError: (msg: string) => void) => {
+    const handleAddProperty = useCallback((path: (string | number)[], key: string, onError: (msg: string) => void) => {
         if (!key) return;
 
         let target = properties;
@@ -30,9 +30,9 @@ export const useProperties = () => {
         }
 
         setProperties((prev: any) => updateStateDeep(prev, 0, [...path, key], 'value', '', true));
-    };
+    }, [properties, t]);
 
-    const handleAddItem = (path: (string | number)[], val?: string) => {
+    const handleAddItem = useCallback((path: (string | number)[], val?: string) => {
         setProperties((prev: any) => {
             let curr = prev;
             for (let i = 0; i < path.length; i++) {
@@ -41,9 +41,9 @@ export const useProperties = () => {
             const nextIdx = Array.isArray(curr) ? curr.length : 0;
             return updateStateDeep(prev, 0, [...path, nextIdx], 'value', val || '', true);
         });
-    };
+    }, []);
 
-    const handleDeleteProperty = (path: (string | number)[]) => {
+    const handleDeleteProperty = useCallback((path: (string | number)[]) => {
         const key = path[path.length - 1];
 
         setProperties((prev: any) => {
@@ -68,9 +68,9 @@ export const useProperties = () => {
             }
             return next;
         });
-    };
+    }, []);
 
-    const handleAddCfgEntry = (entry: any, index: number) => {
+    const handleAddCfgEntry = useCallback((entry: any, index: number) => {
         setProperties((prev: any) => {
             if (Array.isArray(prev)) {
                 const newEntry: any = {};
@@ -88,9 +88,9 @@ export const useProperties = () => {
             }
             return prev;
         });
-    };
+    }, []);
 
-    const handleReorder = (fromIndex: number, toIndex: number) => {
+    const handleReorder = useCallback((fromIndex: number, toIndex: number) => {
         setProperties((prev: any) => {
             if (Array.isArray(prev)) {
                 const newArr = [...prev];
@@ -100,23 +100,23 @@ export const useProperties = () => {
             }
             return prev;
         });
-    };
+    }, []);
 
-    const toggleCollapse = (keyString: string) => {
+    const toggleCollapse = useCallback((keyString: string) => {
         setCollapsedPaths(prev => {
             const next = new Set(prev);
             if (next.has(keyString)) next.delete(keyString);
             else next.add(keyString);
             return next;
         });
-    };
+    }, []);
 
-    const resetProperties = (newProps: any) => {
+    const resetProperties = useCallback((newProps: any) => {
         setProperties(newProps);
         setCollapsedPaths(new Set());
-    };
+    }, []);
 
-    const handleToggleEncryption = (path: (string | number)[], currentEncrypted: boolean) => {
+    const handleToggleEncryption = useCallback((path: (string | number)[], currentEncrypted: boolean) => {
         // Sync Toggle: Just flip the flag in state. 
         // No values are changed (we keep cleartext in memory).
         // Encryption happens on save/export.
@@ -125,7 +125,7 @@ export const useProperties = () => {
         setProperties((prev: any) => {
             return updateStateDeep(prev, 0, path, 'encrypted', targetEncrypted);
         });
-    };
+    }, []);
 
 
     return {

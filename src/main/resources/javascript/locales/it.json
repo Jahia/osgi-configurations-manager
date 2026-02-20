@@ -91,7 +91,8 @@
             "modeRaw": "Modalità Testo",
             "modeVisual": "Modalità Visuale",
             "encrypt": "Cifra",
-            "decrypt": "Decifra"
+            "decrypt": "Decifra",
+            "toggleComments": "Attiva/disattiva commenti"
         },
         "placeholder": {
             "key": "Chiave",
@@ -123,7 +124,8 @@
         "encryptSelection": "Cifra il valore della riga corrente o la selezione",
         "decryptSelection": "Decifra il testo selezionato",
         "showSecret": "Mostra il valore segreto",
-        "hideSecret": "Nascondi il valore segreto"
+        "hideSecret": "Nascondi il valore segreto",
+        "toggleComments": "Attiva/disattiva visibilità commenti (eccetto intestazione)"
     },
     "sidebar": {
         "on": "On",
