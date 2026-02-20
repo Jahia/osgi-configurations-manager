@@ -8,6 +8,7 @@ import {
     Input,
     Checkbox,
     Button,
+    Tooltip,
     Close,
     Add,
     Typography,
@@ -255,28 +256,31 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
             )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <Button
-                    label={t('editor.button.addProperty')}
-                    icon={<Add />}
-                    color="accent"
-                    onClick={() => handleAdd('property', '', '')}
-                    title={t('tooltip.addProperty')}
-                />
-                <Button
-                    label={t('editor.button.addComment')}
-                    icon={<Comments />}
-                    variant="outlined"
-                    style={{ color: 'var(--color-success)', borderColor: 'var(--color-success)' }}
-                    onClick={() => handleAdd('comment', undefined, '# ')}
-                    title={t('tooltip.addComment')}
-                />
-                <Button
-                    label={t('editor.button.addEmptyLine')}
-                    icon={<AddCircleOutline />}
-                    variant="ghost"
-                    onClick={() => handleAdd('empty', undefined, '')}
-                    title={t('editor.button.addEmptyLine')}
-                />
+                <Tooltip label={t('tooltip.addProperty')}>
+                    <Button
+                        label={t('editor.button.addProperty')}
+                        icon={<Add />}
+                        color="accent"
+                        onClick={() => handleAdd('property', '', '')}
+                    />
+                </Tooltip>
+                <Tooltip label={t('tooltip.addComment')}>
+                    <Button
+                        label={t('editor.button.addComment')}
+                        icon={<Comments />}
+                        variant="outlined"
+                        style={{ color: 'var(--color-success)', borderColor: 'var(--color-success)' }}
+                        onClick={() => handleAdd('comment', undefined, '# ')}
+                    />
+                </Tooltip>
+                <Tooltip label={t('tooltip.addEmptyLine')}>
+                    <Button
+                        label={t('editor.button.addEmptyLine')}
+                        icon={<AddCircleOutline />}
+                        variant="ghost"
+                        onClick={() => handleAdd('empty', undefined, '')}
+                    />
+                </Tooltip>
             </div>
 
             <div style={{ flex: 1, overflow: 'auto' }} onScroll={() => setOverlay(null)}>
@@ -286,7 +290,7 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                             <TableBodyCell style={{ flex: '0 0 48px', minWidth: '48px' }}></TableBodyCell>
                             <TableBodyCell style={{ flex: '0 0 40px', minWidth: '40px' }}></TableBodyCell>
 
-                            <TableBodyCell style={{ flex: '0 0 15%', width: '15%', minWidth: '150px' }}>
+                            <TableBodyCell style={{ flex: '0 0 24%', width: '24%', minWidth: '220px' }}>
                                 <Typography variant="caption" weight="bold" style={{ color: '#000' }}>{t('editor.header.property')}</Typography>
                             </TableBodyCell>
 
@@ -368,7 +372,7 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
 
                                     {type === 'comment' ? (
                                         <>
-                                            <TableBodyCell style={{ ...cellStyle, flex: '0 0 15%', width: '15%', minWidth: '150px' }}>
+                                            <TableBodyCell style={{ ...cellStyle, flex: '0 0 24%', width: '24%', minWidth: '220px' }}>
                                                 <Typography style={{
                                                     color: 'var(--color-success)',
                                                     fontWeight: 'bold',
@@ -403,7 +407,7 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                                         </>
                                     ) : type === 'empty' ? (
                                         <>
-                                            <TableBodyCell style={{ ...cellStyle, flex: '0 0 15%', width: '15%', minWidth: '150px' }}></TableBodyCell>
+                                            <TableBodyCell style={{ ...cellStyle, flex: '0 0 24%', width: '24%', minWidth: '220px' }}></TableBodyCell>
                                             <TableBodyCell style={{ ...cellStyle, flex: '1 1 auto', minWidth: 0 }}>
                                                 <Typography variant="caption" style={{ color: 'var(--color-gray_dark40)', fontStyle: 'italic', paddingLeft: '8px' }}>
                                                     {t('editor.emptyLine')}
@@ -413,7 +417,7 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                                         </>
                                     ) : (
                                         <>
-                                            <TableBodyCell style={{ ...cellStyle, flex: '0 0 15%', width: '15%', minWidth: '150px' }}>
+                                            <TableBodyCell style={{ ...cellStyle, flex: '0 0 24%', width: '24%', minWidth: '220px' }}>
                                                 <div
                                                     style={{ width: '100%' }}
                                                 >
@@ -423,7 +427,7 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                                                         onChange={e => onUpdate(index, 'key', e.target.value)}
                                                         onFocus={() => handleInputFocus(index)}
                                                         preventNewlines={true}
-                                                        placeholder="Key"
+                                                        placeholder={t('editor.placeholder.key')}
                                                         style={textInputStyle}
                                                     />
                                                 </div>
@@ -450,7 +454,7 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                                                                 value={value}
                                                                 onChange={e => onUpdate(index, 'value', e.target.value)}
                                                                 onFocus={() => handleInputFocus(index)}
-                                                                placeholder="Value"
+                                                                placeholder={t('editor.placeholder.value')}
                                                                 type={!isSecretVisible ? 'password' : 'text'}
                                                                 style={{ ...textInputStyle, width: '100%' }}
                                                             />
@@ -462,19 +466,22 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                                                             onChange={e => onUpdate(index, 'value', e.target.value)}
                                                             onFocus={() => handleInputFocus(index)}
                                                             // preventNewlines={true} // Allow newlines for values!
-                                                            placeholder="Value"
+                                                            placeholder={t('editor.placeholder.value')}
                                                             style={textInputStyle}
                                                         />
                                                     )}
 
                                                     {isEncrypted && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            icon={isSecretVisible ? <Hidden /> : <Visibility />}
-                                                            onClick={(e) => { e.stopPropagation(); toggleSecret(index); }}
-                                                            size="small"
-                                                            style={{ marginLeft: '4px', marginTop: '-4px' }}
-                                                        />
+                                                        <Tooltip label={isSecretVisible ? t('tooltip.hideSecret') : t('tooltip.showSecret')}>
+                                                            <Button
+                                                                variant="ghost"
+                                                                icon={isSecretVisible ? <Hidden /> : <Visibility />}
+                                                                onClick={(e) => { e.stopPropagation(); toggleSecret(index); }}
+                                                                size="small"
+                                                                aria-label={isSecretVisible ? t('tooltip.hideSecret') : t('tooltip.showSecret')}
+                                                                style={{ marginLeft: '4px', marginTop: '-4px' }}
+                                                            />
+                                                        </Tooltip>
                                                     )}
                                                 </div>
                                             </TableBodyCell>

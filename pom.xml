@@ -62,7 +62,7 @@
     <description>Administration module to manage all OSGi configuration files (cfg, yaml) in Karaf /etc.</description>
 
     <properties>
-        <jahia-depends>default</jahia-depends>
+        <jahia-depends>default,jcontent=3.5.0</jahia-depends>
         <jahia-module-type>system</jahia-module-type>
         <jahia-deploy-on-site>system</jahia-deploy-on-site>
         <yarn.arguments>build:production</yarn.arguments>

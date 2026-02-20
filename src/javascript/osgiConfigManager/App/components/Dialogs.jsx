@@ -103,7 +103,7 @@ export const ModalDialog = ({ config, onClose }) => {
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') handleConfirm();
                                 }}
-                                placeholder="Type here..."
+                                placeholder={t('modal.prompt.placeholder')}
                             />
                         </div>
                     )}

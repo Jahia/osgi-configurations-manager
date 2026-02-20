@@ -54,7 +54,8 @@
             "invalidYaml": "El contenido YAML no es válido. Por favor, corrija los errores de sintaxis antes de guardar.",
             "propertyExists": "La propiedad '{{name}}' ya existe.",
             "invalidExtension": "El nombre del archivo debe terminar en .cfg, .yml, .cfg.disabled o .yml.disabled",
-            "invalidExtensionUpload": "Solo se admiten archivos .cfg y .yml."
+            "invalidExtensionUpload": "Solo se admiten archivos .cfg y .yml.",
+            "duplicateKeys": "Se encontraron claves duplicadas: {{keys}}"
         },
         "conflict": {
             "title": "Archivo existente",
@@ -65,6 +66,9 @@
         "rename": {
             "title": "Renombrar archivo",
             "message": "Introduce nuevo nombre:"
+        },
+        "prompt": {
+            "placeholder": "Escribe aquí..."
         },
         "diff": {
             "title": "Revisar cambios: {{name}}"
@@ -79,13 +83,26 @@
         },
         "button": {
             "addProperty": "Añadir propiedad",
+            "addComment": "Añadir comentario",
+            "addEmptyLine": "Añadir línea vacía",
             "undo": "Deshacer",
             "redo": "Rehacer",
             "format": "Formato",
             "modeRaw": "Modo Texto",
-            "modeVisual": "Modo Visual"
+            "modeVisual": "Modo Visual",
+            "encrypt": "Cifrar",
+            "decrypt": "Descifrar"
         },
-        "empty": "vacío"
+        "placeholder": {
+            "key": "Clave",
+            "value": "Valor"
+        },
+        "validation": {
+            "missingKey": "La propiedad debe tener una clave antes del separador",
+            "duplicateKey": "Clave duplicada '{{key}}'"
+        },
+        "empty": "vacío",
+        "emptyLine": "Línea vacía"
     },
     "tooltip": {
         "downloadFile": "Descargar archivo actual (Datos sin procesar)",
@@ -95,12 +112,18 @@
         "deleteFile": "Eliminar este archivo",
         "toggleFile": "Habilitar o deshabilitar esta configuración",
         "addProperty": "Añadir una nueva propiedad",
+        "addComment": "Añadir un comentario",
+        "addEmptyLine": "Añadir una línea vacía",
         "deleteProperty": "Eliminar esta propiedad",
         "undo": "Deshacer último cambio",
         "redo": "Rehacer cambio deshecho",
         "format": "Formatear código YAML",
         "modeRaw": "Cambiar a editor de texto",
-        "modeVisual": "Cambiar a editor visual"
+        "modeVisual": "Cambiar a editor visual",
+        "encryptSelection": "Cifrar el valor de la línea actual o la selección",
+        "decryptSelection": "Descifrar el texto seleccionado",
+        "showSecret": "Mostrar valor secreto",
+        "hideSecret": "Ocultar valor secreto"
     },
     "sidebar": {
         "on": "On",

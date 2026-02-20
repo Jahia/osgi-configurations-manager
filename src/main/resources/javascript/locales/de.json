@@ -54,7 +54,8 @@
             "invalidYaml": "Der YAML-Inhalt ist ungültig. Bitte korrigieren Sie Syntaxfehler vor dem Speichern.",
             "propertyExists": "Die Eigenschaft '{{name}}' existiert bereits.",
             "invalidExtension": "Der Dateiname muss mit .cfg, .yml, .cfg.disabled oder .yml.disabled enden",
-            "invalidExtensionUpload": "Nur .cfg und .yml Dateien werden unterstützt."
+            "invalidExtensionUpload": "Nur .cfg und .yml Dateien werden unterstützt.",
+            "duplicateKeys": "Doppelte Schlüssel gefunden: {{keys}}"
         },
         "conflict": {
             "title": "Datei existiert",
@@ -65,6 +66,9 @@
         "rename": {
             "title": "Datei umbenennen",
             "message": "Neuen Dateinamen eingeben:"
+        },
+        "prompt": {
+            "placeholder": "Hier eingeben..."
         },
         "diff": {
             "title": "Änderungen überprüfen: {{name}}"
@@ -85,7 +89,17 @@
             "redo": "Wiederherstellen",
             "format": "Formatieren",
             "modeRaw": "Textmodus",
-            "modeVisual": "Visueller Modus"
+            "modeVisual": "Visueller Modus",
+            "encrypt": "Verschlüsseln",
+            "decrypt": "Entschlüsseln"
+        },
+        "placeholder": {
+            "key": "Schlüssel",
+            "value": "Wert"
+        },
+        "validation": {
+            "missingKey": "Eigenschaft muss vor dem Trennzeichen einen Schlüssel haben",
+            "duplicateKey": "Doppelter Schlüssel '{{key}}'"
         },
         "empty": "leer",
         "emptyLine": "Leerzeile"
@@ -99,12 +113,17 @@
         "toggleFile": "Diese Konfiguration aktivieren oder deaktivieren",
         "addProperty": "Neue Eigenschaft hinzufügen",
         "addComment": "Kommentar hinzufügen",
+        "addEmptyLine": "Leerzeile hinzufügen",
         "deleteProperty": "Diese Eigenschaft löschen",
         "undo": "Letzte Änderung rückgängig machen",
         "redo": "Rückgängig gemachte Änderung wiederherstellen",
         "format": "YAML-Code formatieren",
         "modeRaw": "In Texteditor wechseln",
-        "modeVisual": "In visuellen Editor wechseln"
+        "modeVisual": "In visuellen Editor wechseln",
+        "encryptSelection": "Aktuellen Zeilenwert oder Auswahl verschlüsseln",
+        "decryptSelection": "Ausgewählten Text entschlüsseln",
+        "showSecret": "Geheimen Wert anzeigen",
+        "hideSecret": "Geheimen Wert ausblenden"
     },
     "sidebar": {
         "on": "Ein",
