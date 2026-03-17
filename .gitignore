@@ -21,3 +21,8 @@ npm-debug.log
 yarn-error.log
 dist/
 build/
+
+# Local / accidental commits
+.agent/
+__mocks__/
+build_log.txt
