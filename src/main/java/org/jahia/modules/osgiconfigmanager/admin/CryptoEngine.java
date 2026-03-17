@@ -7,14 +7,14 @@ package org.jahia.modules.osgiconfigmanager.admin;
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.security.AlgorithmParameters;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Base64;
 import org.slf4j.Logger;
@@ -38,8 +38,6 @@ public class CryptoEngine {
             LOGGER.error("InvalidKeySpecException", e);
         } catch (GeneralSecurityException e) {
             LOGGER.error("GeneralSecurityException", e);
-        } catch (UnsupportedEncodingException e) {
-            LOGGER.error("UnsupportedEncodingException", e);
         }
         return string;
     }
@@ -57,10 +55,6 @@ public class CryptoEngine {
             LOGGER.error("InvalidKeySpecException", e);
         } catch (GeneralSecurityException e) {
             LOGGER.error("GeneralSecurityException", e);
-        } catch (UnsupportedEncodingException e) {
-            LOGGER.error("UnsupportedEncodingException", e);
-        } catch (IOException e) {
-            LOGGER.error("IOException", e);
         }
         return string;
     }
@@ -74,13 +68,13 @@ public class CryptoEngine {
     }
 
     private static String encrypt(String property, SecretKeySpec key)
-            throws GeneralSecurityException, UnsupportedEncodingException {
-        Cipher pbeCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-        pbeCipher.init(Cipher.ENCRYPT_MODE, key);
-        AlgorithmParameters parameters = pbeCipher.getParameters();
-        IvParameterSpec ivParameterSpec = parameters.getParameterSpec(IvParameterSpec.class);
-        byte[] cryptoText = pbeCipher.doFinal(property.getBytes("UTF-8"));
-        byte[] iv = ivParameterSpec.getIV();
+            throws GeneralSecurityException {
+        Cipher pbeCipher = Cipher.getInstance("AES/GCM/NoPadding");
+        byte[] iv = new byte[12]; // GCM recommended IV length is 12 bytes
+        new SecureRandom().nextBytes(iv);
+        GCMParameterSpec parameterSpec = new GCMParameterSpec(128, iv); // 128-bit authentication tag
+        pbeCipher.init(Cipher.ENCRYPT_MODE, key, parameterSpec);
+        byte[] cryptoText = pbeCipher.doFinal(property.getBytes(StandardCharsets.UTF_8));
         return base64Encode(iv) + ":" + base64Encode(cryptoText);
     }
 
@@ -88,12 +82,23 @@ public class CryptoEngine {
         return Base64.getEncoder().encodeToString(bytes);
     }
 
-    private static String decrypt(String string, SecretKeySpec key) throws GeneralSecurityException, IOException {
-        String iv = string.split(":")[0];
-        String property = string.split(":")[1];
-        Cipher pbeCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-        pbeCipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(base64Decode(iv)));
-        return new String(pbeCipher.doFinal(base64Decode(property)), "UTF-8");
+    @SuppressWarnings("java:S5542")
+    private static String decrypt(String string, SecretKeySpec key) throws GeneralSecurityException {
+        String ivString = string.split(":")[0];
+        String propertyString = string.split(":")[1];
+        byte[] iv = base64Decode(ivString);
+        byte[] property = base64Decode(propertyString);
+
+        Cipher pbeCipher;
+        if (iv.length == 16) {
+            // Fallback for older CBC-encrypted strings
+            pbeCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            pbeCipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(iv));
+        } else {
+            pbeCipher = Cipher.getInstance("AES/GCM/NoPadding");
+            pbeCipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(128, iv));
+        }
+        return new String(pbeCipher.doFinal(property), StandardCharsets.UTF_8);
     }
 
     private static byte[] base64Decode(String property) {

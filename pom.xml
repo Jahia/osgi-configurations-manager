@@ -172,4 +172,10 @@
             </plugin>
         </plugins>
     </build>
+    <scm>
+        <connection>scm:git:git@github.com:Jahia/osgi-configurations-manager.git</connection>
+        <developerConnection>scm:git:git@github.com:Jahia/osgi-configurations-manager.git</developerConnection>
+        <url>scm:git:git@github.com:Jahia/osgi-configurations-manager.git</url>
+        <tag>HEAD</tag>
+    </scm>
 </project>
