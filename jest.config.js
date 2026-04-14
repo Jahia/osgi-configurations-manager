@@ -2,7 +2,9 @@ module.exports = {
     testEnvironment: 'jsdom',
     transform: {
         '^.+\\.jsx?$': 'babel-jest',
-        '^.+\\.tsx?$': 'ts-jest',
+        '^.+\\.tsx?$': ['ts-jest', {
+            tsconfig: '<rootDir>/tsconfig.jest.json'
+        }],
     },
     moduleNameMapper: {
         '\\.(css|less|scss|sass)$': '<rootDir>/__mocks__/styleMock.js',

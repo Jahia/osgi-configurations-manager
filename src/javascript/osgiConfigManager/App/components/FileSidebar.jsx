@@ -160,60 +160,70 @@ export const FileSidebar = ({
                 {/* Left: Context Actions */}
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <Tooltip label={t('tooltip.toggleFile')}>
-                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <div data-cy="toggle-file-switch" style={{ display: 'flex', alignItems: 'center' }}>
                             <Switch
+                                data-cy="toggle-file-switch-control"
                                 checked={currentFile ? currentFile.enabled : false}
                                 onChange={() => currentFile && handleToggleFile(currentFile)}
                                 disabled={!currentFile}
                             />
                         </div>
                     </Tooltip>
-                    <Tooltip label={t('tooltip.deleteFile')}>
-                        <Button
-                            size="big"
-                            color="danger"
-                            variant="ghost"
-                            icon={<Delete size="big" />}
-                            onClick={() => currentFile && handleDeleteFile(currentFile)}
-                            disabled={!currentFile}
-                        />
-                    </Tooltip>
+                    <div data-cy="delete-file-button">
+                        <Tooltip label={t('tooltip.deleteFile')}>
+                            <Button
+                                size="big"
+                                color="danger"
+                                variant="ghost"
+                                icon={<Delete size="big" />}
+                                onClick={() => currentFile && handleDeleteFile(currentFile)}
+                                disabled={!currentFile}
+                            />
+                        </Tooltip>
+                    </div>
                 </div>
 
                 {/* Right: Global Actions */}
                 <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                    <Tooltip label={t('tooltip.uploadFile')}>
-                        <Button
-                            size="big"
-                            icon={<CloudUpload size="big" />}
-                            color="primary"
-                            onClick={handleUploadClick}
-                        />
-                    </Tooltip>
-                    <Tooltip label={t('tooltip.downloadFile')}>
-                        <Button
-                            size="big"
-                            icon={<CloudDownload size="big" />}
-                            color="primary"
-                            onClick={handleDownload}
-                            disabled={!currentFile}
-                        />
-                    </Tooltip>
+                    <div data-cy="upload-file-button">
+                        <Tooltip label={t('tooltip.uploadFile')}>
+                            <Button
+                                size="big"
+                                icon={<CloudUpload size="big" />}
+                                color="primary"
+                                onClick={handleUploadClick}
+                            />
+                        </Tooltip>
+                    </div>
+                    <div data-cy="download-file-button">
+                        <Tooltip label={t('tooltip.downloadFile')}>
+                            <Button
+                                size="big"
+                                icon={<CloudDownload size="big" />}
+                                color="primary"
+                                onClick={handleDownload}
+                                disabled={!currentFile}
+                            />
+                        </Tooltip>
+                    </div>
                     <input
+                        data-cy="upload-file-input"
                         type="file"
                         ref={fileInputRef}
                         style={{ display: 'none' }}
                         accept=".yml,.cfg"
                         onChange={onFileChange}
                     />
-                    <Tooltip label={t('tooltip.createFile')}>
-                        <Button
-                            size="big"
-                            icon={<Add size="big" />}
-                            color="accent"
-                            onClick={onCreateClick}
-                        />
-                    </Tooltip>
+                    <div data-cy="create-file-button">
+                        <Tooltip label={t('tooltip.createFile')}>
+                            <Button
+                                size="big"
+                                icon={<Add size="big" />}
+                                color="accent"
+                                onClick={onCreateClick}
+                            />
+                        </Tooltip>
+                    </div>
                 </div>
             </div>
 
@@ -227,12 +237,14 @@ export const FileSidebar = ({
                 flexDirection: 'column',
                 gap: '8px'
             }}>
-                <SearchInput
-                    value={searchTerm}
-                    placeholder={t('app.searchPlaceholder')}
-                    onChange={e => setSearchTerm(e.target.value)}
-                    onClear={() => setSearchTerm('')}
-                />
+                <div data-cy="file-search-input">
+                    <SearchInput
+                        value={searchTerm}
+                        placeholder={t('app.searchPlaceholder')}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        onClear={() => setSearchTerm('')}
+                    />
+                </div>
 
                 <div style={{
                     display: 'flex',
@@ -241,8 +253,9 @@ export const FileSidebar = ({
                     marginLeft: '2px'
                 }}>
                     <Tooltip label={t('app.searchDeepTooltip')}>
-                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <div data-cy="deep-search-toggle" style={{ display: 'flex', alignItems: 'center' }}>
                             <Switch
+                                data-cy="deep-search-toggle-control"
                                 checked={searchInContent}
                                 onChange={() => setSearchInContent(!searchInContent)}
                             />
@@ -265,6 +278,7 @@ export const FileSidebar = ({
                             <TableRow
                                 key={f.path}
                                 id={'file-row-' + encodeURIComponent(f.name)}
+                                data-cy={`file-row-${encodeURIComponent(f.name)}`}
                                 isHighlighted={selectedFile?.name === f.name}
                                 onClick={() => handleFileClick(f)}
                                 style={{ cursor: 'pointer' }}

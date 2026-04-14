@@ -33,6 +33,12 @@
             "title": "Konfiguration löschen",
             "message": "Sind Sie sicher, dass Sie {{name}} löschen möchten?"
         },
+        "disableFile": {
+            "title": "Konfiguration deaktivieren",
+            "message": "Sind Sie sicher, dass Sie {{name}} deaktivieren möchten? Einige Konfigurationen können die Oberfläche einfrieren, wenn sie deaktiviert werden.",
+            "confirm": "Deaktivieren",
+            "cancel": "Abbrechen"
+        },
         "deleteProp": {
             "title": "Eigenschaft löschen",
             "message": "Sind Sie sicher, dass Sie {{name}} löschen möchten?"

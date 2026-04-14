@@ -74,7 +74,9 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         <ToastContext.Provider value={{ notify, success, error, warning }}>
             {children}
             {toast && (
-                <Paper style={{
+                <Paper
+                    data-cy="toast-message"
+                    style={{
                     position: 'fixed',
                     bottom: '20px',
                     right: '20px',
@@ -88,7 +90,8 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                     gap: '8px',
                     minWidth: '280px',
                     maxWidth: '520px'
-                }}>
+                }}
+                >
                     {toastMeta?.icon}
                     <Typography style={{ flex: 1 }}>{toast.message}</Typography>
                 </Paper>

@@ -1,0 +1,24 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "module": "commonjs",
+        "lib": [
+            "es2022",
+            "es2022.intl",
+            "dom"
+        ],
+        "types": [
+            "jest",
+            "node"
+        ],
+        "skipLibCheck": true,
+        "noEmit": true
+    },
+    "include": [
+        "jest.setup.js",
+        "src/javascript/**/*.js",
+        "src/javascript/**/*.jsx",
+        "src/javascript/**/*.ts",
+        "src/javascript/**/*.tsx"
+    ]
+}

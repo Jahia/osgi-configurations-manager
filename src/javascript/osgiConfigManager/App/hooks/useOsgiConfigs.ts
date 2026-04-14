@@ -447,7 +447,7 @@ export const useOsgiConfigs = () => {
         setIsRawMode(newMode);
     }, [hasUnsaved, isRawMode, rawContent, encryptRecursive, properties, resetProperties]);
 
-    const handleToggleFile = useCallback(async (f: OsgiFile) => {
+    const toggleFileStatus = useCallback(async (f: OsgiFile) => {
         try {
             await osgiService.toggle(f.name);
             await fetchFiles(); // Wait for files to refresh
@@ -465,6 +465,25 @@ export const useOsgiConfigs = () => {
             toastError(t('modal.error.toggle', { error: e.message }));
         }
     }, [fetchFiles, selectedFile, success, t, toastError]);
+
+    const handleToggleFile = useCallback(async (f: OsgiFile) => {
+        if (f.enabled === false || f.name.endsWith('.disabled')) {
+            await toggleFileStatus(f);
+            return;
+        }
+
+        setModalConfig({
+            type: 'confirm',
+            severity: 'warning',
+            title: t('modal.disableFile.title'),
+            message: t('modal.disableFile.message', { name: f.name }),
+            confirmLabel: t('modal.disableFile.confirm'),
+            cancelLabel: t('modal.disableFile.cancel'),
+            onConfirm: async () => {
+                await toggleFileStatus(f);
+            }
+        });
+    }, [t, toggleFileStatus]);
 
     const handleDeleteFile = useCallback(async (f: OsgiFile) => {
         setModalConfig({
@@ -489,14 +508,16 @@ export const useOsgiConfigs = () => {
         const isValid = validExtensions.some(ext => filename.toLowerCase().endsWith(ext));
 
         if (!isValid) {
-            setModalConfig({
-                type: 'confirm',
-                severity: 'warning',
-                title: t('modal.error.title'),
-                message: t('modal.error.invalidExtension'),
-                cancelLabel: t('modal.ok'),
-                confirmLabel: null
-            });
+            setTimeout(() => {
+                setModalConfig({
+                    type: 'confirm',
+                    severity: 'warning',
+                    title: t('modal.error.title'),
+                    message: t('modal.error.invalidExtension'),
+                    cancelLabel: t('modal.ok'),
+                    confirmLabel: null
+                });
+            }, 100);
             return;
         }
 
@@ -523,14 +544,16 @@ export const useOsgiConfigs = () => {
                 const isYml = filename.toLowerCase().endsWith('.yml');
 
                 if (!isCfg && !isYml) {
-                    setModalConfig({
-                        type: 'confirm',
-                        severity: 'warning',
-                        title: t('modal.error.title'),
-                        message: t('modal.error.invalidExtensionUpload'),
-                        cancelLabel: t('modal.ok'),
-                        confirmLabel: null
-                    });
+                    setTimeout(() => {
+                        setModalConfig({
+                            type: 'confirm',
+                            severity: 'warning',
+                            title: t('modal.error.title'),
+                            message: t('modal.error.invalidExtensionUpload'),
+                            cancelLabel: t('modal.ok'),
+                            confirmLabel: null
+                        });
+                    }, 100);
                     return;
                 }
 

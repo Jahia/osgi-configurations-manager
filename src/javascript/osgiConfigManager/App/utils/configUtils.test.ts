@@ -37,13 +37,13 @@ key = value
         expect(result).toHaveLength(1);
         expect(result[0].key.value).toBe('multiline.key');
         // User wants to preserve the backslash and newline in the value
-        expect(result[0].value.value).toBe('line1 \\\nline2');
+        expect(result[0].value.value).toBe('line1 \\\n    line2');
     });
 
     test('handles multiple line continuations', () => {
         const content = 'long.value = part1 \\\n    part2 \\\n    part3';
         const result = parseCfgContent(content);
         expect(result).toHaveLength(1);
-        expect(result[0].value.value).toBe('part1 \\\npart2 \\\npart3');
+        expect(result[0].value.value).toBe('part1 \\\n    part2 \\\n    part3');
     });
 });

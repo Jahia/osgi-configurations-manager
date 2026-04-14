@@ -32,7 +32,9 @@ export const ModalDialog = ({ config, onClose }) => {
     const accentColor = isWarning ? '#db3d44' : '#00a0e3'; // Jahia Blue / Warning Red
 
     return (
-        <div style={{
+        <div
+            data-cy="modal-dialog"
+            style={{
             position: 'fixed',
             top: 0,
             left: 0,
@@ -45,7 +47,9 @@ export const ModalDialog = ({ config, onClose }) => {
             zIndex: 100000,
             backdropFilter: 'blur(4px)',
             transition: 'all 0.2s ease'
-        }} onClick={onClose}>
+        }}
+            onClick={onClose}
+        >
             <Paper
                 style={{
                     width: '520px',
@@ -88,7 +92,7 @@ export const ModalDialog = ({ config, onClose }) => {
                     </Typography>
 
                     {config.type === 'prompt' && (
-                        <div style={{ marginTop: '8px' }}>
+                        <div data-cy="modal-prompt-input" style={{ marginTop: '8px' }}>
                             <Input
                                 autoFocus
                                 value={value}
@@ -119,33 +123,39 @@ export const ModalDialog = ({ config, onClose }) => {
                     background: '#fafafa'
                 }}>
                     {config.cancelLabel !== null && (
-                        <Button
-                            label={config.cancelLabel || t('modal.cancel')}
-                            variant="ghost"
-                            onClick={onClose}
-                        />
+                        <div data-cy="modal-cancel-button">
+                            <Button
+                                label={config.cancelLabel || t('modal.cancel')}
+                                variant="ghost"
+                                onClick={onClose}
+                            />
+                        </div>
                     )}
                     {config.otherLabel && (
-                        <Button
-                            label={config.otherLabel}
-                            variant="outlined"
-                            onClick={() => {
-                                if (config.onOther) config.onOther();
-                                onClose();
-                            }}
-                        />
+                        <div data-cy="modal-other-button">
+                            <Button
+                                label={config.otherLabel}
+                                variant="outlined"
+                                onClick={() => {
+                                    if (config.onOther) config.onOther();
+                                    onClose();
+                                }}
+                            />
+                        </div>
                     )}
                     {config.confirmLabel !== null && (
-                        <Button
-                            label={config.confirmLabel || t('modal.ok')}
-                            style={{
-                                backgroundColor: accentColor,
-                                color: '#fff',
-                                minWidth: '100px',
-                                fontWeight: '600'
-                            }}
-                            onClick={handleConfirm}
-                        />
+                        <div data-cy="modal-confirm-button">
+                            <Button
+                                label={config.confirmLabel || t('modal.ok')}
+                                style={{
+                                    backgroundColor: accentColor,
+                                    color: '#fff',
+                                    minWidth: '100px',
+                                    fontWeight: '600'
+                                }}
+                                onClick={handleConfirm}
+                            />
+                        </div>
                     )}
                 </div>
             </Paper>

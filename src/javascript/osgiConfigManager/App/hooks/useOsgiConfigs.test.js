@@ -7,43 +7,38 @@ jest.mock('../api/osgiService');
 jest.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key) => key }),
 }));
+jest.mock('./useToast', () => ({
+    useToast: () => ({
+        success: jest.fn(),
+        error: jest.fn()
+    })
+}));
 
 describe('useOsgiConfigs', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        osgiService.getPreference.mockResolvedValue({});
     });
 
     it('fetched files on mount', async () => {
-        jest.useFakeTimers();
         osgiService.getAll.mockResolvedValue({ files: [{ name: 'test.cfg' }] });
 
         const { result, waitForNextUpdate } = renderHook(() => useOsgiConfigs());
 
-        // Debounce is 500ms
-        act(() => {
-            jest.advanceTimersByTime(500);
-        });
-
-        await waitForNextUpdate(); // Wait for fetchFiles to complete
+        await waitForNextUpdate({ timeout: 2000 });
 
         expect(result.current.loadingFiles).toBe(false);
         expect(result.current.files).toEqual([{ name: 'test.cfg' }]);
         expect(osgiService.getAll).toHaveBeenCalled();
-        jest.useRealTimers();
     });
 
     it('handleDeleteFile calls service and refreshes', async () => {
-        jest.useFakeTimers();
         osgiService.getAll.mockResolvedValue({ files: [] });
         osgiService.delete.mockResolvedValue({});
 
         const { result, waitForNextUpdate } = renderHook(() => useOsgiConfigs());
 
-        // Initial load
-        act(() => {
-            jest.advanceTimersByTime(500);
-        });
-        await waitForNextUpdate();
+        await waitForNextUpdate({ timeout: 2000 });
 
         // Simulate delete
         act(() => {
@@ -66,7 +61,6 @@ describe('useOsgiConfigs', () => {
         // Wait, handleDeleteFile calls `fetchFiles()` directly, which is `const fetchFiles = useCallback(...)`.
         // So it should be immediate.
         expect(osgiService.getAll).toHaveBeenCalledTimes(2); // Initial load + refresh
-        jest.useRealTimers();
     });
 
     it('handleSave calls service', async () => {

@@ -33,6 +33,12 @@
             "title": "Elimina configurazione",
             "message": "Sei sicuro di voler eliminare {{name}}?"
         },
+        "disableFile": {
+            "title": "Disattiva configurazione",
+            "message": "Sei sicuro di voler disattivare {{name}}? Alcune configurazioni possono bloccare l'interfaccia se vengono disattivate.",
+            "confirm": "Disattiva",
+            "cancel": "Annulla"
+        },
         "deleteProp": {
             "title": "Elimina proprietà",
             "message": "Sei sicuro di voler eliminare {{name}}?"

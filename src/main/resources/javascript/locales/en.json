@@ -33,6 +33,12 @@
             "title": "Delete configuration",
             "message": "Are you sure you want to delete {{name}}?"
         },
+        "disableFile": {
+            "title": "Disable configuration",
+            "message": "Are you sure you want to disable {{name}}? Some configurations can freeze the interface when disabled.",
+            "confirm": "Disable",
+            "cancel": "Cancel"
+        },
         "deleteProp": {
             "title": "Delete Property",
             "message": "Are you sure you want to delete {{name}}?"

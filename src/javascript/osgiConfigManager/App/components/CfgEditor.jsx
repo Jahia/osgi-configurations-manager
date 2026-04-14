@@ -259,39 +259,47 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
             )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <Tooltip label={t('tooltip.toggleComments')}>
-                    <Button
-                        label={t('editor.button.toggleComments')}
-                        icon={showComments ? <Visibility /> : <Hidden />}
-                        variant="ghost"
-                        onClick={handleToggleComments}
-                    />
-                </Tooltip>
-                <Tooltip label={t('tooltip.addProperty')}>
-                    <Button
-                        label={t('editor.button.addProperty')}
-                        icon={<Add />}
-                        color="accent"
-                        onClick={() => handleAdd('property', '', '')}
-                    />
-                </Tooltip>
-                <Tooltip label={t('tooltip.addComment')}>
-                    <Button
-                        label={t('editor.button.addComment')}
-                        icon={<Comments />}
-                        variant="outlined"
-                        style={{ color: 'var(--color-success)', borderColor: 'var(--color-success)' }}
-                        onClick={() => handleAdd('comment', undefined, '# ')}
-                    />
-                </Tooltip>
-                <Tooltip label={t('tooltip.addEmptyLine')}>
-                    <Button
-                        label={t('editor.button.addEmptyLine')}
-                        icon={<AddCircleOutline />}
-                        variant="ghost"
-                        onClick={() => handleAdd('empty', undefined, '')}
-                    />
-                </Tooltip>
+                <div data-cy="cfg-toggle-comments">
+                    <Tooltip label={t('tooltip.toggleComments')}>
+                        <Button
+                            label={t('editor.button.toggleComments')}
+                            icon={showComments ? <Visibility /> : <Hidden />}
+                            variant="ghost"
+                            onClick={handleToggleComments}
+                        />
+                    </Tooltip>
+                </div>
+                <div data-cy="cfg-add-property">
+                    <Tooltip label={t('tooltip.addProperty')}>
+                        <Button
+                            label={t('editor.button.addProperty')}
+                            icon={<Add />}
+                            color="accent"
+                            onClick={() => handleAdd('property', '', '')}
+                        />
+                    </Tooltip>
+                </div>
+                <div data-cy="cfg-add-comment">
+                    <Tooltip label={t('tooltip.addComment')}>
+                        <Button
+                            label={t('editor.button.addComment')}
+                            icon={<Comments />}
+                            variant="outlined"
+                            style={{ color: 'var(--color-success)', borderColor: 'var(--color-success)' }}
+                            onClick={() => handleAdd('comment', undefined, '# ')}
+                        />
+                    </Tooltip>
+                </div>
+                <div data-cy="cfg-add-empty-line">
+                    <Tooltip label={t('tooltip.addEmptyLine')}>
+                        <Button
+                            label={t('editor.button.addEmptyLine')}
+                            icon={<AddCircleOutline />}
+                            variant="ghost"
+                            onClick={() => handleAdd('empty', undefined, '')}
+                        />
+                    </Tooltip>
+                </div>
             </div>
 
             <div style={{ flex: 1, overflow: 'auto' }} onScroll={() => setOverlay(null)}>
@@ -371,6 +379,7 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                             return (
                                 <TableRow
                                     key={index}
+                                    data-cy={`cfg-row-${index}`}
                                     style={rowStyle}
                                     className={draggedIndex === index ? "moonstone-drag" : ""}
                                     draggable
@@ -440,6 +449,7 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                                                 >
                                                     <AutoResizeTextArea
                                                         inputRef={el => setInputRef(index, 'key', el)}
+                                                        data-cy={`cfg-key-${index}`}
                                                         value={key}
                                                         onChange={e => onUpdate(index, 'key', e.target.value)}
                                                         onFocus={() => handleInputFocus(index)}
@@ -468,6 +478,7 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                                                                 inputRef={el => setInputRef(index, 'value', el)}
                                                                 // Actually Input forwards ref. We can use ref={el => ...}
                                                                 ref={el => setInputRef(index, 'value', el)}
+                                                                data-cy={`cfg-value-${index}`}
                                                                 value={value}
                                                                 onChange={e => onUpdate(index, 'value', e.target.value)}
                                                                 onFocus={() => handleInputFocus(index)}
@@ -479,6 +490,7 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                                                     ) : (
                                                         <AutoResizeTextArea
                                                             inputRef={el => setInputRef(index, 'value', el)}
+                                                            data-cy={`cfg-value-${index}`}
                                                             value={value}
                                                             onChange={e => onUpdate(index, 'value', e.target.value)}
                                                             onFocus={() => handleInputFocus(index)}
@@ -505,6 +517,7 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
 
                                             <TableBodyCell style={{ ...iconCellStyle, flex: '0 0 80px', minWidth: '80px' }} title={t('editor.header.security')}>
                                                 <Checkbox
+                                                    data-cy={`cfg-encrypted-${index}`}
                                                     checked={isEncrypted || false}
                                                     onChange={() => {
                                                         // Sync toggle: Just flip the flag
@@ -518,6 +531,7 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
 
                                     <TableBodyCell style={{ ...iconCellStyle, flex: '0 0 48px', minWidth: '48px' }}>
                                         <Button
+                                            data-cy={`cfg-delete-${index}`}
                                             icon={<Close />}
                                             variant="ghost"
                                             color="danger"
