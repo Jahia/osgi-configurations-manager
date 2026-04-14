@@ -27,6 +27,8 @@ services:
             - JAHIA_URL=http://jahia:8080
             - NEXUS_USERNAME=${NEXUS_USERNAME}
             - NEXUS_PASSWORD=${NEXUS_PASSWORD}
+        volumes:
+            - ./results:/home/jahians/results
         networks:
             - stack
 networks:

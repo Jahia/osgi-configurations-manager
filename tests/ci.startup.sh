@@ -13,4 +13,4 @@ echo " SUPER_USER_PASSWORD: ${SUPER_USER_PASSWORD}"
 
 version=$(node -p "require('./package.json').devDependencies['@jahia/cypress']")
 echo Using @jahia/cypress@$version...
-npx --yes --package @jahia/cypress@$version ci.startup
+npx --yes --package @jahia/cypress@$version ci.startup "$@"

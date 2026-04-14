@@ -17,6 +17,7 @@ target/
 # Node / Frontend
 node_modules/
 node/
+package-lock.json
 npm-debug.log
 yarn-error.log
 dist/

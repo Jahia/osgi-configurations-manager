@@ -1,4 +1,5 @@
 #!/bin/bash
+
 source ./set-env.sh
 
 mkdir -p ./artifacts

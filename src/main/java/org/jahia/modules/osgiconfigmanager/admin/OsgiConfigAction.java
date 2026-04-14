@@ -1,5 +1,6 @@
 package org.jahia.modules.osgiconfigmanager.admin;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jahia.bin.Action;
 import org.jahia.bin.ActionResult;
@@ -119,7 +120,8 @@ public class OsgiConfigAction extends Action {
                         buffer.append(line);
                     }
                 }
-                Map<String, Object> payload = mapper.readValue(buffer.toString(), Map.class);
+                Map<String, Object> payload = mapper.readValue(buffer.toString(), new TypeReference<Map<String, Object>>() {
+                });
                 String actionType = (String) payload.get("action");
                 String filename = (String) payload.get("filename");
 

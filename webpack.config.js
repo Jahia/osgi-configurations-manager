@@ -80,6 +80,9 @@ module.exports = (env, argv) => {
             new CleanWebpackPlugin({ verbose: false }),
             new CopyWebpackPlugin({ patterns: [{ from: './package.json', to: '' }] })
         ],
+        performance: argv.mode === 'production' ? {
+            hints: false
+        } : undefined,
         mode: 'development'
     };
 
