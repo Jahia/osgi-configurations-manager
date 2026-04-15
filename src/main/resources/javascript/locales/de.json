@@ -21,7 +21,32 @@
         "ok": "OK",
         "create": {
             "title": "Neue Konfiguration erstellen",
-            "message": "Geben Sie den neuen Dateinamen ein (z.B. org.test.config.yml):"
+            "message": "Erstellen Sie eine leere Datei oder wählen Sie eine Metatype-Konfiguration, die noch nicht materialisiert wurde.",
+            "confirm": "Erstellen",
+            "manualLabel": "Manueller Dateiname",
+            "manualPlaceholder": "Z.B. org.test.config.cfg",
+            "manualFallbackMessage": "Geben Sie den Dateinamen ein, der erstellt werden soll (z.B. org.test.config.cfg):",
+            "or": "oder",
+            "filterLabel": "Filter",
+            "tabs": {
+                "manual": "Manuell",
+                "configuration": "Konfiguration",
+                "factory": "Factory"
+            },
+            "templateLabel": "Verfügbare Konfiguration aus dem Metatype",
+            "factoryLabel": "Mehrinstanz-Konfigurationen (Factory)",
+            "filterPlaceholder": "Verfügbare Konfigurationen filtern...",
+            "emptyMetatypes": "Zurzeit ist keine Metatype-Konfiguration zum Erstellen verfügbar.",
+            "emptyFactories": "Zurzeit ist keine Metatype-Factory verfügbar.",
+            "suggestedFilename": "Erstellte Datei",
+            "bundle": "Bundle",
+            "instanceCount": "{{count}} vorhandene Instanz(en)",
+            "factoryPattern": "Dateinamenmuster",
+            "factoryIdentifierLabel": "Kennung der neuen Instanz",
+            "factoryIdentifierPlaceholder": "Z.B. cache-admin",
+            "factoryIdentifierExists": "Eine Instanz mit diesem Namen existiert bereits.",
+            "existingInstances": "Vorhandene Instanzen",
+            "emptyInstances": "Für diese Factory existiert noch keine Instanz."
         },
         "unsaved": {
             "title": "Ungespeicherte Änderungen",

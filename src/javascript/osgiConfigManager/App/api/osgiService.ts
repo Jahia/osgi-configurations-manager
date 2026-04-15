@@ -26,6 +26,21 @@ export interface OsgiMetatypeDefinition {
     properties: OsgiMetatypeProperty[];
 }
 
+export interface OsgiAvailableMetatypeDefinition extends OsgiMetatypeDefinition {
+    filename: string;
+    bundleName?: string;
+    bundleSymbolicName?: string;
+    created?: boolean;
+    factory?: boolean;
+    instanceCount?: number;
+    instances?: Array<{
+        identifier: string;
+        filename: string;
+        enabled?: boolean;
+        type?: string;
+    }>;
+}
+
 interface OsgiFileData {
     rawContent?: string;
     properties?: any;
@@ -36,17 +51,22 @@ interface OsgiFileData {
 interface OsgiServiceResponse {
     files?: OsgiFile[];
     data?: OsgiFileData;
+    metatypes?: OsgiAvailableMetatypeDefinition[];
     error?: string;
     encryptedValue?: string;
     decryptedValue?: string;
     status?: string;
     value?: string;
+    filename?: string;
 }
 
 interface OsgiPayload {
-    action: 'save' | 'delete' | 'create' | 'toggle' | 'encrypt' | 'decrypt';
+    action: 'save' | 'delete' | 'create' | 'createFromMetatype' | 'toggle' | 'encrypt' | 'decrypt' | 'setPreference';
     filename?: string;
+    pid?: string;
+    instanceIdentifier?: string;
     value?: string;
+    key?: string;
     properties?: any;
     rawContent?: string;
 }
@@ -91,6 +111,10 @@ export const osgiService = {
         return handleResponse(await fetch(`${apiUrl}?filename=${encodeURIComponent(filename)}`));
     },
 
+    getAvailableMetatypes: async (): Promise<OsgiServiceResponse> => {
+        return handleResponse(await fetch(`${apiUrl}?action=availableMetatypes`));
+    },
+
     save: async (payload: OsgiPayload): Promise<OsgiServiceResponse> => {
         return handleResponse(await fetch(apiUrl, {
             method: 'POST',
@@ -120,6 +144,14 @@ export const osgiService = {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'create', filename })
+        }));
+    },
+
+    createFromMetatype: async (pid: string, instanceIdentifier?: string): Promise<OsgiServiceResponse> => {
+        return handleResponse(await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'createFromMetatype', pid, instanceIdentifier })
         }));
     },
 

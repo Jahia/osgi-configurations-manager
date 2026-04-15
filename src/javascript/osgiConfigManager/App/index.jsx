@@ -44,6 +44,7 @@ const AppContent = () => {
         handleToggleFile,
         handleDeleteFile,
         handleCreateFile,
+        handleOpenCreateDialog,
         handlePropUpdate,
         handleRawUpdate,
         handleAddProperty,
@@ -102,6 +103,7 @@ const AppContent = () => {
                             handleToggleFile={handleToggleFile}
                             handleDeleteFile={handleDeleteFile}
                             handleCreateFile={handleCreateFile}
+                            handleOpenCreateDialog={handleOpenCreateDialog}
                             searchTerm={searchTerm}
                             setSearchTerm={setSearchTerm}
                             setModalConfig={setModalConfig}

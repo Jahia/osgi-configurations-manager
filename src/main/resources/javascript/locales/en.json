@@ -21,7 +21,32 @@
         "ok": "OK",
         "create": {
             "title": "Create new configuration",
-            "message": "Enter the new filename (e.g. org.test.config.yml):"
+            "message": "Create an empty file or select a Metatype configuration that has not been materialized yet.",
+            "confirm": "Create",
+            "manualLabel": "Manual filename",
+            "manualPlaceholder": "e.g. org.test.config.cfg",
+            "manualFallbackMessage": "Enter the filename to create (e.g. org.test.config.cfg):",
+            "or": "or",
+            "filterLabel": "Filter",
+            "tabs": {
+                "manual": "Manual",
+                "configuration": "Configuration",
+                "factory": "Factory"
+            },
+            "templateLabel": "Available configuration from Metatype",
+            "factoryLabel": "Multi-instance configurations (factory)",
+            "filterPlaceholder": "Filter available configurations...",
+            "emptyMetatypes": "No Metatype configuration is currently available to create.",
+            "emptyFactories": "No Metatype factory is currently available.",
+            "suggestedFilename": "Created file",
+            "bundle": "Bundle",
+            "instanceCount": "{{count}} existing instance(s)",
+            "factoryPattern": "Filename pattern",
+            "factoryIdentifierLabel": "New instance identifier",
+            "factoryIdentifierPlaceholder": "e.g. cache-admin",
+            "factoryIdentifierExists": "An instance with this name already exists.",
+            "existingInstances": "Existing instances",
+            "emptyInstances": "No existing instance for this factory."
         },
         "unsaved": {
             "title": "Unsaved Changes",

@@ -21,7 +21,32 @@
         "ok": "OK",
         "create": {
             "title": "Créer une nouvelle configuration",
-            "message": "Entrez le nom du fichier (ex: org.test.config.yml) :"
+            "message": "Créez un fichier vide ou sélectionnez une configuration Metatype non encore matérialisée.",
+            "confirm": "Créer",
+            "manualLabel": "Nom de fichier manuel",
+            "manualPlaceholder": "Ex: org.test.config.cfg",
+            "manualFallbackMessage": "Entrez le nom du fichier à créer (ex: org.test.config.cfg) :",
+            "or": "ou",
+            "filterLabel": "Filtre",
+            "tabs": {
+                "manual": "Manuel",
+                "configuration": "Configuration",
+                "factory": "Factory"
+            },
+            "templateLabel": "Configuration disponible depuis le Metatype",
+            "factoryLabel": "Configurations multi-instances (factory)",
+            "filterPlaceholder": "Filtrer les configurations disponibles...",
+            "emptyMetatypes": "Aucune configuration Metatype disponible à créer.",
+            "emptyFactories": "Aucune factory Metatype disponible.",
+            "suggestedFilename": "Fichier créé",
+            "bundle": "Bundle",
+            "instanceCount": "{{count}} instance(s) existante(s)",
+            "factoryPattern": "Modèle de nom de fichier",
+            "factoryIdentifierLabel": "Identifiant de la nouvelle instance",
+            "factoryIdentifierPlaceholder": "Ex: cache-admin",
+            "factoryIdentifierExists": "Une instance avec ce nom existe déjà.",
+            "existingInstances": "Instances existantes",
+            "emptyInstances": "Aucune instance existante pour cette factory."
         },
         "unsaved": {
             "title": "Modifications non enregistrées",

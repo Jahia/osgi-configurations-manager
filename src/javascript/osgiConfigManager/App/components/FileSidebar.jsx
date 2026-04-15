@@ -25,6 +25,7 @@ export const FileSidebar = ({
     handleToggleFile,
     handleDeleteFile,
     handleCreateFile,
+    handleOpenCreateDialog,
     searchTerm,
     setSearchTerm,
     setModalConfig,
@@ -83,6 +84,11 @@ export const FileSidebar = ({
 
 
     const onCreateClick = () => {
+        if (handleOpenCreateDialog) {
+            handleOpenCreateDialog();
+            return;
+        }
+
         setModalConfig({
             type: 'prompt',
             title: t('modal.create.title'),

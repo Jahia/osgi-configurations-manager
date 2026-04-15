@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { parseData } from '../utils/configUtils';
 import { useTranslation } from 'react-i18next';
-import { OsgiMetatypeDefinition, osgiService } from '../api/osgiService';
+import { OsgiAvailableMetatypeDefinition, OsgiMetatypeDefinition, osgiService } from '../api/osgiService';
 import { useToast } from './useToast';
 import { useProperties } from './useProperties';
 
@@ -12,15 +12,16 @@ interface OsgiFile {
 }
 
 interface ModalConfig {
-    type: 'confirm' | 'prompt' | 'alert';
+    type: 'confirm' | 'prompt' | 'alert' | 'createConfig';
     severity?: 'warning' | 'info' | 'error';
     title: string;
     message: string;
     defaultValue?: string;
+    availableMetatypes?: OsgiAvailableMetatypeDefinition[];
     confirmLabel?: string | null;
     cancelLabel?: string;
     otherLabel?: string;
-    onConfirm?: (value?: string) => void;
+    onConfirm?: (value?: any) => void;
     onOther?: () => void;
 }
 
@@ -535,6 +536,63 @@ export const useOsgiConfigs = () => {
         }
     }, [fetchFiles, success, t, toastError]);
 
+    const handleCreateFileFromMetatype = useCallback(async (pid: string, instanceIdentifier?: string) => {
+        try {
+            const response = await osgiService.createFromMetatype(pid, instanceIdentifier);
+            const filename = response.filename || (instanceIdentifier ? `${pid}-${instanceIdentifier}.cfg` : `${pid}.cfg`);
+            await fetchFiles();
+            setSelectedFile({ name: filename, enabled: true });
+            success(t('notification.createSuccess', { name: filename }) || `Created ${filename}`);
+        } catch (e: any) {
+            toastError(t('modal.error.create', { error: e.message }));
+        }
+    }, [fetchFiles, success, t, toastError]);
+
+    const handleOpenCreateDialog = useCallback(async () => {
+        try {
+            const data = await osgiService.getAvailableMetatypes();
+            const availableMetatypes = data.metatypes || [];
+
+            setModalConfig({
+                type: 'createConfig',
+                title: t('modal.create.title'),
+                message: t('modal.create.message'),
+                confirmLabel: t('modal.create.confirm'),
+                cancelLabel: t('modal.cancel'),
+                availableMetatypes,
+                onConfirm: async (payload?: { mode?: 'manual' | 'metatype' | 'factory'; filename?: string; pid?: string; instanceIdentifier?: string }) => {
+                    if (!payload) {
+                        return;
+                    }
+
+                    if (payload.mode === 'metatype' && payload.pid) {
+                        await handleCreateFileFromMetatype(payload.pid);
+                        return;
+                    }
+
+                    if (payload.mode === 'factory' && payload.pid && payload.instanceIdentifier) {
+                        await handleCreateFileFromMetatype(payload.pid, payload.instanceIdentifier);
+                        return;
+                    }
+
+                    if (payload.mode === 'manual' && payload.filename) {
+                        await handleCreateFile(payload.filename);
+                    }
+                }
+            });
+        } catch (e: any) {
+            toastError(t('modal.error.create', { error: e.message }));
+            setModalConfig({
+                type: 'prompt',
+                title: t('modal.create.title'),
+                message: t('modal.create.manualFallbackMessage'),
+                onConfirm: (name) => {
+                    if (name) handleCreateFile(name);
+                }
+            });
+        }
+    }, [handleCreateFile, handleCreateFileFromMetatype, t, toastError]);
+
     const handleUploadFile = useCallback(async (file: File) => {
         if (!file) return;
 
@@ -706,6 +764,7 @@ export const useOsgiConfigs = () => {
         handleToggleFile,
         handleDeleteFile,
         handleCreateFile,
+        handleOpenCreateDialog,
         handleUploadFile,
         handlePropUpdate,
         handleRawUpdate,

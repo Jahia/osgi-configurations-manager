@@ -65,6 +65,8 @@ public class OsgiConfigAction extends Action {
                             filename);
                     Map<String, Object> fileContent = configService.readFile(filename, req.getLocale());
                     result.put("data", fileContent);
+                } else if ("availableMetatypes".equals(req.getParameter("action"))) {
+                    result.put("metatypes", configService.listAvailableMetatypeConfigurations(req.getLocale()));
                 } else {
                     // List all files
                     List<Map<String, Object>> allFiles = configService.listFiles();
@@ -124,7 +126,7 @@ public class OsgiConfigAction extends Action {
                 String filename = (String) payload.get("filename");
 
                 if ("save".equals(actionType) || "toggle".equals(actionType) || "delete".equals(actionType)
-                        || "create".equals(actionType)) {
+                        || "create".equals(actionType) || "createFromMetatype".equals(actionType)) {
                     LOGGER.info("[AUDIT] User: {} | Action: {} | File: {}", renderContext.getUser().getName(),
                             actionType, filename);
                 } else {
@@ -151,6 +153,14 @@ public class OsgiConfigAction extends Action {
                 } else if ("create".equals(actionType)) {
                     configService.createFile(filename);
                     result.put("status", "created");
+                } else if ("createFromMetatype".equals(actionType)) {
+                    String pid = (String) payload.get("pid");
+                    String instanceIdentifier = (String) payload.get("instanceIdentifier");
+                    String createdFilename = instanceIdentifier != null && !instanceIdentifier.trim().isEmpty()
+                            ? configService.createFactoryFileFromMetatype(pid, instanceIdentifier, req.getLocale())
+                            : configService.createFileFromMetatype(pid, req.getLocale());
+                    result.put("status", "created");
+                    result.put("filename", createdFilename);
                 } else if ("encrypt".equals(actionType)) {
                     String value = (String) payload.get("value");
                     result.put("encryptedValue", configService.encrypt(value));
