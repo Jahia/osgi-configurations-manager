@@ -89,8 +89,10 @@
         },
         "button": {
             "addProperty": "Ajouter une propriété",
+            "addMetatypeProperty": "Ajouter une propriété",
             "addComment": "Ajouter un commentaire",
             "addEmptyLine": "Ajouter une ligne vide",
+            "hideAvailableProperties": "Masquer",
             "undo": "Annuler",
             "redo": "Rétablir",
             "format": "Formater",
@@ -106,7 +108,38 @@
         },
         "validation": {
             "missingKey": "La propriété doit avoir une clé avant le séparateur",
-            "duplicateKey": "Clé dupliquée '{{key}}'"
+            "duplicateKey": "Clé dupliquée '{{key}}'",
+            "unknownMetatypeProperty": "Propriété '{{key}}' non déclarée dans le Metatype du PID"
+        },
+        "metatype": {
+            "availableProperties": "Propriétés disponibles",
+            "searchPlaceholder": "Filtrer les propriétés...",
+            "noResults": "Aucune propriété correspondante",
+            "type": "Type",
+            "optional": "Optionnelle",
+            "default": "Valeur par défaut",
+            "values": "Valeurs possibles",
+            "insert": "Insérer",
+            "alreadyPresent": "Déjà présente",
+            "yes": "Oui",
+            "no": "Non",
+            "suggestion": {
+                "allowedValue": "Valeur autorisée",
+                "defaultValue": "Valeur par défaut",
+                "defaultValues": "Valeurs par défaut",
+                "types": {
+                    "boolean": "Booléen",
+                    "byte": "Octet",
+                    "character": "Caractère",
+                    "double": "Décimal",
+                    "float": "Décimal",
+                    "integer": "Entier",
+                    "long": "Entier long",
+                    "password": "Mot de passe",
+                    "short": "Entier court",
+                    "string": "Chaîne"
+                }
+            }
         },
         "empty": "vide",
         "emptyLine": "Ligne vide"
@@ -119,6 +152,8 @@
         "deleteFile": "Supprimer ce fichier",
         "toggleFile": "Activer ou désactiver cette configuration",
         "addProperty": "Ajouter une nouvelle propriété",
+        "addMetatypeProperty": "Ouvrir la liste des propriétés disponibles pour ce PID",
+        "addMetatypePropertyDisabled": "Aucune métadonnée Metatype disponible pour ce fichier",
         "addComment": "Ajouter un commentaire",
         "addEmptyLine": "Ajouter une ligne vide",
         "deleteProperty": "Supprimer cette propriété",

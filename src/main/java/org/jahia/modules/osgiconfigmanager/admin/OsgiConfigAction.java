@@ -1,6 +1,5 @@
 package org.jahia.modules.osgiconfigmanager.admin;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jahia.bin.Action;
 import org.jahia.bin.ActionResult;
@@ -64,7 +63,7 @@ public class OsgiConfigAction extends Action {
                     // Read specific file
                     LOGGER.debug("[AUDIT] User: {} | Action: read | File: {}", renderContext.getUser().getName(),
                             filename);
-                    Map<String, Object> fileContent = configService.readFile(filename);
+                    Map<String, Object> fileContent = configService.readFile(filename, req.getLocale());
                     result.put("data", fileContent);
                 } else {
                     // List all files
@@ -120,8 +119,7 @@ public class OsgiConfigAction extends Action {
                         buffer.append(line);
                     }
                 }
-                Map<String, Object> payload = mapper.readValue(buffer.toString(), new TypeReference<Map<String, Object>>() {
-                });
+                Map<String, Object> payload = mapper.readValue(buffer.toString(), Map.class);
                 String actionType = (String) payload.get("action");
                 String filename = (String) payload.get("filename");
 

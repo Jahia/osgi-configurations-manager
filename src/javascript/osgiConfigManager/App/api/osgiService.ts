@@ -3,9 +3,39 @@ interface OsgiFile {
     [key: string]: any;
 }
 
+export interface OsgiMetatypeOption {
+    label: string;
+    value: string;
+}
+
+export interface OsgiMetatypeProperty {
+    id: string;
+    name?: string;
+    description?: string;
+    type?: string;
+    cardinality?: number;
+    optional?: boolean;
+    defaultValues?: string[];
+    options?: OsgiMetatypeOption[];
+}
+
+export interface OsgiMetatypeDefinition {
+    pid: string;
+    name?: string;
+    description?: string;
+    properties: OsgiMetatypeProperty[];
+}
+
+interface OsgiFileData {
+    rawContent?: string;
+    properties?: any;
+    pid?: string;
+    metatype?: OsgiMetatypeDefinition;
+}
+
 interface OsgiServiceResponse {
     files?: OsgiFile[];
-    data?: any;
+    data?: OsgiFileData;
     error?: string;
     encryptedValue?: string;
     decryptedValue?: string;

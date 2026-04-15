@@ -1,6 +1,15 @@
 package org.jahia.modules.osgiconfigmanager.admin;
 
+import org.osgi.framework.Bundle;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.metatype.AttributeDefinition;
+import org.osgi.service.metatype.MetaTypeInformation;
+import org.osgi.service.metatype.MetaTypeService;
+import org.osgi.service.metatype.ObjectClassDefinition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.DumperOptions;
@@ -24,6 +33,7 @@ public class OsgiConfigService {
     private static final Logger LOGGER = LoggerFactory.getLogger(OsgiConfigService.class);
     private File karafEtcDir;
     private Set<String> blacklist = new HashSet<>();
+    private volatile MetaTypeService metaTypeService;
 
     private static final String SELF_CONFIG = "org.jahia.modules.osgiconfigmanager.cfg";
 
@@ -37,6 +47,17 @@ public class OsgiConfigService {
         // Initial self-protection
         blacklist.add(SELF_CONFIG);
         blacklist.add(SELF_CONFIG + ".disabled");
+    }
+
+    @Reference(service = MetaTypeService.class, cardinality = ReferenceCardinality.OPTIONAL)
+    public void setMetaTypeService(MetaTypeService metaTypeService) {
+        this.metaTypeService = metaTypeService;
+    }
+
+    public void unsetMetaTypeService(MetaTypeService metaTypeService) {
+        if (this.metaTypeService == metaTypeService) {
+            this.metaTypeService = null;
+        }
     }
 
     @org.osgi.service.component.annotations.Activate
@@ -113,6 +134,10 @@ public class OsgiConfigService {
     }
 
     public Map<String, Object> readFile(String filename) throws IOException {
+        return readFile(filename, null);
+    }
+
+    public Map<String, Object> readFile(String filename, Locale locale) throws IOException {
         if (blacklist.contains(filename)) {
             throw new IOException("Access denied: " + filename + " is blacklisted.");
         }
@@ -131,6 +156,14 @@ public class OsgiConfigService {
         result.put("rawContent", rawContent);
 
         if ("cfg".equals(type)) {
+            String pid = getConfigurationPid(filename);
+            result.put("pid", pid);
+
+            Map<String, Object> metaTypeDefinition = getMetaTypeDefinition(pid, locale);
+            if (metaTypeDefinition != null) {
+                result.put("metatype", metaTypeDefinition);
+            }
+
             List<Map<String, String>> entries = new ArrayList<>();
             try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.FileReader(file))) {
                 String line;
@@ -183,6 +216,144 @@ public class OsgiConfigService {
             }
         }
         return result;
+    }
+
+    private String getConfigurationPid(String filename) {
+        String normalizedName = filename;
+        if (normalizedName.endsWith(".disabled")) {
+            normalizedName = normalizedName.substring(0, normalizedName.length() - ".disabled".length());
+        }
+        if (normalizedName.endsWith(".cfg")) {
+            return normalizedName.substring(0, normalizedName.length() - ".cfg".length());
+        }
+        if (normalizedName.endsWith(".yml")) {
+            return normalizedName.substring(0, normalizedName.length() - ".yml".length());
+        }
+        return normalizedName;
+    }
+
+    private Map<String, Object> getMetaTypeDefinition(String pid, Locale locale) {
+        MetaTypeService currentMetaTypeService = this.metaTypeService;
+        if (currentMetaTypeService == null || pid == null || pid.isEmpty()) {
+            return null;
+        }
+
+        BundleContext bundleContext = getBundleContext();
+        if (bundleContext == null) {
+            return null;
+        }
+
+        String localeCode = locale != null ? locale.toString() : null;
+        Bundle[] bundles = bundleContext.getBundles();
+        if (bundles == null) {
+            return null;
+        }
+
+        for (Bundle bundle : bundles) {
+            if (bundle == null || bundle.getState() < Bundle.STARTING) {
+                continue;
+            }
+
+            try {
+                MetaTypeInformation metaTypeInformation = currentMetaTypeService.getMetaTypeInformation(bundle);
+                if (metaTypeInformation == null) {
+                    continue;
+                }
+
+                ObjectClassDefinition objectClassDefinition = metaTypeInformation.getObjectClassDefinition(pid, localeCode);
+                if (objectClassDefinition != null) {
+                    return toMetaTypeMap(pid, objectClassDefinition);
+                }
+            } catch (IllegalArgumentException e) {
+                LOGGER.debug("Metatype PID {} not found in bundle {}", pid, bundle.getSymbolicName());
+            } catch (Exception e) {
+                LOGGER.debug("Unable to read metatype for PID {} from bundle {}", pid, bundle.getSymbolicName(), e);
+            }
+        }
+
+        return null;
+    }
+
+    private BundleContext getBundleContext() {
+        Bundle bundle = FrameworkUtil.getBundle(OsgiConfigService.class);
+        return bundle != null ? bundle.getBundleContext() : null;
+    }
+
+    private Map<String, Object> toMetaTypeMap(String pid, ObjectClassDefinition objectClassDefinition) {
+        Map<String, Object> metatype = new LinkedHashMap<>();
+        metatype.put("pid", pid);
+        metatype.put("name", objectClassDefinition.getName());
+        metatype.put("description", objectClassDefinition.getDescription());
+
+        List<Map<String, Object>> properties = new ArrayList<>();
+        appendAttributeDefinitions(properties, objectClassDefinition.getAttributeDefinitions(ObjectClassDefinition.REQUIRED), false);
+        appendAttributeDefinitions(properties, objectClassDefinition.getAttributeDefinitions(ObjectClassDefinition.OPTIONAL), true);
+        metatype.put("properties", properties);
+        return metatype;
+    }
+
+    private void appendAttributeDefinitions(List<Map<String, Object>> properties, AttributeDefinition[] definitions, boolean optional) {
+        if (definitions == null) {
+            return;
+        }
+
+        for (AttributeDefinition definition : definitions) {
+            Map<String, Object> property = new LinkedHashMap<>();
+            property.put("id", definition.getID());
+            property.put("name", definition.getName());
+            property.put("description", definition.getDescription());
+            property.put("type", getAttributeTypeName(definition.getType()));
+            property.put("cardinality", definition.getCardinality());
+            property.put("optional", optional);
+
+            String[] defaultValues = definition.getDefaultValue();
+            if (defaultValues != null) {
+                property.put("defaultValues", Arrays.asList(defaultValues));
+            } else {
+                property.put("defaultValues", Collections.emptyList());
+            }
+
+            String[] optionValues = definition.getOptionValues();
+            String[] optionLabels = definition.getOptionLabels();
+            List<Map<String, String>> options = new ArrayList<>();
+            if (optionValues != null) {
+                for (int i = 0; i < optionValues.length; i++) {
+                    Map<String, String> option = new LinkedHashMap<>();
+                    option.put("value", optionValues[i]);
+                    option.put("label", optionLabels != null && optionLabels.length > i ? optionLabels[i] : optionValues[i]);
+                    options.add(option);
+                }
+            }
+            property.put("options", options);
+            properties.add(property);
+        }
+    }
+
+    private String getAttributeTypeName(int type) {
+        switch (type) {
+            case AttributeDefinition.BOOLEAN:
+                return "boolean";
+            case AttributeDefinition.BYTE:
+                return "byte";
+            case AttributeDefinition.CHARACTER:
+                return "character";
+            case AttributeDefinition.DOUBLE:
+                return "double";
+            case AttributeDefinition.FLOAT:
+                return "float";
+            case AttributeDefinition.INTEGER:
+                return "integer";
+            case AttributeDefinition.LONG:
+                return "long";
+            case AttributeDefinition.SHORT:
+                return "short";
+            case AttributeDefinition.STRING:
+                return "string";
+            case AttributeDefinition.PASSWORD:
+                return "password";
+            default:
+                return "string";
+        }
     }
 
     @SuppressWarnings("unchecked")

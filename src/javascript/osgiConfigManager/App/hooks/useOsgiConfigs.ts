@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { parseData } from '../utils/configUtils';
 import { useTranslation } from 'react-i18next';
-import { osgiService } from '../api/osgiService';
+import { OsgiMetatypeDefinition, osgiService } from '../api/osgiService';
 import { useToast } from './useToast';
 import { useProperties } from './useProperties';
 
@@ -64,6 +64,7 @@ export const useOsgiConfigs = () => {
     const [modalConfig, setModalConfig] = useState<ModalConfig | null>(null);
     const [diffConfig, setDiffConfig] = useState<DiffConfig>({ isOpen: false, originalContent: '', newContent: '', filename: '', onConfirm: () => { } });
     const [isYamlValid, setIsYamlValid] = useState<boolean>(true);
+    const [metatypeInfo, setMetatypeInfo] = useState<OsgiMetatypeDefinition | null>(null);
 
     const hasUnsaved = JSON.stringify(properties) !== JSON.stringify(originalProperties) || rawContent !== originalRawContent;
 
@@ -85,9 +86,11 @@ export const useOsgiConfigs = () => {
     const fetchFileContent = useCallback(async (filename: string) => {
         setLoadingFile(true);
         setError(null); // Clear previous errors
+        setMetatypeInfo(null);
         try {
             const data = await osgiService.read(filename);
             if (data.data) {
+                setMetatypeInfo(data.data.metatype || null);
                 // Standardization: For .cfg files, we MUST use the client-side parser (parseCfgContent)
                 // on the rawContent to ensure that the structure matches exactly what handleToggleRawMode produces.
                 // Using the server-side 'properties' often leads to structural differences (e.g. comments, type wrappers)
@@ -139,6 +142,7 @@ export const useOsgiConfigs = () => {
                 setRawContent(data.data.rawContent || '');
                 setOriginalRawContent(data.data.rawContent || '');
             } else {
+                setMetatypeInfo(null);
                 resetProperties({});
                 setOriginalProperties({});
                 setRawContent('');
@@ -146,6 +150,7 @@ export const useOsgiConfigs = () => {
             }
         } catch (e: any) {
             setError(e.message);
+            setMetatypeInfo(null);
             // If we have an error (e.g. blacklisted), refresh the files list to sync Sidebar
             fetchFiles();
         }
@@ -508,16 +513,14 @@ export const useOsgiConfigs = () => {
         const isValid = validExtensions.some(ext => filename.toLowerCase().endsWith(ext));
 
         if (!isValid) {
-            setTimeout(() => {
-                setModalConfig({
-                    type: 'confirm',
-                    severity: 'warning',
-                    title: t('modal.error.title'),
-                    message: t('modal.error.invalidExtension'),
-                    cancelLabel: t('modal.ok'),
-                    confirmLabel: null
-                });
-            }, 100);
+            setModalConfig({
+                type: 'confirm',
+                severity: 'warning',
+                title: t('modal.error.title'),
+                message: t('modal.error.invalidExtension'),
+                cancelLabel: t('modal.ok'),
+                confirmLabel: null
+            });
             return;
         }
 
@@ -544,16 +547,14 @@ export const useOsgiConfigs = () => {
                 const isYml = filename.toLowerCase().endsWith('.yml');
 
                 if (!isCfg && !isYml) {
-                    setTimeout(() => {
-                        setModalConfig({
-                            type: 'confirm',
-                            severity: 'warning',
-                            title: t('modal.error.title'),
-                            message: t('modal.error.invalidExtensionUpload'),
-                            cancelLabel: t('modal.ok'),
-                            confirmLabel: null
-                        });
-                    }, 100);
+                    setModalConfig({
+                        type: 'confirm',
+                        severity: 'warning',
+                        title: t('modal.error.title'),
+                        message: t('modal.error.invalidExtensionUpload'),
+                        cancelLabel: t('modal.ok'),
+                        confirmLabel: null
+                    });
                     return;
                 }
 
@@ -691,6 +692,7 @@ export const useOsgiConfigs = () => {
         setSelectedFile,
         properties,
         rawContent,
+        metatypeInfo,
         hasUnsaved,
         loadingFiles,
         loadingFile,

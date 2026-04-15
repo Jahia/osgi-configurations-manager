@@ -89,8 +89,10 @@
         },
         "button": {
             "addProperty": "Add Property",
+            "addMetatypeProperty": "Add Property",
             "addComment": "Add Comment",
             "addEmptyLine": "Add Empty Line",
+            "hideAvailableProperties": "Hide",
             "undo": "Undo",
             "redo": "Redo",
             "format": "Format",
@@ -106,7 +108,38 @@
         },
         "validation": {
             "missingKey": "Property must have a key before the separator",
-            "duplicateKey": "Duplicate key '{{key}}'"
+            "duplicateKey": "Duplicate key '{{key}}'",
+            "unknownMetatypeProperty": "Property '{{key}}' is not declared in this PID metatype"
+        },
+        "metatype": {
+            "availableProperties": "Available Properties",
+            "searchPlaceholder": "Filter properties...",
+            "noResults": "No matching properties",
+            "type": "Type",
+            "optional": "Optional",
+            "default": "Default value",
+            "values": "Available values",
+            "insert": "Insert",
+            "alreadyPresent": "Already present",
+            "yes": "Yes",
+            "no": "No",
+            "suggestion": {
+                "allowedValue": "Allowed value",
+                "defaultValue": "Default value",
+                "defaultValues": "Default values",
+                "types": {
+                    "boolean": "Boolean",
+                    "byte": "Byte",
+                    "character": "Character",
+                    "double": "Decimal",
+                    "float": "Decimal",
+                    "integer": "Integer",
+                    "long": "Long integer",
+                    "password": "Password",
+                    "short": "Short integer",
+                    "string": "String"
+                }
+            }
         },
         "empty": "empty",
         "emptyLine": "Empty Line"
@@ -119,6 +152,8 @@
         "deleteFile": "Delete this file",
         "toggleFile": "Enable or disable this configuration",
         "addProperty": "Add a new property",
+        "addMetatypeProperty": "Open the list of available properties for this PID",
+        "addMetatypePropertyDisabled": "No Metatype metadata is available for this file",
         "addComment": "Add a comment",
         "addEmptyLine": "Add an empty line",
         "deleteProperty": "Delete this property",

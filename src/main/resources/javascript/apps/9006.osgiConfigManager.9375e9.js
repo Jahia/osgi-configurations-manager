@@ -1,2 +1,0 @@
-"use strict";(self.webpackChunk_jahia_osgi_configurations_manager=self.webpackChunk_jahia_osgi_configurations_manager||[]).push([[6625,9006],{66625(a,i,e){e.r(i),e.d(i,{default:()=>c});var n=e(77836),s=e(43856),o=e(99227),r=e.n(o);function c(){n.registry.add("callback","osgi-configurations-manager",{targets:["jahiaApp-init:50"],callback:async()=>{await r().loadNamespaces("osgi-configurations-manager"),(0,s.A)(),console.debug("%c OSGi Configurations Manager routes have been registered","color: #3c8cba")}})}}}]);
-//# sourceMappingURL=9006.osgiConfigManager.9375e9.js.map

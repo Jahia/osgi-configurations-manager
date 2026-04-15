@@ -4,41 +4,55 @@ import { osgiService } from '../api/osgiService';
 
 // Mock the service
 jest.mock('../api/osgiService');
-jest.mock('react-i18next', () => ({
-    useTranslation: () => ({ t: (key) => key }),
-}));
 jest.mock('./useToast', () => ({
     useToast: () => ({
         success: jest.fn(),
         error: jest.fn()
     })
 }));
+jest.mock('react-i18next', () => ({
+    useTranslation: () => ({ t: (key) => key }),
+}));
 
 describe('useOsgiConfigs', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         osgiService.getPreference.mockResolvedValue({});
+        osgiService.setPreference.mockResolvedValue({});
+        osgiService.decrypt.mockResolvedValue({});
+        osgiService.encrypt.mockResolvedValue({});
     });
 
     it('fetched files on mount', async () => {
+        jest.useFakeTimers();
         osgiService.getAll.mockResolvedValue({ files: [{ name: 'test.cfg' }] });
 
-        const { result, waitForNextUpdate } = renderHook(() => useOsgiConfigs());
+        const { result } = renderHook(() => useOsgiConfigs());
 
-        await waitForNextUpdate({ timeout: 2000 });
+        await act(async () => {
+            jest.advanceTimersByTime(500);
+            await Promise.resolve();
+            await Promise.resolve();
+        });
 
         expect(result.current.loadingFiles).toBe(false);
         expect(result.current.files).toEqual([{ name: 'test.cfg' }]);
         expect(osgiService.getAll).toHaveBeenCalled();
+        jest.useRealTimers();
     });
 
     it('handleDeleteFile calls service and refreshes', async () => {
+        jest.useFakeTimers();
         osgiService.getAll.mockResolvedValue({ files: [] });
         osgiService.delete.mockResolvedValue({});
 
-        const { result, waitForNextUpdate } = renderHook(() => useOsgiConfigs());
+        const { result } = renderHook(() => useOsgiConfigs());
 
-        await waitForNextUpdate({ timeout: 2000 });
+        await act(async () => {
+            jest.advanceTimersByTime(500);
+            await Promise.resolve();
+            await Promise.resolve();
+        });
 
         // Simulate delete
         act(() => {
@@ -51,6 +65,7 @@ describe('useOsgiConfigs', () => {
         // Execute the confirm callback
         await act(async () => {
             await result.current.modalConfig.onConfirm();
+            await Promise.resolve();
         });
 
         expect(osgiService.delete).toHaveBeenCalledWith('test.cfg');
@@ -61,21 +76,25 @@ describe('useOsgiConfigs', () => {
         // Wait, handleDeleteFile calls `fetchFiles()` directly, which is `const fetchFiles = useCallback(...)`.
         // So it should be immediate.
         expect(osgiService.getAll).toHaveBeenCalledTimes(2); // Initial load + refresh
+        jest.useRealTimers();
     });
 
     it('handleSave calls service', async () => {
         osgiService.save.mockResolvedValue({});
         // Mock file content fetch
-        osgiService.read.mockResolvedValue({ data: { properties: { foo: 'bar' } } });
+        osgiService.read.mockResolvedValue({ data: { rawContent: 'foo = bar', properties: [] } });
 
-        const { result, waitForNextUpdate } = renderHook(() => useOsgiConfigs());
+        const { result } = renderHook(() => useOsgiConfigs());
         // Select a file to populate state
         act(() => {
             result.current.setSelectedFile({ name: 'test.cfg' });
         });
 
         // triggers fetchFileContent
-        await waitForNextUpdate();
+        await act(async () => {
+            await Promise.resolve();
+            await Promise.resolve();
+        });
 
         await act(async () => {
             await result.current.handleSave();

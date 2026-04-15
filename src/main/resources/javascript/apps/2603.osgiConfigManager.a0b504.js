@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunk_jahia_osgi_configurations_manager=self.webpackChunk_jahia_osgi_configurations_manager||[]).push([[2603],{2603(e,r,s){s.r(r),s.d(r,{DraggedTreeItemsIdentifier:()=>i,TreeViewsDnDService:()=>a});class a{constructor(){this._dragOperations=new Map}removeDragOperationTransfer(e){if(e&&this._dragOperations.has(e)){const r=this._dragOperations.get(e);return this._dragOperations.delete(e),r}}}class i{constructor(e){this.identifier=e}}}}]);
+//# sourceMappingURL=2603.osgiConfigManager.a0b504.js.map

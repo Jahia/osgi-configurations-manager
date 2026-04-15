@@ -1,7 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as monaco from 'monaco-editor';
 import { configureMonacoYaml } from 'monaco-yaml';
-import { Button } from '@jahia/moonstone';
+import { Button, Typography } from '@jahia/moonstone';
 import { Undo, RotateRight, Code, Lock, Unlock, ViewList } from '@jahia/moonstone';
 import { useTranslation } from 'react-i18next';
 import { osgiService } from '../api/osgiService';
@@ -173,10 +173,348 @@ try {
     // Ignore
 }
 
-export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', onSwitchMode }) => {
+const countTrailingBackslashes = (str = '') => {
+    let count = 0;
+    let i = str.length - 1;
+    while (i >= 0 && str[i] === '\\') {
+        count++;
+        i--;
+    }
+
+    return count;
+};
+
+const extractExistingPropertyKeys = (text = '') => {
+    const keys = new Set();
+    const lines = text.split('\n');
+    let inContinuation = false;
+
+    lines.forEach(line => {
+        const trimmed = line.trim();
+
+        if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('!')) {
+            return;
+        }
+
+        if (inContinuation) {
+            if (countTrailingBackslashes(line) % 2 === 0) {
+                inContinuation = false;
+            }
+
+            return;
+        }
+
+        const eqIdx = line.indexOf('=');
+        const colIdx = line.indexOf(':');
+        let separatorIndex = -1;
+
+        if (eqIdx === -1 && colIdx === -1) {
+            keys.add(trimmed);
+        } else {
+            separatorIndex = eqIdx === -1 ? colIdx : (colIdx === -1 ? eqIdx : Math.min(eqIdx, colIdx));
+            keys.add(line.substring(0, separatorIndex).trim());
+        }
+
+        if (countTrailingBackslashes(line) % 2 === 1) {
+            inContinuation = true;
+        }
+    });
+
+    return keys;
+};
+
+const formatDefaultValue = property => {
+    const defaultValues = Array.isArray(property?.defaultValues) ? property.defaultValues.filter(Boolean) : [];
+    return defaultValues.join(', ');
+};
+
+const getPropertyLabel = property => property?.name || property?.id || '';
+
+const buildPropertyDocumentation = (property, t) => {
+    const sections = [`**${getPropertyLabel(property)}**`];
+
+    if (property?.id && property.name && property.name !== property.id) {
+        sections.push(`\`${property.id}\``);
+    } else if (property?.id) {
+        sections.push(`\`${property.id}\``);
+    }
+
+    if (property?.description) {
+        sections.push(property.description);
+    }
+
+    const details = [];
+    if (property?.type) {
+        details.push(`${t('editor.metatype.type')}: \`${property.type}\``);
+    }
+    details.push(`${t('editor.metatype.optional')}: ${property?.optional ? t('editor.metatype.yes') : t('editor.metatype.no')}`);
+
+    const defaultValue = formatDefaultValue(property);
+    if (defaultValue) {
+        details.push(`${t('editor.metatype.default')}: \`${defaultValue}\``);
+    }
+
+    if (details.length > 0) {
+        sections.push(details.join('\n\n'));
+    }
+
+    if (Array.isArray(property?.options) && property.options.length > 0) {
+        sections.push([
+            `${t('editor.metatype.values')}:`,
+            ...property.options.map(option => `- \`${option.value}\`${option.label && option.label !== option.value ? `: ${option.label}` : ''}`)
+        ].join('\n'));
+    }
+
+    return sections.join('\n\n');
+};
+
+const getPropertyContext = (line, column) => {
+    const linePrefix = line.slice(0, Math.max(0, column - 1));
+    const trimmedPrefix = linePrefix.trim();
+    if (trimmedPrefix.startsWith('#') || trimmedPrefix.startsWith('!')) {
+        return null;
+    }
+
+    const eqIdx = line.indexOf('=');
+    const colIdx = line.indexOf(':');
+    const separatorIndex = eqIdx === -1 ? colIdx : (colIdx === -1 ? eqIdx : Math.min(eqIdx, colIdx));
+
+    if (separatorIndex === -1 || column - 1 <= separatorIndex) {
+        const keyStart = (line.match(/^\s*/) || [''])[0].length + 1;
+        return {
+            kind: 'key',
+            key: linePrefix.trim(),
+            range: {
+                startColumn: keyStart,
+                endColumn: Math.max(keyStart, column)
+            },
+            hasSeparator: separatorIndex !== -1
+        };
+    }
+
+    const key = line.substring(0, separatorIndex).trim();
+    const beforeValue = line.substring(0, separatorIndex + 1);
+    const valuePrefix = line.substring(separatorIndex + 1, Math.max(separatorIndex + 1, column - 1));
+    const leadingWhitespace = (valuePrefix.match(/^\s*/) || [''])[0].length;
+
+    return {
+        kind: 'value',
+        key,
+        range: {
+            startColumn: beforeValue.length + leadingWhitespace + 1,
+            endColumn: Math.max(beforeValue.length + leadingWhitespace + 1, column)
+        }
+    };
+};
+
+const getHoverContext = (model, position) => {
+    const line = model.getLineContent(position.lineNumber);
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('!')) {
+        return null;
+    }
+
+    const eqIdx = line.indexOf('=');
+    const colIdx = line.indexOf(':');
+    const separatorIndex = eqIdx === -1 ? colIdx : (colIdx === -1 ? eqIdx : Math.min(eqIdx, colIdx));
+    const keyEnd = separatorIndex === -1 ? line.length : separatorIndex;
+    const keyStart = (line.match(/^\s*/) || [''])[0].length;
+    const key = line.substring(0, keyEnd).trim();
+
+    if (!key) {
+        return null;
+    }
+
+    if (position.column - 1 < keyStart || position.column - 1 > keyEnd) {
+        return null;
+    }
+
+    return {
+        key,
+        range: new monaco.Range(position.lineNumber, keyStart + 1, position.lineNumber, keyEnd + 1)
+    };
+};
+
+const getInsertionText = property => {
+    const defaultValue = formatDefaultValue(property);
+    return `${property.id} = ${defaultValue}`;
+};
+
+const getLocalizedTypeLabel = (type, t) => {
+    if (!type) {
+        return t('editor.metatype.suggestion.types.string');
+    }
+
+    const key = `editor.metatype.suggestion.types.${type}`;
+    const translated = t(key);
+    return translated === key ? type : translated;
+};
+
+const getValueSuggestions = (property, t) => {
+    if (!property) {
+        return [];
+    }
+
+    const suggestions = [];
+    const seen = new Set();
+    const pushSuggestion = suggestion => {
+        const key = `${suggestion.insertText}::${suggestion.detail || ''}`;
+        if (!seen.has(key)) {
+            seen.add(key);
+            suggestions.push({
+                documentation: {
+                    value: buildPropertyDocumentation(property, t)
+                },
+                ...suggestion
+            });
+        }
+    };
+
+    if (Array.isArray(property.options) && property.options.length > 0) {
+        property.options.forEach(option => {
+            pushSuggestion({
+                label: option.label || option.value,
+                kind: monaco.languages.CompletionItemKind.EnumMember,
+                detail: t('editor.metatype.suggestion.allowedValue'),
+                insertText: option.value
+            });
+        });
+
+        return suggestions;
+    }
+
+    if (property.type === 'boolean') {
+        ['true', 'false'].forEach(option => {
+            pushSuggestion({
+                label: option,
+                kind: monaco.languages.CompletionItemKind.Value,
+                detail: getLocalizedTypeLabel(property.type, t),
+                insertText: option
+            });
+        });
+    }
+
+    const defaultValues = Array.isArray(property.defaultValues) ? property.defaultValues.filter(Boolean) : [];
+    defaultValues.forEach(defaultValue => {
+        pushSuggestion({
+            label: defaultValue,
+            kind: monaco.languages.CompletionItemKind.Value,
+            detail: t('editor.metatype.suggestion.defaultValue'),
+            insertText: defaultValue
+        });
+    });
+
+    if (defaultValues.length > 1) {
+        const joinedDefaultValue = defaultValues.join(', ');
+        pushSuggestion({
+            label: joinedDefaultValue,
+            kind: monaco.languages.CompletionItemKind.Value,
+            detail: t('editor.metatype.suggestion.defaultValues'),
+            insertText: joinedDefaultValue
+        });
+    }
+
+    if (suggestions.length > 0) {
+        return suggestions;
+    }
+
+    switch (property.type) {
+        case 'byte':
+        case 'short':
+        case 'integer':
+        case 'long':
+            pushSuggestion({
+                label: '0',
+                kind: monaco.languages.CompletionItemKind.Value,
+                detail: getLocalizedTypeLabel(property.type, t),
+                insertText: '0'
+            });
+            break;
+        case 'float':
+        case 'double':
+            pushSuggestion({
+                label: '0.0',
+                kind: monaco.languages.CompletionItemKind.Value,
+                detail: getLocalizedTypeLabel(property.type, t),
+                insertText: '0.0'
+            });
+            break;
+        case 'character':
+            pushSuggestion({
+                label: 'a',
+                kind: monaco.languages.CompletionItemKind.Value,
+                detail: getLocalizedTypeLabel(property.type, t),
+                insertText: 'a'
+            });
+            break;
+        default:
+            break;
+    }
+
+    return suggestions;
+};
+
+export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', onSwitchMode, metatypeDefinition, filename }) => {
     const { t } = useTranslation('osgi-configurations-manager');
     const containerRef = useRef(null);
     const editorRef = useRef(null);
+    const validatePropertiesRef = useRef(() => {});
+    const [showPropertyPanel, setShowPropertyPanel] = useState(false);
+    const [propertySearch, setPropertySearch] = useState('');
+    const hasMetatype = language === 'properties' && Array.isArray(metatypeDefinition?.properties) && metatypeDefinition.properties.length > 0;
+    const propertyMap = useMemo(() => {
+        const entries = Array.isArray(metatypeDefinition?.properties)
+            ? metatypeDefinition.properties.map(property => [property.id, property])
+            : [];
+        return new Map(entries);
+    }, [metatypeDefinition]);
+    const propertyMapRef = useRef(propertyMap);
+    const hasMetatypeRef = useRef(hasMetatype);
+    const existingKeys = useMemo(() => extractExistingPropertyKeys(value), [value]);
+    const filteredProperties = useMemo(() => {
+        if (!hasMetatype) {
+            return [];
+        }
+
+        const search = propertySearch.trim().toLowerCase();
+        const properties = metatypeDefinition.properties || [];
+        if (!search) {
+            return properties;
+        }
+
+        return properties.filter(property => {
+            const haystack = [
+                property.id,
+                property.name,
+                property.description,
+                property.type,
+                ...(property.defaultValues || []),
+                ...((property.options || []).reduce((acc, option) => {
+                    acc.push(option.value, option.label);
+                    return acc;
+                }, []))
+            ]
+                .filter(Boolean)
+                .join(' ')
+                .toLowerCase();
+
+            return haystack.includes(search);
+        });
+    }, [hasMetatype, metatypeDefinition, propertySearch]);
+
+    useEffect(() => {
+        setPropertySearch('');
+        setShowPropertyPanel(false);
+    }, [filename]);
+
+    useEffect(() => {
+        propertyMapRef.current = propertyMap;
+        hasMetatypeRef.current = hasMetatype;
+
+        if (language === 'properties' && editorRef.current) {
+            validatePropertiesRef.current();
+        }
+    }, [hasMetatype, language, propertyMap, t]);
 
     useEffect(() => {
         if (containerRef.current) {
@@ -184,6 +522,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
                 value: value,
                 language: language,
                 theme: language === 'properties' ? 'properties-theme' : 'vs-light',
+                wordBasedSuggestions: language === 'properties' ? 'off' : 'matchingDocuments',
                 minimap: { enabled: false },
                 scrollBeyondLastLine: false,
                 fontSize: 14,
@@ -237,6 +576,8 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
                     const lines = text.split('\n');
                     const markers = [];
                     const seenKeys = new Map(); // key -> lineIndex
+                    const currentPropertyMap = propertyMapRef.current;
+                    const currentHasMetatype = hasMetatypeRef.current;
 
                     const countTrailingBackslashes = (str) => {
                         let count = 0;
@@ -314,6 +655,17 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
                                 seenKeys.set(key, index);
                             }
 
+                            if (currentHasMetatype && key && !currentPropertyMap.has(key)) {
+                                markers.push({
+                                    severity: monaco.MarkerSeverity.Warning,
+                                    startLineNumber: index + 1,
+                                    startColumn: 1,
+                                    endLineNumber: index + 1,
+                                    endColumn: line.length + 1,
+                                    message: t('editor.validation.unknownMetatypeProperty', { key }),
+                                });
+                            }
+
                             // Check if this new property initiates a continuation
                             const slashCount = countTrailingBackslashes(line);
                             if (slashCount % 2 === 1) {
@@ -325,9 +677,12 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
                     monaco.editor.setModelMarkers(model, 'properties', markers);
 
                     if (onValidate) {
-                        onValidate(markers.length === 0); // Always valid for save, just warnings
+                        const hasErrors = markers.some(marker => marker.severity === monaco.MarkerSeverity.Error);
+                        onValidate(!hasErrors);
                     }
                 };
+
+                validatePropertiesRef.current = validateProperties;
 
                 // Run initial validation
                 validateProperties();
@@ -351,12 +706,121 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
                 if (language !== 'properties') {
                     subscription.dispose();
                 }
+                validatePropertiesRef.current = () => {};
                 markerSubscription.dispose();
                 resizeObserver.disconnect();
                 if (editorRef.current) editorRef.current.dispose();
             };
         }
     }, [language]); // Re-create if language changes (rare)
+
+    useEffect(() => {
+        if (language !== 'properties' || !editorRef.current) {
+            return;
+        }
+
+        const editor = editorRef.current;
+        const completionProvider = monaco.languages.registerCompletionItemProvider('properties', {
+            triggerCharacters: ['=', ':', ' '],
+            provideCompletionItems: (model, position) => {
+                if (!hasMetatype) {
+                    return { suggestions: [] };
+                }
+
+                const line = model.getLineContent(position.lineNumber);
+                const context = getPropertyContext(line, position.column);
+                if (!context) {
+                    return { suggestions: [] };
+                }
+
+                if (context.kind === 'key') {
+                    const showFullLineInsert = line.trim() === '';
+                    const suggestions = (metatypeDefinition.properties || []).map(property => ({
+                        label: property.id,
+                        kind: monaco.languages.CompletionItemKind.Property,
+                        detail: property.type ? getLocalizedTypeLabel(property.type, t) : getPropertyLabel(property),
+                        documentation: {
+                            value: buildPropertyDocumentation(property, t)
+                        },
+                        insertText: showFullLineInsert ? getInsertionText(property) : property.id,
+                        range: new monaco.Range(
+                            position.lineNumber,
+                            context.range.startColumn,
+                            position.lineNumber,
+                            context.range.endColumn
+                        )
+                    }));
+
+                    return { suggestions };
+                }
+
+                const property = propertyMap.get(context.key);
+                if (!property) {
+                    return { suggestions: [] };
+                }
+
+                const valueSuggestions = getValueSuggestions(property, t);
+
+                return {
+                    suggestions: valueSuggestions.map(suggestion => ({
+                        ...suggestion,
+                        range: new monaco.Range(
+                            position.lineNumber,
+                            context.range.startColumn,
+                            position.lineNumber,
+                            context.range.endColumn
+                        )
+                    }))
+                };
+            }
+        });
+
+        const hoverProvider = monaco.languages.registerHoverProvider('properties', {
+            provideHover: (model, position) => {
+                if (!hasMetatype) {
+                    return null;
+                }
+
+                const hoverContext = getHoverContext(model, position);
+                if (!hoverContext) {
+                    return null;
+                }
+
+                const property = propertyMap.get(hoverContext.key);
+                if (!property) {
+                    return null;
+                }
+
+                return {
+                    range: hoverContext.range,
+                    contents: [{ value: buildPropertyDocumentation(property, t) }]
+                };
+            }
+        });
+
+        const autoSuggestOnNewLine = editor.onDidChangeModelContent(event => {
+            if (!hasMetatype || !event.changes.some(change => change.text.includes('\n'))) {
+                return;
+            }
+
+            const model = editor.getModel();
+            const position = editor.getPosition();
+            if (!model || !position) {
+                return;
+            }
+
+            const line = model.getLineContent(position.lineNumber);
+            if (line.trim() === '') {
+                window.requestAnimationFrame(() => editor.trigger('metatype', 'editor.action.triggerSuggest', {}));
+            }
+        });
+
+        return () => {
+            completionProvider.dispose();
+            hoverProvider.dispose();
+            autoSuggestOnNewLine.dispose();
+        };
+    }, [hasMetatype, language, metatypeDefinition, propertyMap, t]);
 
     // Update editor value if it changes from outside
     useEffect(() => {
@@ -488,6 +952,30 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
         }
     };
 
+    const insertProperty = property => {
+        const editor = editorRef.current;
+        if (!editor || !property) {
+            return;
+        }
+
+        const model = editor.getModel();
+        const position = editor.getPosition();
+        if (!model || !position) {
+            return;
+        }
+
+        const currentLine = model.getLineContent(position.lineNumber);
+        const insertionText = getInsertionText(property);
+        const lineIsEmpty = currentLine.trim() === '';
+        const text = lineIsEmpty ? insertionText : `\n${insertionText}`;
+        const range = lineIsEmpty
+            ? new monaco.Range(position.lineNumber, 1, position.lineNumber, currentLine.length + 1)
+            : new monaco.Range(position.lineNumber, currentLine.length + 1, position.lineNumber, currentLine.length + 1);
+
+        editor.executeEdits('metatype', [{ range, text }]);
+        editor.focus();
+    };
+
     return (
         <div style={{ flex: 1, minHeight: 0, minWidth: 0, width: '100%', display: 'flex', flexDirection: 'column' }}>
             <div style={{
@@ -508,6 +996,19 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
                 <Button label={t('editor.button.encrypt')} variant="ghost" icon={<Lock />} onClick={handleEncryptSelection} title={t('tooltip.encryptSelection')} />
                 <Button label={t('editor.button.decrypt')} variant="ghost" icon={<Unlock />} onClick={handleDecryptSelection} title={t('tooltip.decryptSelection')} />
 
+                {language === 'properties' && (
+                    <>
+                        <div style={{ width: '1px', background: '#ccc', margin: '0 4px', height: '20px' }} />
+                        <Button
+                            label={t('editor.button.addMetatypeProperty')}
+                            variant="ghost"
+                            onClick={() => hasMetatype && setShowPropertyPanel(true)}
+                            disabled={!hasMetatype}
+                            title={hasMetatype ? t('tooltip.addMetatypeProperty') : t('tooltip.addMetatypePropertyDisabled')}
+                        />
+                    </>
+                )}
+
                 {onSwitchMode && (
                     <>
                         <div style={{ width: '1px', background: '#ccc', margin: '0 4px', height: '20px' }} />
@@ -522,18 +1023,157 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
                 )}
             </div>
 
-            <div style={{ flex: 1, position: 'relative' }}>
+            <div style={{ flex: 1, minHeight: 0, display: 'flex', gap: '12px' }}>
                 <div
-                    ref={containerRef}
                     style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        overflow: 'hidden'
+                        flex: '1 1 auto',
+                        position: 'relative',
+                        minWidth: 0
                     }}
-                />
+                >
+                    <div
+                        ref={containerRef}
+                        style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            overflow: 'hidden'
+                        }}
+                    />
+                </div>
+
+                {showPropertyPanel && hasMetatype && (
+                    <div style={{
+                        flex: '0 0 340px',
+                        width: '340px',
+                        borderLeft: '1px solid var(--color-gray_light40)',
+                        paddingLeft: '12px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        minHeight: 0
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
+                            <div style={{ minWidth: 0 }}>
+                                <Typography variant="body" weight="bold">{t('editor.metatype.availableProperties')}</Typography>
+                                {metatypeDefinition?.name && (
+                                    <Typography variant="caption" color="textSecondary">{metatypeDefinition.name}</Typography>
+                                )}
+                            </div>
+                            <Button
+                                label={t('editor.button.hideAvailableProperties')}
+                                variant="ghost"
+                                onClick={() => setShowPropertyPanel(false)}
+                            />
+                        </div>
+
+                        {metatypeDefinition?.description && (
+                            <Typography variant="caption" color="textSecondary" style={{ marginBottom: '12px' }}>
+                                {metatypeDefinition.description}
+                            </Typography>
+                        )}
+
+                        <input
+                            value={propertySearch}
+                            onChange={event => setPropertySearch(event.target.value)}
+                            placeholder={t('editor.metatype.searchPlaceholder')}
+                            style={{
+                                width: '100%',
+                                boxSizing: 'border-box',
+                                border: '1px solid var(--color-gray_light40)',
+                                borderRadius: '4px',
+                                padding: '8px 10px',
+                                marginBottom: '12px'
+                            }}
+                        />
+
+                        <div style={{ overflow: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {filteredProperties.length === 0 && (
+                                <Typography variant="caption" color="textSecondary">
+                                    {t('editor.metatype.noResults')}
+                                </Typography>
+                            )}
+
+                            {filteredProperties.map(property => {
+                                const alreadyPresent = existingKeys.has(property.id);
+                                const defaultValue = formatDefaultValue(property);
+
+                                return (
+                                    <div key={property.id} style={{
+                                        border: '1px solid var(--color-gray_light40)',
+                                        borderRadius: '6px',
+                                        padding: '10px',
+                                        background: alreadyPresent ? 'var(--color-gray_light20)' : '#fff'
+                                    }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            <div
+                                                style={{ minWidth: 0, cursor: alreadyPresent ? 'default' : 'pointer' }}
+                                                onDoubleClick={() => {
+                                                    if (!alreadyPresent) {
+                                                        insertProperty(property);
+                                                    }
+                                                }}
+                                            >
+                                                <Typography
+                                                    variant="body"
+                                                    weight="bold"
+                                                    style={{ display: 'block', overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+                                                >
+                                                    {property.id}
+                                                </Typography>
+                                                {property.name && property.name !== property.id && (
+                                                    <Typography
+                                                        variant="caption"
+                                                        color="textSecondary"
+                                                        style={{ display: 'block', overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+                                                    >
+                                                        {property.name}
+                                                    </Typography>
+                                                )}
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                                <Button
+                                                    label={alreadyPresent ? t('editor.metatype.alreadyPresent') : t('editor.metatype.insert')}
+                                                    variant="ghost"
+                                                    disabled={alreadyPresent}
+                                                    onClick={() => insertProperty(property)}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {property.description && (
+                                            <Typography variant="caption" style={{ display: 'block', marginTop: '8px' }}>
+                                                {property.description}
+                                            </Typography>
+                                        )}
+
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
+                                            {property.type && (
+                                                <Typography variant="caption" color="textSecondary">
+                                                    {t('editor.metatype.type')}: {property.type}
+                                                </Typography>
+                                            )}
+                                            <Typography variant="caption" color="textSecondary">
+                                                {t('editor.metatype.optional')}: {property.optional ? t('editor.metatype.yes') : t('editor.metatype.no')}
+                                            </Typography>
+                                            {defaultValue && (
+                                                <Typography variant="caption" color="textSecondary">
+                                                    {t('editor.metatype.default')}: {defaultValue}
+                                                </Typography>
+                                            )}
+                                            {Array.isArray(property.options) && property.options.length > 0 && (
+                                                <Typography variant="caption" color="textSecondary">
+                                                    {t('editor.metatype.values')}: {property.options.map(option => option.label || option.value).join(', ')}
+                                                </Typography>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

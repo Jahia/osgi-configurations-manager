@@ -30,6 +30,7 @@ const AppContent = () => {
         setSelectedFile,
         properties,
         rawContent,
+        metatypeInfo,
         hasUnsaved,
         loadingFiles,
         loadingFile,
@@ -92,10 +93,7 @@ const AppContent = () => {
             <LayoutContent
                 header={<Header title={t('app.title')} />}
                 content={
-                    <div
-                        data-cy="osgi-config-manager"
-                        style={{ display: 'flex', height: '100%', overflow: 'hidden', padding: '16px', gap: '16px', minWidth: 0 }}
-                    >
+                    <div style={{ display: 'flex', height: '100%', overflow: 'hidden', padding: '16px', gap: '16px', minWidth: 0 }}>
                         {/* LEFT PANE: File List */}
                         <FileSidebar
                             files={files}
@@ -125,38 +123,34 @@ const AppContent = () => {
                                 <>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '56px', marginBottom: '12px', borderBottom: '1px solid var(--color-gray_light40)', paddingBottom: '12px' }}>
                                         <div>
-                                            <Typography data-cy="selected-file-name" variant="heading">{selectedFile.name}</Typography>
+                                            <Typography variant="heading">{selectedFile.name}</Typography>
                                             <Typography variant="caption" color="textSecondary">{selectedFile.path}</Typography>
                                         </div>
                                         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                                             {hasUnsaved && <Typography variant="caption" color="warning" weight="bold">{t('app.unsaved')}</Typography>}
                                             {/* Toggle Raw/Visual Mode for .cfg files */}
                                             {(selectedFile.name.endsWith('.cfg') || selectedFile.name.endsWith('.cfg.disabled')) && (
-                                                <div data-cy="editor-mode-toggle" data-mode={isRawMode ? 'raw' : 'visual'}>
-                                                    <Tooltip label={isRawMode ? t('tooltip.modeVisual') : t('tooltip.modeRaw')}>
-                                                        <Button
-                                                            label={isRawMode ? t('editor.button.modeVisual') : t('editor.button.modeRaw')}
-                                                            variant="outlined"
-                                                            icon={isRawMode ? <ViewList /> : <Code />}
-                                                            onClick={handleToggleRawMode}
-                                                        />
-                                                    </Tooltip>
-                                                </div>
-                                            )}
-                                            <div data-cy="save-config-button">
-                                                <Tooltip label={t('tooltip.save')}>
+                                                <Tooltip label={isRawMode ? t('tooltip.modeVisual') : t('tooltip.modeRaw')}>
                                                     <Button
-                                                        label={t('app.save')}
-                                                        color="accent"
-                                                        icon={<Save />}
-                                                        onClick={() => handleSave()}
-                                                        // Enable save if hasUnsaved changes.
-                                                        // Only block on isYamlValid if we are in Raw Mode (or YAML file).
-                                                        // In Visual Mode (CfgEditor), we perform our own validation on save.
-                                                        disabled={!hasUnsaved || ((isRawMode || selectedFile.name.endsWith('.yml') || selectedFile.name.endsWith('.yml.disabled')) && !isYamlValid)}
+                                                        label={isRawMode ? t('editor.button.modeVisual') : t('editor.button.modeRaw')}
+                                                        variant="outlined"
+                                                        icon={isRawMode ? <ViewList /> : <Code />}
+                                                        onClick={handleToggleRawMode}
                                                     />
                                                 </Tooltip>
-                                            </div>
+                                            )}
+                                            <Tooltip label={t('tooltip.save')}>
+                                                <Button
+                                                    label={t('app.save')}
+                                                    color="accent"
+                                                    icon={<Save />}
+                                                    onClick={() => handleSave()}
+                                                    // Enable save if hasUnsaved changes. 
+                                                    // Only block on isYamlValid if we are in Raw Mode (or YAML file).
+                                                    // In Visual Mode (CfgEditor), we perform our own validation on save.
+                                                    disabled={!hasUnsaved || ((isRawMode || selectedFile.name.endsWith('.yml') || selectedFile.name.endsWith('.yml.disabled')) && !isYamlValid)}
+                                                />
+                                            </Tooltip>
                                         </div>
                                     </div>
 
@@ -188,6 +182,8 @@ const AppContent = () => {
                                                             onValidate={setIsYamlValid}
                                                             language="properties"
                                                             onSwitchMode={handleToggleRawMode}
+                                                            metatypeDefinition={metatypeInfo}
+                                                            filename={selectedFile.name}
                                                         />
                                                     ) : (
                                                         <CfgEditor

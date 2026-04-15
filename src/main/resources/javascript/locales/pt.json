@@ -35,7 +35,7 @@
         },
         "disableFile": {
             "title": "Desabilitar configuração",
-            "message": "Tem certeza que deseja desabilitar {{name}}? Algumas configurações podem travar a interface se forem desabilitadas.",
+            "message": "Tem certeza que deseja desabilitar {{name}}? Algumas configurações podem travar a interface quando desabilitadas.",
             "confirm": "Desabilitar",
             "cancel": "Cancelar"
         },
@@ -89,8 +89,10 @@
         },
         "button": {
             "addProperty": "Adicionar Propriedade",
+            "addMetatypeProperty": "Adicionar Propriedade",
             "addComment": "Adicionar Comentário",
             "addEmptyLine": "Adicionar Linha Vazia",
+            "hideAvailableProperties": "Ocultar",
             "undo": "Desfazer",
             "redo": "Refazer",
             "format": "Formatar",
@@ -106,7 +108,38 @@
         },
         "validation": {
             "missingKey": "A propriedade deve ter uma chave antes do separador",
-            "duplicateKey": "Chave duplicada '{{key}}'"
+            "duplicateKey": "Chave duplicada '{{key}}'",
+            "unknownMetatypeProperty": "A propriedade '{{key}}' não está declarada no metatype deste PID"
+        },
+        "metatype": {
+            "availableProperties": "Propriedades disponíveis",
+            "searchPlaceholder": "Filtrar propriedades...",
+            "noResults": "Nenhuma propriedade correspondente",
+            "type": "Tipo",
+            "optional": "Opcional",
+            "default": "Valor padrão",
+            "values": "Valores disponíveis",
+            "insert": "Inserir",
+            "alreadyPresent": "Já presente",
+            "yes": "Sim",
+            "no": "Não",
+            "suggestion": {
+                "allowedValue": "Valor permitido",
+                "defaultValue": "Valor padrão",
+                "defaultValues": "Valores padrão",
+                "types": {
+                    "boolean": "Booleano",
+                    "byte": "Byte",
+                    "character": "Caractere",
+                    "double": "Decimal",
+                    "float": "Decimal",
+                    "integer": "Inteiro",
+                    "long": "Inteiro longo",
+                    "password": "Senha",
+                    "short": "Inteiro curto",
+                    "string": "Texto"
+                }
+            }
         },
         "empty": "vazio",
         "emptyLine": "Linha Vazia"
@@ -119,6 +152,8 @@
         "deleteFile": "Excluir este arquivo",
         "toggleFile": "Habilitar ou desabilitar esta configuração",
         "addProperty": "Adicionar uma nova propriedade",
+        "addMetatypeProperty": "Abrir a lista de propriedades disponíveis para este PID",
+        "addMetatypePropertyDisabled": "Nenhum metadado Metatype está disponível para este arquivo",
         "addComment": "Adicionar um comentário",
         "addEmptyLine": "Adicionar uma linha vazia",
         "deleteProperty": "Excluir esta propriedade",
