@@ -24,6 +24,13 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -42,6 +49,7 @@ public class OsgiConfigService {
     private static final String KEY_FILENAME = "filename";
     private static final String KEY_PROPERTIES = "properties";
     private static final String METATYPE_PID_NOT_FOUND_LOG = "Metatype PID {} not found in bundle {}";
+    private static final String INVALID_FILENAME_MESSAGE = "Invalid configuration filename: ";
     private File karafEtcDir;
     private Set<String> blacklist = new HashSet<>();
     private MetaTypeService metaTypeService;
@@ -306,29 +314,29 @@ public class OsgiConfigService {
     }
 
     public Map<String, Object> readFile(String filename, Locale locale) throws IOException {
-        if (blacklist.contains(filename)) {
-            throw new IOException("Access denied: " + filename + " is blacklisted.");
+        String safeFilename = validateFilename(filename);
+        if (blacklist.contains(safeFilename)) {
+            throw new IOException("Access denied: " + safeFilename + " is blacklisted.");
         }
 
-        File file = new File(karafEtcDir, filename);
-        if (!file.exists()) {
-            throw new IOException("File not found: " + filename);
+        Path filePath = resolveConfigPath(safeFilename);
+        if (!Files.exists(filePath)) {
+            throw new IOException("File not found: " + safeFilename);
         }
 
         Map<String, Object> result = new LinkedHashMap<>();
-        String type = getFileType(filename);
+        String type = getFileType(safeFilename);
 
         // Always read raw content for Monaco Support
-        String rawContent = new String(java.nio.file.Files.readAllBytes(file.toPath()),
-                java.nio.charset.StandardCharsets.UTF_8);
+        String rawContent = Files.readString(filePath, StandardCharsets.UTF_8);
         result.put("rawContent", rawContent);
 
-        enrichWithMetatype(result, filename, type, locale);
+        enrichWithMetatype(result, safeFilename, type, locale);
 
         if ("cfg".equals(type)) {
-            result.put(KEY_PROPERTIES, readCfgProperties(file));
+            result.put(KEY_PROPERTIES, readCfgProperties(filePath));
         } else if ("yml".equals(type)) {
-            result.put(KEY_PROPERTIES, readYamlProperties(file));
+            result.put(KEY_PROPERTIES, readYamlProperties(filePath));
         }
         return result;
     }
@@ -351,11 +359,12 @@ public class OsgiConfigService {
         }
     }
 
-    private List<Map<String, String>> readCfgProperties(File file) throws IOException {
+    private List<Map<String, String>> readCfgProperties(Path filePath) throws IOException {
         List<Map<String, String>> entries = new ArrayList<>();
-        try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.FileReader(file))) {
+        try (Reader reader = Files.newBufferedReader(filePath, StandardCharsets.UTF_8);
+             java.io.BufferedReader bufferedReader = new java.io.BufferedReader(reader)) {
             String line;
-            while ((line = reader.readLine()) != null) {
+            while ((line = bufferedReader.readLine()) != null) {
                 entries.add(parseCfgLine(line));
             }
         }
@@ -401,7 +410,7 @@ public class OsgiConfigService {
         return colIndex;
     }
 
-    private Object readYamlProperties(File file) throws IOException {
+    private Object readYamlProperties(Path filePath) throws IOException {
         LoaderOptions loaderOptions = new LoaderOptions();
         Yaml yaml = new Yaml(new SafeConstructor(loaderOptions) {
             @Override
@@ -410,7 +419,7 @@ public class OsgiConfigService {
             }
         });
 
-        try (FileInputStream in = new FileInputStream(file)) {
+        try (FileInputStream in = new FileInputStream(filePath.toFile())) {
             return yaml.load(in);
         }
     }
@@ -527,7 +536,7 @@ public class OsgiConfigService {
         }
 
         for (String candidate : getConfigurationFileCandidates(pid)) {
-            if (new File(karafEtcDir, candidate).exists()) {
+            if (configPathExists(candidate)) {
                 return true;
             }
         }
@@ -596,7 +605,7 @@ public class OsgiConfigService {
 
         String baseName = factoryPid + "-" + identifier;
         for (String candidate : getConfigurationFileCandidates(baseName)) {
-            if (new File(karafEtcDir, candidate).exists()) {
+            if (configPathExists(candidate)) {
                 return true;
             }
         }
@@ -718,21 +727,21 @@ public class OsgiConfigService {
 
     @SuppressWarnings("unchecked")
     public void saveFile(String filename, Map<String, Object> content) throws IOException {
-        if (blacklist.contains(filename)) {
-            throw new IOException("Save denied: " + filename + " is blacklisted.");
+        String safeFilename = validateFilename(filename);
+        if (blacklist.contains(safeFilename)) {
+            throw new IOException("Save denied: " + safeFilename + " is blacklisted.");
         }
 
-        File file = new File(karafEtcDir, filename);
+        Path filePath = resolveConfigPath(safeFilename);
 
         // Auto-Backup Logic
-        if (file.exists()) {
+        if (Files.exists(filePath)) {
             try {
-                File backupFile = new File(karafEtcDir, filename + ".bak");
-                java.nio.file.Files.copy(file.toPath(), backupFile.toPath(),
-                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                LOGGER.info("Created backup for {}: {}", filename, backupFile.getName());
+                Path backupPath = filePath.resolveSibling(filePath.getFileName().toString() + ".bak");
+                Files.copy(filePath, backupPath, StandardCopyOption.REPLACE_EXISTING);
+                LOGGER.info("Created backup for {}: {}", safeFilename, backupPath.getFileName());
             } catch (IOException e) {
-                LOGGER.error("Failed to create backup for " + filename, e);
+                LOGGER.error("Failed to create backup for " + safeFilename, e);
             }
         }
 
@@ -746,11 +755,11 @@ public class OsgiConfigService {
             // string.
             if (raw == null)
                 raw = "";
-            java.nio.file.Files.write(file.toPath(), raw.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            Files.write(filePath, raw.getBytes(StandardCharsets.UTF_8));
             return;
         }
 
-        String type = getFileType(filename);
+        String type = getFileType(safeFilename);
 
         if ("cfg".equals(type)) {
             Object propertiesObj = content.get(KEY_PROPERTIES);
@@ -759,8 +768,9 @@ public class OsgiConfigService {
                 // If no rawContent and no properties, we can't save anything meaningful.
                 // To avoid NPE, we might warn or write empty.
                 LOGGER.warn("No properties or rawContent provided for .cfg save. Writing empty file.");
-                try (java.io.BufferedWriter writer = new java.io.BufferedWriter(new java.io.FileWriter(file))) {
-                    writer.write("");
+                try (Writer writer = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8);
+                     java.io.BufferedWriter bufferedWriter = new java.io.BufferedWriter(writer)) {
+                    bufferedWriter.write("");
                 }
                 return;
             }
@@ -769,7 +779,7 @@ public class OsgiConfigService {
             if (propertiesObj instanceof Map) {
                 Properties props = new Properties();
                 props.putAll((Map<String, String>) propertiesObj);
-                try (FileOutputStream out = new FileOutputStream(file)) {
+                try (FileOutputStream out = new FileOutputStream(filePath.toFile())) {
                     props.store(out, "Modified by OSGi Configurations Manager");
                 }
                 return;
@@ -777,17 +787,18 @@ public class OsgiConfigService {
 
             // New List format
             List<Map<String, Object>> entries = (List<Map<String, Object>>) propertiesObj;
-            try (java.io.BufferedWriter writer = new java.io.BufferedWriter(new java.io.FileWriter(file))) {
+            try (Writer writer = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8);
+                 java.io.BufferedWriter bufferedWriter = new java.io.BufferedWriter(writer)) {
                 for (Map<String, Object> entry : entries) {
                     String entryType = (String) entry.get("type");
                     if ("comment".equals(entryType)) {
-                        writer.write((String) entry.get("value"));
-                        writer.newLine();
+                        bufferedWriter.write((String) entry.get("value"));
+                        bufferedWriter.newLine();
                     } else if ("empty".equals(entryType)) {
-                        writer.newLine();
+                        bufferedWriter.newLine();
                     } else if ("property".equals(entryType)) {
-                        writer.write(entry.get("key") + " = " + entry.get("value"));
-                        writer.newLine();
+                        bufferedWriter.write(entry.get("key") + " = " + entry.get("value"));
+                        bufferedWriter.newLine();
                     }
                 }
             }
@@ -797,64 +808,61 @@ public class OsgiConfigService {
             DumperOptions options = new DumperOptions();
             options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
             Yaml yaml = new Yaml(options);
-            try (java.io.FileWriter writer = new java.io.FileWriter(file)) {
+            try (Writer writer = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8)) {
                 yaml.dump(content.get(KEY_PROPERTIES), writer);
             }
         }
     }
 
     public void toggleFileStatus(String filename) throws IOException {
-        if (blacklist.contains(filename)) {
-            throw new IOException("Toggle denied: " + filename + " is blacklisted.");
+        String safeFilename = validateFilename(filename);
+        if (blacklist.contains(safeFilename)) {
+            throw new IOException("Toggle denied: " + safeFilename + " is blacklisted.");
         }
 
-        File file = new File(karafEtcDir, filename);
-        if (!file.exists()) {
-            throw new IOException("File not found: " + filename);
+        Path filePath = resolveConfigPath(safeFilename);
+        if (!Files.exists(filePath)) {
+            throw new IOException("File not found: " + safeFilename);
         }
 
         String newName;
-        if (filename.endsWith(".disabled")) {
-            newName = filename.substring(0, filename.length() - ".disabled".length());
+        if (safeFilename.endsWith(".disabled")) {
+            newName = safeFilename.substring(0, safeFilename.length() - ".disabled".length());
         } else {
-            newName = filename + ".disabled";
+            newName = safeFilename + ".disabled";
         }
 
-        File newFile = new File(karafEtcDir, newName);
-        if (newFile.exists()) {
+        Path newFilePath = resolveConfigPath(newName);
+        if (Files.exists(newFilePath)) {
             throw new IOException("Target file already exists: " + newName);
         }
 
-        if (!file.renameTo(newFile)) {
-            throw new IOException("Failed to rename file");
-        }
+        Files.move(filePath, newFilePath);
     }
 
     public void deleteFile(String filename) throws IOException {
-        if (blacklist.contains(filename)) {
-            throw new IOException("Delete denied: " + filename + " is blacklisted.");
+        String safeFilename = validateFilename(filename);
+        if (blacklist.contains(safeFilename)) {
+            throw new IOException("Delete denied: " + safeFilename + " is blacklisted.");
         }
 
-        File file = new File(karafEtcDir, filename);
-        if (file.exists()) {
-            if (!file.delete()) {
-                throw new IOException("Failed to delete file: " + filename);
-            }
+        Path filePath = resolveConfigPath(safeFilename);
+        if (Files.exists(filePath)) {
+            Files.delete(filePath);
         }
     }
 
     public void createFile(String filename) throws IOException {
-        if (blacklist.contains(filename)) {
-            throw new IOException("Create denied: " + filename + " is blacklisted.");
+        String safeFilename = validateFilename(filename);
+        if (blacklist.contains(safeFilename)) {
+            throw new IOException("Create denied: " + safeFilename + " is blacklisted.");
         }
 
-        File file = new File(karafEtcDir, filename);
-        if (file.exists()) {
-            throw new IOException("File already exists: " + filename);
+        Path filePath = resolveConfigPath(safeFilename);
+        if (Files.exists(filePath)) {
+            throw new IOException("File already exists: " + safeFilename);
         }
-        if (!file.createNewFile()) {
-            throw new IOException("Failed to create file: " + filename);
-        }
+        Files.createFile(filePath);
     }
 
     public String createFileFromMetatype(String pid, Locale locale) throws IOException {
@@ -1007,13 +1015,63 @@ public class OsgiConfigService {
             throw new IOException("Create denied: " + filename + " is blacklisted.");
         }
 
-        File file = new File(karafEtcDir, filename);
-        if (file.exists()) {
+        Path filePath = resolveConfigPath(filename);
+        if (Files.exists(filePath)) {
             throw new IOException("File already exists: " + filename);
         }
 
-        java.nio.file.Files.write(file.toPath(), content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        Files.write(filePath, content.getBytes(StandardCharsets.UTF_8));
         return filename;
+    }
+
+    private Path resolveConfigPath(String filename) throws IOException {
+        if (karafEtcDir == null) {
+            throw new IOException("karaf.etc directory is not configured");
+        }
+
+        String validatedFilename = validateFilename(filename);
+        Path etcPath = karafEtcDir.toPath().toAbsolutePath().normalize();
+        Path resolvedPath = etcPath.resolve(validatedFilename).normalize();
+        if (!resolvedPath.startsWith(etcPath)) {
+            throw new IOException(INVALID_FILENAME_MESSAGE + filename);
+        }
+
+        return resolvedPath;
+    }
+
+    private String validateFilename(String filename) throws IOException {
+        if (filename == null || filename.isBlank()) {
+            throw new IOException(INVALID_FILENAME_MESSAGE + filename);
+        }
+
+        String trimmedFilename = filename.trim();
+        if (trimmedFilename.contains("/") || trimmedFilename.contains("\\") || trimmedFilename.contains("..")) {
+            throw new IOException(INVALID_FILENAME_MESSAGE + filename);
+        }
+
+        try {
+            Path candidatePath = Path.of(trimmedFilename).normalize();
+            if (candidatePath.isAbsolute() || candidatePath.getNameCount() != 1) {
+                throw new IOException(INVALID_FILENAME_MESSAGE + filename);
+            }
+        } catch (InvalidPathException e) {
+            throw new IOException(INVALID_FILENAME_MESSAGE + filename, e);
+        }
+
+        if (!isSupportedConfigFilename(trimmedFilename)) {
+            throw new IOException(INVALID_FILENAME_MESSAGE + filename);
+        }
+
+        return trimmedFilename;
+    }
+
+    private boolean configPathExists(String filename) {
+        try {
+            return Files.exists(resolveConfigPath(filename));
+        } catch (IOException e) {
+            LOGGER.debug("Ignoring invalid configuration filename candidate {}", filename, e);
+            return false;
+        }
     }
 
     private String buildCfgTemplate(String pid, ObjectClassDefinition objectClassDefinition) {

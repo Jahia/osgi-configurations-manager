@@ -8,7 +8,6 @@ import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
@@ -84,20 +83,22 @@ public class CryptoEngine {
 
     @SuppressWarnings("java:S5542")
     private static String decrypt(String string, SecretKeySpec key) throws GeneralSecurityException {
-        String ivString = string.split(":")[0];
-        String propertyString = string.split(":")[1];
+        String[] parts = string.split(":", 2);
+        if (parts.length != 2) {
+            throw new GeneralSecurityException("Invalid encrypted payload format");
+        }
+
+        String ivString = parts[0];
+        String propertyString = parts[1];
         byte[] iv = base64Decode(ivString);
         byte[] property = base64Decode(propertyString);
 
-        Cipher pbeCipher;
-        if (iv.length == 16) {
-            // Fallback for older CBC-encrypted strings
-            pbeCipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-            pbeCipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(iv));
-        } else {
-            pbeCipher = Cipher.getInstance("AES/GCM/NoPadding");
-            pbeCipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(128, iv));
+        if (iv.length != 12) {
+            throw new GeneralSecurityException("Unsupported IV length for AES/GCM payload");
         }
+
+        Cipher pbeCipher = Cipher.getInstance("AES/GCM/NoPadding");
+        pbeCipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(128, iv));
         return new String(pbeCipher.doFinal(property), StandardCharsets.UTF_8);
     }
 
