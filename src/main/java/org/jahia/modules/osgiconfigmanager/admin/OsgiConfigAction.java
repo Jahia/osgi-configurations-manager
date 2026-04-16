@@ -27,6 +27,10 @@ import java.io.BufferedReader;
 public class OsgiConfigAction extends Action {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OsgiConfigAction.class);
+    private static final String PARAM_ACTION = "action";
+    private static final String PARAM_FILENAME = "filename";
+    private static final String KEY_PROPERTIES = "properties";
+    private static final String STATUS_CREATED = "created";
     private OsgiConfigService configService;
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -58,14 +62,14 @@ public class OsgiConfigAction extends Action {
 
         try {
             if ("GET".equals(method)) {
-                String filename = req.getParameter("filename");
+                String filename = req.getParameter(PARAM_FILENAME);
                 if (filename != null && !filename.isEmpty()) {
                     // Read specific file
                     LOGGER.debug("[AUDIT] User: {} | Action: read | File: {}", renderContext.getUser().getName(),
                             filename);
                     Map<String, Object> fileContent = configService.readFile(filename, req.getLocale());
                     result.put("data", fileContent);
-                } else if ("availableMetatypes".equals(req.getParameter("action"))) {
+                } else if ("availableMetatypes".equals(req.getParameter(PARAM_ACTION))) {
                     result.put("metatypes", configService.listAvailableMetatypeConfigurations(req.getLocale()));
                 } else {
                     // List all files
@@ -100,7 +104,7 @@ public class OsgiConfigAction extends Action {
                         }
                         LOGGER.debug("Deep Search: Found {} matching files", filteredFiles.size());
                         result.put("files", filteredFiles);
-                    } else if ("getPreference".equals(req.getParameter("action"))) {
+                    } else if ("getPreference".equals(req.getParameter(PARAM_ACTION))) {
                         String key = req.getParameter("key");
                         String userPath = renderContext.getUser().getLocalPath();
                         if (session.nodeExists(userPath)) {
@@ -122,8 +126,8 @@ public class OsgiConfigAction extends Action {
                     }
                 }
                 Map<String, Object> payload = mapper.readValue(buffer.toString(), Map.class);
-                String actionType = (String) payload.get("action");
-                String filename = (String) payload.get("filename");
+                String actionType = (String) payload.get(PARAM_ACTION);
+                String filename = (String) payload.get(PARAM_FILENAME);
 
                 if ("save".equals(actionType) || "toggle".equals(actionType) || "delete".equals(actionType)
                         || "create".equals(actionType) || "createFromMetatype".equals(actionType)) {
@@ -136,8 +140,8 @@ public class OsgiConfigAction extends Action {
                 if ("save".equals(actionType)) {
                     Map<String, Object> contentMap = new LinkedHashMap<>();
                     // Convert JSON payload to Map structure
-                    if (payload.containsKey("properties")) {
-                        contentMap.put("properties", payload.get("properties"));
+                    if (payload.containsKey(KEY_PROPERTIES)) {
+                        contentMap.put(KEY_PROPERTIES, payload.get(KEY_PROPERTIES));
                     }
                     if (payload.containsKey("rawContent")) {
                         contentMap.put("rawContent", payload.get("rawContent"));
@@ -152,15 +156,15 @@ public class OsgiConfigAction extends Action {
                     result.put("status", "deleted");
                 } else if ("create".equals(actionType)) {
                     configService.createFile(filename);
-                    result.put("status", "created");
+                    result.put("status", STATUS_CREATED);
                 } else if ("createFromMetatype".equals(actionType)) {
                     String pid = (String) payload.get("pid");
                     String instanceIdentifier = (String) payload.get("instanceIdentifier");
                     String createdFilename = instanceIdentifier != null && !instanceIdentifier.trim().isEmpty()
                             ? configService.createFactoryFileFromMetatype(pid, instanceIdentifier, req.getLocale())
                             : configService.createFileFromMetatype(pid, req.getLocale());
-                    result.put("status", "created");
-                    result.put("filename", createdFilename);
+                    result.put("status", STATUS_CREATED);
+                    result.put(PARAM_FILENAME, createdFilename);
                 } else if ("encrypt".equals(actionType)) {
                     String value = (String) payload.get("value");
                     result.put("encryptedValue", configService.encrypt(value));

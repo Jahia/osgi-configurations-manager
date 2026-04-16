@@ -25,6 +25,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -37,11 +38,30 @@ public class OsgiConfigService {
     private static final Set<String> SUPPORTED_CONFIG_EXTENSIONS = Set.of(".cfg", ".cfg.disabled", ".yml", ".yml.disabled");
     private static final String DEFAULT_FACTORY_FILE_EXTENSION = ".cfg";
     private static final String FACTORY_IDENTIFIER_PATTERN = "^[A-Za-z0-9._-]+$";
+    private static final String KEY_CREATED = "created";
+    private static final String KEY_FILENAME = "filename";
+    private static final String KEY_PROPERTIES = "properties";
+    private static final String METATYPE_PID_NOT_FOUND_LOG = "Metatype PID {} not found in bundle {}";
     private File karafEtcDir;
     private Set<String> blacklist = new HashSet<>();
-    private volatile MetaTypeService metaTypeService;
+    private MetaTypeService metaTypeService;
 
     private static final String SELF_CONFIG = "org.jahia.modules.osgiconfigmanager.cfg";
+
+    private static final class MetatypeCollectionContext {
+        private final List<Map<String, Object>> metatypes;
+        private final Set<String> seenPids;
+        private final String localeCode;
+        private final Set<String> factoryCapablePids;
+
+        private MetatypeCollectionContext(List<Map<String, Object>> metatypes, Set<String> seenPids,
+                                          String localeCode, Set<String> factoryCapablePids) {
+            this.metatypes = metatypes;
+            this.seenPids = seenPids;
+            this.localeCode = localeCode;
+            this.factoryCapablePids = factoryCapablePids;
+        }
+    }
 
     public OsgiConfigService() {
         String etcPath = System.getProperty("karaf.etc");
@@ -150,82 +170,95 @@ public class OsgiConfigService {
 
         List<Map<String, Object>> metatypes = new ArrayList<>();
         Set<String> seenPids = new HashSet<>();
-        Set<String> factoryCapablePids = getManagedServiceFactoryPids(bundleContext);
+        MetatypeCollectionContext context = new MetatypeCollectionContext(
+                metatypes,
+                seenPids,
+                localeCode,
+                getManagedServiceFactoryPids(bundleContext)
+        );
 
-        for (Bundle bundle : bundles) {
-            if (bundle == null || bundle.getState() < Bundle.STARTING) {
-                continue;
-            }
-
+        forEachInspectableBundle(currentMetaTypeService, bundles, bundle -> {
             try {
                 MetaTypeInformation metaTypeInformation = currentMetaTypeService.getMetaTypeInformation(bundle);
-                if (metaTypeInformation == null) {
-                    continue;
+                if (metaTypeInformation != null) {
+                    appendMetatypeDefinitions(context, bundle, metaTypeInformation, metaTypeInformation.getPids(), false);
+                    appendMetatypeDefinitions(context, bundle, metaTypeInformation, metaTypeInformation.getFactoryPids(), true);
                 }
-
-                String[] pids = metaTypeInformation.getPids();
-                appendMetatypeDefinitions(metatypes, seenPids, bundle, metaTypeInformation, pids, localeCode, false, factoryCapablePids);
-
-                String[] factoryPids = metaTypeInformation.getFactoryPids();
-                appendMetatypeDefinitions(metatypes, seenPids, bundle, metaTypeInformation, factoryPids, localeCode, true, factoryCapablePids);
             } catch (Exception e) {
                 LOGGER.debug("Unable to inspect metatype information for bundle {}", bundle.getSymbolicName(), e);
             }
-        }
+        });
 
         metatypes.sort(Comparator
                 .comparing((Map<String, Object> definition) -> Boolean.TRUE.equals(definition.get("factory")))
-                .thenComparing((Map<String, Object> definition) -> String.valueOf(definition.getOrDefault("created", false)))
+                .thenComparing((Map<String, Object> definition) -> String.valueOf(definition.getOrDefault(KEY_CREATED, false)))
                 .thenComparing(definition -> String.valueOf(definition.getOrDefault("name", definition.get("pid"))), String.CASE_INSENSITIVE_ORDER)
                 .thenComparing(definition -> String.valueOf(definition.get("pid")), String.CASE_INSENSITIVE_ORDER));
 
         return metatypes;
     }
 
-    private void appendMetatypeDefinitions(List<Map<String, Object>> metatypes, Set<String> seenPids,
-                                           Bundle bundle, MetaTypeInformation metaTypeInformation, String[] pids,
-                                           String localeCode, boolean factory, Set<String> factoryCapablePids) {
+    private void appendMetatypeDefinitions(MetatypeCollectionContext context, Bundle bundle,
+                                           MetaTypeInformation metaTypeInformation, String[] pids, boolean factory) {
         if (pids == null) {
             return;
         }
 
         for (String pid : pids) {
-            boolean effectiveFactory = factory || factoryCapablePids.contains(pid);
-            if (pid == null || pid.isEmpty() || !seenPids.add((effectiveFactory ? "factory:" : "pid:") + pid)) {
-                continue;
-            }
-
-            String suggestedFilename = effectiveFactory ? buildFactoryFilenamePattern(pid) : pid + DEFAULT_FACTORY_FILE_EXTENSION;
-            if (!effectiveFactory && (blacklist.contains(suggestedFilename) || blacklist.contains(suggestedFilename + ".disabled"))) {
-                continue;
-            }
-
-            try {
-                ObjectClassDefinition objectClassDefinition = metaTypeInformation.getObjectClassDefinition(pid, localeCode);
-                if (objectClassDefinition == null) {
-                    continue;
-                }
-
-                Map<String, Object> definition = toMetaTypeMap(pid, objectClassDefinition);
-                definition.put("filename", suggestedFilename);
-                definition.put("bundleName", getBundleDisplayName(bundle));
-                definition.put("bundleSymbolicName", bundle.getSymbolicName());
-                definition.put("factory", effectiveFactory);
-                if (effectiveFactory) {
-                    List<Map<String, Object>> instances = getFactoryInstances(pid);
-                    definition.put("instances", instances);
-                    definition.put("instanceCount", instances.size());
-                    definition.put("created", !instances.isEmpty());
-                } else {
-                    definition.put("created", hasExistingConfigurationFile(pid));
-                }
-                metatypes.add(definition);
-            } catch (IllegalArgumentException e) {
-                LOGGER.debug("Metatype PID {} not found in bundle {}", pid, bundle.getSymbolicName());
-            } catch (Exception e) {
-                LOGGER.debug("Unable to list metatype PID {} from bundle {}", pid, bundle.getSymbolicName(), e);
-            }
+            appendMetatypeDefinition(context, bundle, metaTypeInformation, pid, factory);
         }
+    }
+
+    private void appendMetatypeDefinition(MetatypeCollectionContext context, Bundle bundle,
+                                          MetaTypeInformation metaTypeInformation, String pid, boolean factory) {
+        boolean effectiveFactory = factory || context.factoryCapablePids.contains(pid);
+        if (!shouldProcessMetatypePid(context, pid, effectiveFactory)) {
+            return;
+        }
+
+        String suggestedFilename = effectiveFactory ? buildFactoryFilenamePattern(pid) : pid + DEFAULT_FACTORY_FILE_EXTENSION;
+        if (isBlockedSimpleMetatype(suggestedFilename, effectiveFactory)) {
+            return;
+        }
+
+        try {
+            ObjectClassDefinition objectClassDefinition = metaTypeInformation.getObjectClassDefinition(pid, context.localeCode);
+            if (objectClassDefinition == null) {
+                return;
+            }
+
+            Map<String, Object> definition = toMetaTypeMap(pid, objectClassDefinition);
+            definition.put(KEY_FILENAME, suggestedFilename);
+            definition.put("bundleName", getBundleDisplayName(bundle));
+            definition.put("bundleSymbolicName", bundle.getSymbolicName());
+            definition.put("factory", effectiveFactory);
+            if (effectiveFactory) {
+                List<Map<String, Object>> instances = getFactoryInstances(pid);
+                definition.put("instances", instances);
+                definition.put("instanceCount", instances.size());
+                definition.put(KEY_CREATED, !instances.isEmpty());
+            } else {
+                definition.put(KEY_CREATED, hasExistingConfigurationFile(pid));
+            }
+            context.metatypes.add(definition);
+        } catch (IllegalArgumentException e) {
+            LOGGER.debug(METATYPE_PID_NOT_FOUND_LOG, pid, bundle.getSymbolicName());
+        } catch (Exception e) {
+            LOGGER.debug("Unable to list metatype PID {} from bundle {}", pid, bundle.getSymbolicName(), e);
+        }
+    }
+
+    private boolean shouldProcessMetatypePid(MetatypeCollectionContext context, String pid, boolean effectiveFactory) {
+        if (pid == null || pid.isEmpty()) {
+            return false;
+        }
+
+        String key = (effectiveFactory ? "factory:" : "pid:") + pid;
+        return context.seenPids.add(key);
+    }
+
+    private boolean isBlockedSimpleMetatype(String suggestedFilename, boolean effectiveFactory) {
+        return !effectiveFactory && (blacklist.contains(suggestedFilename) || blacklist.contains(suggestedFilename + ".disabled"));
     }
 
     private Set<String> getManagedServiceFactoryPids(BundleContext bundleContext) {
@@ -290,83 +323,96 @@ public class OsgiConfigService {
                 java.nio.charset.StandardCharsets.UTF_8);
         result.put("rawContent", rawContent);
 
-        if ("cfg".equals(type) || "yml".equals(type)) {
-            String pid = resolveMetatypePid(filename, locale);
-            result.put("pid", pid);
-
-            Map<String, Object> metaTypeDefinition = getMetaTypeDefinition(pid, locale);
-            if (metaTypeDefinition != null) {
-                result.put("metatype", metaTypeDefinition);
-            }
-        }
+        enrichWithMetatype(result, filename, type, locale);
 
         if ("cfg".equals(type)) {
-            List<Map<String, String>> entries = new ArrayList<>();
-            try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.FileReader(file))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    Map<String, String> entry = new HashMap<>();
-                    String trimmed = line.trim();
-                    if (trimmed.isEmpty()) {
-                        entry.put("type", "empty");
-                    } else if (trimmed.startsWith("#")) {
-                        entry.put("type", "comment");
-                        entry.put("value", line);
-                    } else {
-                        // Very basic property parsing (key=value or key:value)
-                        int eqIndex = line.indexOf('=');
-                        int colIndex = line.indexOf(':');
-                        int separatorIndex = -1;
-                        if (eqIndex != -1 && colIndex != -1) {
-                            separatorIndex = Math.min(eqIndex, colIndex);
-                        } else if (eqIndex != -1) {
-                            separatorIndex = eqIndex;
-                        } else {
-                            separatorIndex = colIndex;
-                        }
-
-                        if (separatorIndex != -1) {
-                            entry.put("type", "property");
-                            entry.put("key", line.substring(0, separatorIndex).trim());
-                            entry.put("value", line.substring(separatorIndex + 1).trim());
-                        } else {
-                            // Fallback, treat as comment or weird line
-                            entry.put("type", "comment");
-                            entry.put("value", line);
-                        }
-                    }
-                    entries.add(entry);
-                }
-            }
-            result.put("properties", entries);
+            result.put(KEY_PROPERTIES, readCfgProperties(file));
         } else if ("yml".equals(type)) {
-            LoaderOptions loaderOptions = new LoaderOptions();
-            Yaml yaml = new Yaml(new SafeConstructor(loaderOptions) {
-                @Override
-                protected Map<Object, Object> createDefaultMap(int initSize) {
-                    return new LinkedHashMap<>(initSize);
-                }
-            });
-            try (FileInputStream in = new FileInputStream(file)) {
-                Object data = yaml.load(in);
-                result.put("properties", data); // structured data
-            }
+            result.put(KEY_PROPERTIES, readYamlProperties(file));
         }
         return result;
     }
 
     private String getConfigurationPid(String filename) {
-        String normalizedName = filename;
-        if (normalizedName.endsWith(".disabled")) {
-            normalizedName = normalizedName.substring(0, normalizedName.length() - ".disabled".length());
+        return normalizeConfigFilename(filename);
+    }
+
+    private void enrichWithMetatype(Map<String, Object> result, String filename, String type, Locale locale) {
+        if (!"cfg".equals(type) && !"yml".equals(type)) {
+            return;
         }
-        if (normalizedName.endsWith(".cfg")) {
-            return normalizedName.substring(0, normalizedName.length() - ".cfg".length());
+
+        String pid = resolveMetatypePid(filename, locale);
+        result.put("pid", pid);
+
+        Map<String, Object> metaTypeDefinition = getMetaTypeDefinition(pid, locale);
+        if (metaTypeDefinition != null) {
+            result.put("metatype", metaTypeDefinition);
         }
-        if (normalizedName.endsWith(".yml")) {
-            return normalizedName.substring(0, normalizedName.length() - ".yml".length());
+    }
+
+    private List<Map<String, String>> readCfgProperties(File file) throws IOException {
+        List<Map<String, String>> entries = new ArrayList<>();
+        try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.FileReader(file))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                entries.add(parseCfgLine(line));
+            }
         }
-        return normalizedName;
+        return entries;
+    }
+
+    private Map<String, String> parseCfgLine(String line) {
+        Map<String, String> entry = new HashMap<>();
+        String trimmed = line.trim();
+        if (trimmed.isEmpty()) {
+            entry.put("type", "empty");
+            return entry;
+        }
+
+        if (trimmed.startsWith("#")) {
+            entry.put("type", "comment");
+            entry.put("value", line);
+            return entry;
+        }
+
+        int separatorIndex = findCfgSeparatorIndex(line);
+        if (separatorIndex != -1) {
+            entry.put("type", "property");
+            entry.put("key", line.substring(0, separatorIndex).trim());
+            entry.put("value", line.substring(separatorIndex + 1).trim());
+            return entry;
+        }
+
+        entry.put("type", "comment");
+        entry.put("value", line);
+        return entry;
+    }
+
+    private int findCfgSeparatorIndex(String line) {
+        int eqIndex = line.indexOf('=');
+        int colIndex = line.indexOf(':');
+        if (eqIndex != -1 && colIndex != -1) {
+            return Math.min(eqIndex, colIndex);
+        }
+        if (eqIndex != -1) {
+            return eqIndex;
+        }
+        return colIndex;
+    }
+
+    private Object readYamlProperties(File file) throws IOException {
+        LoaderOptions loaderOptions = new LoaderOptions();
+        Yaml yaml = new Yaml(new SafeConstructor(loaderOptions) {
+            @Override
+            protected Map<Object, Object> createDefaultMap(int initSize) {
+                return new LinkedHashMap<>(initSize);
+            }
+        });
+
+        try (FileInputStream in = new FileInputStream(file)) {
+            return yaml.load(in);
+        }
     }
 
     private String resolveMetatypePid(String filename, Locale locale) {
@@ -404,24 +450,44 @@ public class OsgiConfigService {
         Set<String> seenFactoryPids = new HashSet<>();
 
         for (Bundle bundle : bundles) {
-            if (bundle == null || bundle.getState() < Bundle.STARTING) {
-                continue;
-            }
-
-            try {
-                MetaTypeInformation metaTypeInformation = currentMetaTypeService.getMetaTypeInformation(bundle);
-                if (metaTypeInformation == null) {
-                    continue;
-                }
-
-                bestMatch = findBestFactoryPidMatch(normalizedConfigurationName, metaTypeInformation.getPids(), false, factoryCapablePids, seenFactoryPids, bestMatch);
-                bestMatch = findBestFactoryPidMatch(normalizedConfigurationName, metaTypeInformation.getFactoryPids(), true, factoryCapablePids, seenFactoryPids, bestMatch);
-            } catch (Exception e) {
-                LOGGER.debug("Unable to inspect metatype information for bundle {}", bundle.getSymbolicName(), e);
+            if (isInspectableBundle(bundle)) {
+                bestMatch = findFactoryPidForInstance(bundle, currentMetaTypeService, normalizedConfigurationName,
+                        factoryCapablePids, seenFactoryPids, bestMatch);
             }
         }
 
         return bestMatch;
+    }
+
+    private String findFactoryPidForInstance(Bundle bundle, MetaTypeService currentMetaTypeService,
+                                             String normalizedConfigurationName, Set<String> factoryCapablePids,
+                                             Set<String> seenFactoryPids, String currentBestMatch) {
+        try {
+            MetaTypeInformation metaTypeInformation = currentMetaTypeService.getMetaTypeInformation(bundle);
+            if (metaTypeInformation == null) {
+                return currentBestMatch;
+            }
+
+            String bestMatch = findBestFactoryPidMatch(
+                    normalizedConfigurationName,
+                    metaTypeInformation.getPids(),
+                    false,
+                    factoryCapablePids,
+                    seenFactoryPids,
+                    currentBestMatch
+            );
+            return findBestFactoryPidMatch(
+                    normalizedConfigurationName,
+                    metaTypeInformation.getFactoryPids(),
+                    true,
+                    factoryCapablePids,
+                    seenFactoryPids,
+                    bestMatch
+            );
+        } catch (Exception e) {
+            LOGGER.debug("Unable to inspect metatype information for bundle {}", bundle.getSymbolicName(), e);
+            return currentBestMatch;
+        }
     }
 
     private String findBestFactoryPidMatch(String normalizedConfigurationName, String[] pids,
@@ -433,26 +499,26 @@ public class OsgiConfigService {
 
         String bestMatch = currentBestMatch;
         for (String pid : pids) {
-            if (pid == null || pid.isEmpty() || !seenFactoryPids.add(pid)) {
-                continue;
-            }
-
-            boolean effectiveFactory = declaredFactory || factoryCapablePids.contains(pid);
-            if (!effectiveFactory) {
-                continue;
-            }
-
-            String prefix = pid + "-";
-            if (!normalizedConfigurationName.startsWith(prefix) || normalizedConfigurationName.length() <= prefix.length()) {
-                continue;
-            }
-
-            if (bestMatch == null || pid.length() > bestMatch.length()) {
+            if (isFactoryPidMatch(normalizedConfigurationName, pid, declaredFactory, factoryCapablePids, seenFactoryPids)
+                    && (bestMatch == null || pid.length() > bestMatch.length())) {
                 bestMatch = pid;
             }
         }
 
         return bestMatch;
+    }
+
+    private boolean isFactoryPidMatch(String normalizedConfigurationName, String pid, boolean declaredFactory,
+                                      Set<String> factoryCapablePids, Set<String> seenFactoryPids) {
+        if (pid == null || pid.isEmpty() || !seenFactoryPids.add(pid)) {
+            return false;
+        }
+
+        boolean effectiveFactory = declaredFactory || factoryCapablePids.contains(pid);
+        String prefix = pid + "-";
+        return effectiveFactory
+                && normalizedConfigurationName.startsWith(prefix)
+                && normalizedConfigurationName.length() > prefix.length();
     }
 
     private boolean hasExistingConfigurationFile(String pid) {
@@ -491,7 +557,7 @@ public class OsgiConfigService {
                 .filter(Objects::nonNull)
                 .sorted(Comparator
                         .comparing((Map<String, Object> instance) -> String.valueOf(instance.getOrDefault("identifier", "")), String.CASE_INSENSITIVE_ORDER)
-                        .thenComparing(instance -> String.valueOf(instance.getOrDefault("filename", "")), String.CASE_INSENSITIVE_ORDER))
+                        .thenComparing(instance -> String.valueOf(instance.getOrDefault(KEY_FILENAME, "")), String.CASE_INSENSITIVE_ORDER))
                 .collect(Collectors.toList());
     }
 
@@ -503,7 +569,7 @@ public class OsgiConfigService {
 
         Map<String, Object> instance = new LinkedHashMap<>();
         instance.put("identifier", identifier);
-        instance.put("filename", file.getName());
+        instance.put(KEY_FILENAME, file.getName());
         instance.put("enabled", !file.getName().endsWith(".disabled"));
         instance.put("type", getFileType(file.getName()));
         return instance;
@@ -548,50 +614,29 @@ public class OsgiConfigService {
     }
 
     private Map<String, Object> getMetaTypeDefinition(String pid, Locale locale) {
-        MetaTypeService currentMetaTypeService = this.metaTypeService;
-        if (currentMetaTypeService == null || pid == null || pid.isEmpty()) {
-            return null;
-        }
-
-        BundleContext bundleContext = getBundleContext();
-        if (bundleContext == null) {
-            return null;
-        }
-
-        String localeCode = locale != null ? locale.toString() : null;
-        Bundle[] bundles = bundleContext.getBundles();
-        if (bundles == null) {
-            return null;
-        }
-
-        for (Bundle bundle : bundles) {
-            if (bundle == null || bundle.getState() < Bundle.STARTING) {
-                continue;
-            }
-
-            try {
-                MetaTypeInformation metaTypeInformation = currentMetaTypeService.getMetaTypeInformation(bundle);
-                if (metaTypeInformation == null) {
-                    continue;
-                }
-
-                ObjectClassDefinition objectClassDefinition = metaTypeInformation.getObjectClassDefinition(pid, localeCode);
-                if (objectClassDefinition != null) {
-                    return toMetaTypeMap(pid, objectClassDefinition);
-                }
-            } catch (IllegalArgumentException e) {
-                LOGGER.debug("Metatype PID {} not found in bundle {}", pid, bundle.getSymbolicName());
-            } catch (Exception e) {
-                LOGGER.debug("Unable to read metatype for PID {} from bundle {}", pid, bundle.getSymbolicName(), e);
-            }
-        }
-
-        return null;
+        ObjectClassDefinition objectClassDefinition = findObjectClassDefinition(pid, locale);
+        return objectClassDefinition != null ? toMetaTypeMap(pid, objectClassDefinition) : null;
     }
 
     private BundleContext getBundleContext() {
         Bundle bundle = FrameworkUtil.getBundle(OsgiConfigService.class);
         return bundle != null ? bundle.getBundleContext() : null;
+    }
+
+    private void forEachInspectableBundle(MetaTypeService currentMetaTypeService, Bundle[] bundles, Consumer<Bundle> consumer) {
+        if (currentMetaTypeService == null || bundles == null) {
+            return;
+        }
+
+        for (Bundle bundle : bundles) {
+            if (isInspectableBundle(bundle)) {
+                consumer.accept(bundle);
+            }
+        }
+    }
+
+    private boolean isInspectableBundle(Bundle bundle) {
+        return bundle != null && bundle.getState() >= Bundle.STARTING;
     }
 
     private Map<String, Object> toMetaTypeMap(String pid, ObjectClassDefinition objectClassDefinition) {
@@ -603,7 +648,7 @@ public class OsgiConfigService {
         List<Map<String, Object>> properties = new ArrayList<>();
         appendAttributeDefinitions(properties, objectClassDefinition.getAttributeDefinitions(ObjectClassDefinition.REQUIRED), false);
         appendAttributeDefinitions(properties, objectClassDefinition.getAttributeDefinitions(ObjectClassDefinition.OPTIONAL), true);
-        metatype.put("properties", properties);
+        metatype.put(KEY_PROPERTIES, properties);
         return metatype;
     }
 
@@ -708,7 +753,7 @@ public class OsgiConfigService {
         String type = getFileType(filename);
 
         if ("cfg".equals(type)) {
-            Object propertiesObj = content.get("properties");
+            Object propertiesObj = content.get(KEY_PROPERTIES);
 
             if (propertiesObj == null) {
                 // If no rawContent and no properties, we can't save anything meaningful.
@@ -753,7 +798,7 @@ public class OsgiConfigService {
             options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
             Yaml yaml = new Yaml(options);
             try (java.io.FileWriter writer = new java.io.FileWriter(file)) {
-                yaml.dump(content.get("properties"), writer);
+                yaml.dump(content.get(KEY_PROPERTIES), writer);
             }
         }
     }
@@ -818,24 +863,14 @@ public class OsgiConfigService {
         }
 
         String trimmedPid = pid.trim();
-        String filename = trimmedPid + ".cfg";
-        if (blacklist.contains(filename)) {
-            throw new IOException("Create denied: " + filename + " is blacklisted.");
-        }
-
-        File file = new File(karafEtcDir, filename);
-        if (file.exists()) {
-            throw new IOException("File already exists: " + filename);
-        }
-
         ObjectClassDefinition objectClassDefinition = findObjectClassDefinition(trimmedPid, locale);
         if (objectClassDefinition == null) {
             throw new IOException("No Metatype definition found for PID: " + trimmedPid);
         }
 
-        String content = buildCfgTemplate(trimmedPid, objectClassDefinition);
-        java.nio.file.Files.write(file.toPath(), content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        return filename;
+        return createMetatypeFile(trimmedPid + DEFAULT_FACTORY_FILE_EXTENSION,
+                buildCfgTemplate(trimmedPid, objectClassDefinition),
+                false);
     }
 
     public String createFactoryFileFromMetatype(String factoryPid, String identifier, Locale locale) throws IOException {
@@ -851,27 +886,27 @@ public class OsgiConfigService {
         validateFactoryIdentifier(trimmedIdentifier);
 
         String filename = trimmedFactoryPid + "-" + trimmedIdentifier + DEFAULT_FACTORY_FILE_EXTENSION;
-        if (blacklist.contains(filename) || blacklist.contains(filename + ".disabled")) {
-            throw new IOException("Create denied: " + filename + " is blacklisted.");
-        }
-        if (hasExistingFactoryInstanceFile(trimmedFactoryPid, trimmedIdentifier)) {
-            throw new IOException("File already exists: " + filename);
-        }
-
         ObjectClassDefinition objectClassDefinition = findFactoryObjectClassDefinition(trimmedFactoryPid, locale);
         if (objectClassDefinition == null) {
             throw new IOException("No Metatype factory definition found for PID: " + trimmedFactoryPid);
         }
 
-        File file = new File(karafEtcDir, filename);
-        String content = buildCfgTemplate(trimmedFactoryPid, objectClassDefinition, trimmedIdentifier);
-        java.nio.file.Files.write(file.toPath(), content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        return filename;
+        ensureFactoryFileCanBeCreated(trimmedFactoryPid, trimmedIdentifier, filename);
+        return createMetatypeFile(filename,
+                buildCfgTemplate(trimmedFactoryPid, objectClassDefinition, trimmedIdentifier),
+                true);
     }
 
     private ObjectClassDefinition findObjectClassDefinition(String pid, Locale locale) {
-        MetaTypeService currentMetaTypeService = this.metaTypeService;
-        if (currentMetaTypeService == null || pid == null || pid.isEmpty()) {
+        return findObjectClassDefinition(pid, locale, false);
+    }
+
+    private ObjectClassDefinition findFactoryObjectClassDefinition(String factoryPid, Locale locale) {
+        return findObjectClassDefinition(factoryPid, locale, true);
+    }
+
+    private ObjectClassDefinition findObjectClassDefinition(String pid, Locale locale, boolean requireFactorySupport) {
+        if (!isMetatypeLookupPossible(pid)) {
             return null;
         }
 
@@ -886,79 +921,99 @@ public class OsgiConfigService {
             return null;
         }
 
+        MetaTypeLookupContext lookupContext = createLookupContext(localeCode, bundleContext, requireFactorySupport);
         for (Bundle bundle : bundles) {
-            if (bundle == null || bundle.getState() < Bundle.STARTING) {
-                continue;
-            }
-
-            try {
-                MetaTypeInformation metaTypeInformation = currentMetaTypeService.getMetaTypeInformation(bundle);
-                if (metaTypeInformation == null) {
-                    continue;
-                }
-
-                ObjectClassDefinition objectClassDefinition = metaTypeInformation.getObjectClassDefinition(pid, localeCode);
-                if (objectClassDefinition != null) {
-                    return objectClassDefinition;
-                }
-            } catch (IllegalArgumentException e) {
-                LOGGER.debug("Metatype PID {} not found in bundle {}", pid, bundle.getSymbolicName());
-            } catch (Exception e) {
-                LOGGER.debug("Unable to read metatype for PID {} from bundle {}", pid, bundle.getSymbolicName(), e);
+            ObjectClassDefinition objectClassDefinition = findObjectClassDefinitionInBundle(bundle, pid, lookupContext);
+            if (objectClassDefinition != null) {
+                return objectClassDefinition;
             }
         }
 
         return null;
     }
 
-    private ObjectClassDefinition findFactoryObjectClassDefinition(String factoryPid, Locale locale) {
-        MetaTypeService currentMetaTypeService = this.metaTypeService;
-        if (currentMetaTypeService == null || factoryPid == null || factoryPid.isEmpty()) {
+    private boolean isMetatypeLookupPossible(String pid) {
+        return this.metaTypeService != null && pid != null && !pid.isEmpty();
+    }
+
+    private MetaTypeLookupContext createLookupContext(String localeCode, BundleContext bundleContext, boolean requireFactorySupport) {
+        Set<String> factoryCapablePids = requireFactorySupport
+                ? getManagedServiceFactoryPids(bundleContext)
+                : Collections.emptySet();
+        return new MetaTypeLookupContext(this.metaTypeService, localeCode, requireFactorySupport, factoryCapablePids);
+    }
+
+    private ObjectClassDefinition findObjectClassDefinitionInBundle(Bundle bundle, String pid, MetaTypeLookupContext lookupContext) {
+        if (!isInspectableBundle(bundle)) {
             return null;
         }
 
-        BundleContext bundleContext = getBundleContext();
-        if (bundleContext == null) {
-            return null;
-        }
-
-        String localeCode = locale != null ? locale.toString() : null;
-        Set<String> factoryCapablePids = getManagedServiceFactoryPids(bundleContext);
-        Bundle[] bundles = bundleContext.getBundles();
-        if (bundles == null) {
-            return null;
-        }
-
-        for (Bundle bundle : bundles) {
-            if (bundle == null || bundle.getState() < Bundle.STARTING) {
-                continue;
+        try {
+            MetaTypeInformation metaTypeInformation = lookupContext.metaTypeService.getMetaTypeInformation(bundle);
+            if (metaTypeInformation == null || !isEligibleMetatypePid(metaTypeInformation, pid,
+                    lookupContext.requireFactorySupport, lookupContext.factoryCapablePids)) {
+                return null;
             }
 
-            try {
-                MetaTypeInformation metaTypeInformation = currentMetaTypeService.getMetaTypeInformation(bundle);
-                if (metaTypeInformation == null) {
-                    continue;
-                }
-
-                String[] factoryPids = metaTypeInformation.getFactoryPids();
-                boolean declaredAsFactory = factoryPids != null && Arrays.stream(factoryPids).anyMatch(factoryPid::equals);
-                boolean exposedAsManagedServiceFactory = factoryCapablePids.contains(factoryPid);
-                if (!declaredAsFactory && !exposedAsManagedServiceFactory) {
-                    continue;
-                }
-
-                ObjectClassDefinition objectClassDefinition = metaTypeInformation.getObjectClassDefinition(factoryPid, localeCode);
-                if (objectClassDefinition != null) {
-                    return objectClassDefinition;
-                }
-            } catch (IllegalArgumentException e) {
-                LOGGER.debug("Metatype factory PID {} not found in bundle {}", factoryPid, bundle.getSymbolicName());
-            } catch (Exception e) {
-                LOGGER.debug("Unable to read metatype factory for PID {} from bundle {}", factoryPid, bundle.getSymbolicName(), e);
-            }
+            return metaTypeInformation.getObjectClassDefinition(pid, lookupContext.localeCode);
+        } catch (IllegalArgumentException e) {
+            LOGGER.debug(METATYPE_PID_NOT_FOUND_LOG, pid, bundle.getSymbolicName());
+        } catch (Exception e) {
+            LOGGER.debug("Unable to read metatype{} for PID {} from bundle {}",
+                    lookupContext.requireFactorySupport ? " factory" : "", pid, bundle.getSymbolicName(), e);
         }
 
         return null;
+    }
+
+    private static final class MetaTypeLookupContext {
+        private final MetaTypeService metaTypeService;
+        private final String localeCode;
+        private final boolean requireFactorySupport;
+        private final Set<String> factoryCapablePids;
+
+        private MetaTypeLookupContext(MetaTypeService metaTypeService, String localeCode,
+                                      boolean requireFactorySupport, Set<String> factoryCapablePids) {
+            this.metaTypeService = metaTypeService;
+            this.localeCode = localeCode;
+            this.requireFactorySupport = requireFactorySupport;
+            this.factoryCapablePids = factoryCapablePids;
+        }
+    }
+
+    private boolean isEligibleMetatypePid(MetaTypeInformation metaTypeInformation, String pid,
+                                          boolean requireFactorySupport, Set<String> factoryCapablePids) {
+        if (!requireFactorySupport) {
+            return true;
+        }
+
+        String[] factoryPids = metaTypeInformation.getFactoryPids();
+        boolean declaredAsFactory = factoryPids != null && Arrays.stream(factoryPids).anyMatch(pid::equals);
+        boolean exposedAsManagedServiceFactory = factoryCapablePids.contains(pid);
+        return declaredAsFactory || exposedAsManagedServiceFactory;
+    }
+
+    private void ensureFactoryFileCanBeCreated(String factoryPid, String identifier, String filename) throws IOException {
+        if (blacklist.contains(filename) || blacklist.contains(filename + ".disabled")) {
+            throw new IOException("Create denied: " + filename + " is blacklisted.");
+        }
+        if (hasExistingFactoryInstanceFile(factoryPid, identifier)) {
+            throw new IOException("File already exists: " + filename);
+        }
+    }
+
+    private String createMetatypeFile(String filename, String content, boolean allowDisabledVariant) throws IOException {
+        if (blacklist.contains(filename) || (allowDisabledVariant && blacklist.contains(filename + ".disabled"))) {
+            throw new IOException("Create denied: " + filename + " is blacklisted.");
+        }
+
+        File file = new File(karafEtcDir, filename);
+        if (file.exists()) {
+            throw new IOException("File already exists: " + filename);
+        }
+
+        java.nio.file.Files.write(file.toPath(), content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        return filename;
     }
 
     private String buildCfgTemplate(String pid, ObjectClassDefinition objectClassDefinition) {
