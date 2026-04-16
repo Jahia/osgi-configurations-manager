@@ -9,6 +9,7 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.cm.ManagedServiceFactory;
+import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.AttributeDefinition;
 import org.osgi.service.metatype.MetaTypeInformation;
 import org.osgi.service.metatype.MetaTypeService;
@@ -38,7 +39,8 @@ import java.util.stream.Collectors;
 /**
  * Service to manage OSGi configuration files in karaf/etc
  */
-@Component(service = OsgiConfigService.class, configurationPid = "org.jahia.modules.osgiconfigmanager")
+@Component(service = OsgiConfigService.class, configurationPid = OsgiConfigService.SELF_CONFIG_PID)
+@Designate(ocd = OsgiConfigService.Config.class)
 public class OsgiConfigService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OsgiConfigService.class);
@@ -52,16 +54,39 @@ public class OsgiConfigService {
     private static final String CONFIG_STATE_MODULE = "MODULE";
     private static final String CONFIG_STATE_MODULE_DEFAULT = "MODULE_DEFAULT";
     private static final String CONFIG_STATE_USER = "USER";
+    private static final String DISABLED_SUFFIX = ".disabled";
     private static final String DEFAULT_CONFIGURATION_COMMENT = "# default configuration - won't be overriden";
     private static final String DEFAULT_CONFIGURATION_PREFIX = "# default configuration";
     private static final String DO_NOT_EDIT_PREFIX = "# do not edit";
     private static final String METATYPE_PID_NOT_FOUND_LOG = "Metatype PID {} not found in bundle {}";
     private static final String INVALID_FILENAME_MESSAGE = "Invalid configuration filename: ";
+    private static final String ACTION_CREATE = "Create";
     private File karafEtcDir;
     private Set<String> blacklist = new HashSet<>();
+    private Set<String> whitelist = new HashSet<>();
     private MetaTypeService metaTypeService;
 
-    private static final String SELF_CONFIG = "org.jahia.modules.osgiconfigmanager.cfg";
+    static final String SELF_CONFIG_PID = "org.jahia.modules.osgiconfigmanager";
+    private static final String SELF_CONFIG = SELF_CONFIG_PID + ".cfg";
+    private static final String SELF_CONFIG_DISABLED = SELF_CONFIG + DISABLED_SUFFIX;
+
+    @org.osgi.service.metatype.annotations.ObjectClassDefinition(
+            name = "OSGi Configurations Manager",
+            description = "Controls the visibility and editability of OSGi configuration files exposed by this module."
+    )
+    public @interface Config {
+        @org.osgi.service.metatype.annotations.AttributeDefinition(
+                name = "Blacklisted files",
+                description = "Comma-separated configuration filenames to hide and block. Ignored when a white list is defined."
+        )
+        String filteredFiles() default "";
+
+        @org.osgi.service.metatype.annotations.AttributeDefinition(
+                name = "Whitelisted files",
+                description = "Comma-separated configuration filenames to exclusively expose. When defined, only these files remain visible and editable."
+        )
+        String allowedFiles() default "";
+    }
 
     private static final class MetatypeCollectionContext {
         private final List<Map<String, Object>> metatypes;
@@ -85,9 +110,6 @@ public class OsgiConfigService {
         } else {
             LOGGER.error("System property 'karaf.etc' not found!");
         }
-        // Initial self-protection
-        blacklist.add(SELF_CONFIG);
-        blacklist.add(SELF_CONFIG + ".disabled");
     }
 
     @Reference(service = MetaTypeService.class, cardinality = ReferenceCardinality.OPTIONAL)
@@ -105,29 +127,30 @@ public class OsgiConfigService {
     @org.osgi.service.component.annotations.Modified
     public void updateConfig(Map<String, Object> properties) {
         Set<String> newBlacklist = new HashSet<>();
-        newBlacklist.add(SELF_CONFIG);
-        newBlacklist.add(SELF_CONFIG + ".disabled");
+        Set<String> newWhitelist = new HashSet<>();
 
         if (properties != null && properties.containsKey("filteredFiles")) {
             String filteredFiles = (String) properties.get("filteredFiles");
-            if (filteredFiles != null && !filteredFiles.trim().isEmpty()) {
-                for (String f : filteredFiles.split(",")) {
-                    String trimmed = f.trim();
-                    if (!trimmed.isEmpty()) {
-                        newBlacklist.add(trimmed);
-                        newBlacklist.add(trimmed + ".disabled");
-                    }
-                }
-            }
+            addConfiguredFilenames(newBlacklist, filteredFiles);
+        }
+        if (properties != null && properties.containsKey("allowedFiles")) {
+            String allowedFiles = (String) properties.get("allowedFiles");
+            addConfiguredFilenames(newWhitelist, allowedFiles);
         }
         this.blacklist = newBlacklist;
+        this.whitelist = newWhitelist;
         LOGGER.info("Updated blacklist: {}", blacklist);
+        LOGGER.info("Updated whitelist: {}", whitelist);
     }
 
     /**
      * List all .cfg and .yml files (including disabled ones)
      */
     public List<Map<String, Object>> listFiles() {
+        return listFiles(true);
+    }
+
+    public List<Map<String, Object>> listFiles(boolean isRootUser) {
         if (karafEtcDir == null) {
             LOGGER.error("karafEtcDir is null. System property 'karaf.etc' was: {}", System.getProperty("karaf.etc"));
             return Collections.emptyList();
@@ -143,7 +166,7 @@ public class OsgiConfigService {
             String lowercaseName = name.toLowerCase();
             boolean isConfig = (lowercaseName.endsWith(".cfg") || lowercaseName.endsWith(".yml") ||
                     lowercaseName.endsWith(".cfg.disabled") || lowercaseName.endsWith(".yml.disabled"));
-            return isConfig && !blacklist.contains(name);
+            return isConfig && isFilenameAllowed(name, isRootUser);
         });
 
         if (files == null) {
@@ -159,7 +182,7 @@ public class OsgiConfigService {
                     Map<String, Object> map = new LinkedHashMap<>();
                     map.put("name", f.getName());
                     map.put("path", f.getAbsolutePath());
-                    map.put("enabled", !f.getName().endsWith(".disabled"));
+                    map.put("enabled", !f.getName().endsWith(DISABLED_SUFFIX));
                     map.put("type", getFileType(f.getName()));
                     map.put(KEY_CONFIG_STATE, readConfigStateSafely(f.toPath()));
                     return map;
@@ -168,6 +191,10 @@ public class OsgiConfigService {
     }
 
     public List<Map<String, Object>> listAvailableMetatypeConfigurations(Locale locale) {
+        return listAvailableMetatypeConfigurations(locale, true);
+    }
+
+    public List<Map<String, Object>> listAvailableMetatypeConfigurations(Locale locale, boolean isRootUser) {
         MetaTypeService currentMetaTypeService = this.metaTypeService;
         if (currentMetaTypeService == null) {
             return Collections.emptyList();
@@ -197,8 +224,8 @@ public class OsgiConfigService {
             try {
                 MetaTypeInformation metaTypeInformation = currentMetaTypeService.getMetaTypeInformation(bundle);
                 if (metaTypeInformation != null) {
-                    appendMetatypeDefinitions(context, bundle, metaTypeInformation, metaTypeInformation.getPids(), false);
-                    appendMetatypeDefinitions(context, bundle, metaTypeInformation, metaTypeInformation.getFactoryPids(), true);
+                    appendMetatypeDefinitions(context, bundle, metaTypeInformation, metaTypeInformation.getPids(), false, isRootUser);
+                    appendMetatypeDefinitions(context, bundle, metaTypeInformation, metaTypeInformation.getFactoryPids(), true, isRootUser);
                 }
             } catch (Exception e) {
                 LOGGER.debug("Unable to inspect metatype information for bundle {}", bundle.getSymbolicName(), e);
@@ -215,25 +242,27 @@ public class OsgiConfigService {
     }
 
     private void appendMetatypeDefinitions(MetatypeCollectionContext context, Bundle bundle,
-                                           MetaTypeInformation metaTypeInformation, String[] pids, boolean factory) {
+                                           MetaTypeInformation metaTypeInformation, String[] pids, boolean factory,
+                                           boolean isRootUser) {
         if (pids == null) {
             return;
         }
 
         for (String pid : pids) {
-            appendMetatypeDefinition(context, bundle, metaTypeInformation, pid, factory);
+            appendMetatypeDefinition(context, bundle, metaTypeInformation, pid, factory, isRootUser);
         }
     }
 
     private void appendMetatypeDefinition(MetatypeCollectionContext context, Bundle bundle,
-                                          MetaTypeInformation metaTypeInformation, String pid, boolean factory) {
+                                          MetaTypeInformation metaTypeInformation, String pid, boolean factory,
+                                          boolean isRootUser) {
         boolean effectiveFactory = factory || context.factoryCapablePids.contains(pid);
         if (!shouldProcessMetatypePid(context, pid, effectiveFactory)) {
             return;
         }
 
         String suggestedFilename = effectiveFactory ? buildFactoryFilenamePattern(pid) : pid + DEFAULT_FACTORY_FILE_EXTENSION;
-        if (isBlockedSimpleMetatype(suggestedFilename, effectiveFactory)) {
+        if (isBlockedSimpleMetatype(pid, suggestedFilename, effectiveFactory, isRootUser)) {
             return;
         }
 
@@ -249,7 +278,7 @@ public class OsgiConfigService {
             definition.put("bundleSymbolicName", bundle.getSymbolicName());
             definition.put("factory", effectiveFactory);
             if (effectiveFactory) {
-                List<Map<String, Object>> instances = getFactoryInstances(pid);
+                List<Map<String, Object>> instances = getFactoryInstances(pid, isRootUser);
                 definition.put("instances", instances);
                 definition.put("instanceCount", instances.size());
                 definition.put(KEY_CREATED, !instances.isEmpty());
@@ -273,8 +302,17 @@ public class OsgiConfigService {
         return context.seenPids.add(key);
     }
 
-    private boolean isBlockedSimpleMetatype(String suggestedFilename, boolean effectiveFactory) {
-        return !effectiveFactory && (blacklist.contains(suggestedFilename) || blacklist.contains(suggestedFilename + ".disabled"));
+    private boolean isBlockedSimpleMetatype(String pid, String suggestedFilename, boolean effectiveFactory, boolean isRootUser) {
+        if (isSelfConfigurationPid(pid)) {
+            return !isRootUser;
+        }
+        if (whitelist.isEmpty()) {
+            return !effectiveFactory && (blacklist.contains(suggestedFilename) || blacklist.contains(suggestedFilename + DISABLED_SUFFIX));
+        }
+        if (effectiveFactory) {
+            return !hasWhitelistedFactoryCandidate(pid);
+        }
+        return !isFilenameAllowed(suggestedFilename, isRootUser);
     }
 
     private Set<String> getManagedServiceFactoryPids(BundleContext bundleContext) {
@@ -318,14 +356,16 @@ public class OsgiConfigService {
     }
 
     public Map<String, Object> readFile(String filename) throws IOException {
-        return readFile(filename, null);
+        return readFile(filename, null, true);
     }
 
     public Map<String, Object> readFile(String filename, Locale locale) throws IOException {
+        return readFile(filename, locale, true);
+    }
+
+    public Map<String, Object> readFile(String filename, Locale locale, boolean isRootUser) throws IOException {
         String safeFilename = validateFilename(filename);
-        if (blacklist.contains(safeFilename)) {
-            throw new IOException("Access denied: " + safeFilename + " is blacklisted.");
-        }
+        ensureFilenameAllowed(safeFilename, isRootUser, "Access");
 
         Path filePath = resolveConfigPath(safeFilename);
         if (!Files.exists(filePath)) {
@@ -559,13 +599,13 @@ public class OsgiConfigService {
                 .toArray(String[]::new);
     }
 
-    private List<Map<String, Object>> getFactoryInstances(String factoryPid) {
+    private List<Map<String, Object>> getFactoryInstances(String factoryPid, boolean isRootUser) {
         if (karafEtcDir == null || factoryPid == null || factoryPid.isEmpty()) {
             return Collections.emptyList();
         }
 
         String prefix = factoryPid + "-";
-        File[] files = karafEtcDir.listFiles((dir, name) -> name.startsWith(prefix) && isSupportedConfigFilename(name) && !blacklist.contains(name));
+        File[] files = karafEtcDir.listFiles((dir, name) -> name.startsWith(prefix) && isSupportedConfigFilename(name) && isFilenameAllowed(name, isRootUser));
         if (files == null || files.length == 0) {
             return Collections.emptyList();
         }
@@ -588,7 +628,7 @@ public class OsgiConfigService {
         Map<String, Object> instance = new LinkedHashMap<>();
         instance.put("identifier", identifier);
         instance.put(KEY_FILENAME, file.getName());
-        instance.put("enabled", !file.getName().endsWith(".disabled"));
+        instance.put("enabled", !file.getName().endsWith(DISABLED_SUFFIX));
         instance.put("type", getFileType(file.getName()));
         return instance;
     }
@@ -736,10 +776,12 @@ public class OsgiConfigService {
 
     @SuppressWarnings("unchecked")
     public void saveFile(String filename, Map<String, Object> content) throws IOException {
+        saveFile(filename, content, true);
+    }
+
+    public void saveFile(String filename, Map<String, Object> content, boolean isRootUser) throws IOException {
         String safeFilename = validateFilename(filename);
-        if (blacklist.contains(safeFilename)) {
-            throw new IOException("Save denied: " + safeFilename + " is blacklisted.");
-        }
+        ensureFilenameAllowed(safeFilename, isRootUser, "Save");
 
         Path filePath = resolveConfigPath(safeFilename);
 
@@ -759,58 +801,14 @@ public class OsgiConfigService {
         // disk.
         // This allows the frontend to handle encryption, formatting, and comments.
         if (content.containsKey("rawContent")) {
-            String raw = (String) content.get("rawContent");
-            // Ensure we don't write null if specifically sent as null? Frontend should send
-            // string.
-            if (raw == null)
-                raw = "";
-            Files.write(filePath, raw.getBytes(StandardCharsets.UTF_8));
+            writeRawContent(filePath, (String) content.get("rawContent"));
             return;
         }
 
         String type = getFileType(safeFilename);
 
         if ("cfg".equals(type)) {
-            Object propertiesObj = content.get(KEY_PROPERTIES);
-
-            if (propertiesObj == null) {
-                // If no rawContent and no properties, we can't save anything meaningful.
-                // To avoid NPE, we might warn or write empty.
-                LOGGER.warn("No properties or rawContent provided for .cfg save. Writing empty file.");
-                try (Writer writer = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8);
-                     java.io.BufferedWriter bufferedWriter = new java.io.BufferedWriter(writer)) {
-                    bufferedWriter.write("");
-                }
-                return;
-            }
-
-            // Handle legacy map format if for some reason we get it (backward compat)
-            if (propertiesObj instanceof Map) {
-                Properties props = new Properties();
-                props.putAll((Map<String, String>) propertiesObj);
-                try (FileOutputStream out = new FileOutputStream(filePath.toFile())) {
-                    props.store(out, "Modified by OSGi Configurations Manager");
-                }
-                return;
-            }
-
-            // New List format
-            List<Map<String, Object>> entries = (List<Map<String, Object>>) propertiesObj;
-            try (Writer writer = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8);
-                 java.io.BufferedWriter bufferedWriter = new java.io.BufferedWriter(writer)) {
-                for (Map<String, Object> entry : entries) {
-                    String entryType = (String) entry.get("type");
-                    if ("comment".equals(entryType)) {
-                        bufferedWriter.write((String) entry.get("value"));
-                        bufferedWriter.newLine();
-                    } else if ("empty".equals(entryType)) {
-                        bufferedWriter.newLine();
-                    } else if ("property".equals(entryType)) {
-                        bufferedWriter.write(entry.get("key") + " = " + entry.get("value"));
-                        bufferedWriter.newLine();
-                    }
-                }
-            }
+            saveCfgContent(filePath, content.get(KEY_PROPERTIES));
         } else if ("yml".equals(type)) {
             // YML fallback if no rawContent sent (unlikely given frontend logic, but good
             // for completeness)
@@ -824,10 +822,12 @@ public class OsgiConfigService {
     }
 
     public void toggleFileStatus(String filename) throws IOException {
+        toggleFileStatus(filename, true);
+    }
+
+    public void toggleFileStatus(String filename, boolean isRootUser) throws IOException {
         String safeFilename = validateFilename(filename);
-        if (blacklist.contains(safeFilename)) {
-            throw new IOException("Toggle denied: " + safeFilename + " is blacklisted.");
-        }
+        ensureFilenameAllowed(safeFilename, isRootUser, "Toggle");
 
         Path filePath = resolveConfigPath(safeFilename);
         if (!Files.exists(filePath)) {
@@ -835,10 +835,10 @@ public class OsgiConfigService {
         }
 
         String newName;
-        if (safeFilename.endsWith(".disabled")) {
-            newName = safeFilename.substring(0, safeFilename.length() - ".disabled".length());
+        if (safeFilename.endsWith(DISABLED_SUFFIX)) {
+            newName = safeFilename.substring(0, safeFilename.length() - DISABLED_SUFFIX.length());
         } else {
-            newName = safeFilename + ".disabled";
+            newName = safeFilename + DISABLED_SUFFIX;
         }
 
         Path newFilePath = resolveConfigPath(newName);
@@ -850,10 +850,12 @@ public class OsgiConfigService {
     }
 
     public void deleteFile(String filename) throws IOException {
+        deleteFile(filename, true);
+    }
+
+    public void deleteFile(String filename, boolean isRootUser) throws IOException {
         String safeFilename = validateFilename(filename);
-        if (blacklist.contains(safeFilename)) {
-            throw new IOException("Delete denied: " + safeFilename + " is blacklisted.");
-        }
+        ensureFilenameAllowed(safeFilename, isRootUser, "Delete");
 
         Path filePath = resolveConfigPath(safeFilename);
         if (Files.exists(filePath)) {
@@ -862,10 +864,12 @@ public class OsgiConfigService {
     }
 
     public void createFile(String filename) throws IOException {
+        createFile(filename, true);
+    }
+
+    public void createFile(String filename, boolean isRootUser) throws IOException {
         String safeFilename = validateFilename(filename);
-        if (blacklist.contains(safeFilename)) {
-            throw new IOException("Create denied: " + safeFilename + " is blacklisted.");
-        }
+        ensureFilenameAllowed(safeFilename, isRootUser, ACTION_CREATE);
 
         Path filePath = resolveConfigPath(safeFilename);
         if (Files.exists(filePath)) {
@@ -875,10 +879,12 @@ public class OsgiConfigService {
     }
 
     public void markAsDefaultConfiguration(String filename) throws IOException {
+        markAsDefaultConfiguration(filename, true);
+    }
+
+    public void markAsDefaultConfiguration(String filename, boolean isRootUser) throws IOException {
         String safeFilename = validateFilename(filename);
-        if (blacklist.contains(safeFilename)) {
-            throw new IOException("Update denied: " + safeFilename + " is blacklisted.");
-        }
+        ensureFilenameAllowed(safeFilename, isRootUser, "Update");
 
         Path filePath = resolveConfigPath(safeFilename);
         if (!Files.exists(filePath)) {
@@ -901,11 +907,16 @@ public class OsgiConfigService {
     }
 
     public String createFileFromMetatype(String pid, Locale locale) throws IOException {
+        return createFileFromMetatype(pid, locale, true);
+    }
+
+    public String createFileFromMetatype(String pid, Locale locale, boolean isRootUser) throws IOException {
         if (pid == null || pid.trim().isEmpty()) {
             throw new IOException("PID is required");
         }
 
         String trimmedPid = pid.trim();
+        ensurePidAllowed(trimmedPid, isRootUser);
         ObjectClassDefinition objectClassDefinition = findObjectClassDefinition(trimmedPid, locale);
         if (objectClassDefinition == null) {
             throw new IOException("No Metatype definition found for PID: " + trimmedPid);
@@ -913,10 +924,15 @@ public class OsgiConfigService {
 
         return createMetatypeFile(trimmedPid + DEFAULT_FACTORY_FILE_EXTENSION,
                 buildCfgTemplate(trimmedPid, objectClassDefinition),
-                false);
+                false,
+                isRootUser);
     }
 
     public String createFactoryFileFromMetatype(String factoryPid, String identifier, Locale locale) throws IOException {
+        return createFactoryFileFromMetatype(factoryPid, identifier, locale, true);
+    }
+
+    public String createFactoryFileFromMetatype(String factoryPid, String identifier, Locale locale, boolean isRootUser) throws IOException {
         if (factoryPid == null || factoryPid.trim().isEmpty()) {
             throw new IOException("Factory PID is required");
         }
@@ -927,6 +943,7 @@ public class OsgiConfigService {
         String trimmedFactoryPid = factoryPid.trim();
         String trimmedIdentifier = identifier.trim();
         validateFactoryIdentifier(trimmedIdentifier);
+        ensurePidAllowed(trimmedFactoryPid, isRootUser);
 
         String filename = trimmedFactoryPid + "-" + trimmedIdentifier + DEFAULT_FACTORY_FILE_EXTENSION;
         ObjectClassDefinition objectClassDefinition = findFactoryObjectClassDefinition(trimmedFactoryPid, locale);
@@ -934,10 +951,11 @@ public class OsgiConfigService {
             throw new IOException("No Metatype factory definition found for PID: " + trimmedFactoryPid);
         }
 
-        ensureFactoryFileCanBeCreated(trimmedFactoryPid, trimmedIdentifier, filename);
+        ensureFactoryFileCanBeCreated(trimmedFactoryPid, trimmedIdentifier, filename, isRootUser);
         return createMetatypeFile(filename,
                 buildCfgTemplate(trimmedFactoryPid, objectClassDefinition, trimmedIdentifier),
-                true);
+                true,
+                isRootUser);
     }
 
     private ObjectClassDefinition findObjectClassDefinition(String pid, Locale locale) {
@@ -1036,18 +1054,18 @@ public class OsgiConfigService {
         return declaredAsFactory || exposedAsManagedServiceFactory;
     }
 
-    private void ensureFactoryFileCanBeCreated(String factoryPid, String identifier, String filename) throws IOException {
-        if (blacklist.contains(filename) || blacklist.contains(filename + ".disabled")) {
-            throw new IOException("Create denied: " + filename + " is blacklisted.");
-        }
+    private void ensureFactoryFileCanBeCreated(String factoryPid, String identifier, String filename, boolean isRootUser) throws IOException {
+        ensurePidAllowed(factoryPid, isRootUser);
+        ensureFilenameAllowed(filename, isRootUser, ACTION_CREATE);
         if (hasExistingFactoryInstanceFile(factoryPid, identifier)) {
             throw new IOException("File already exists: " + filename);
         }
     }
 
-    private String createMetatypeFile(String filename, String content, boolean allowDisabledVariant) throws IOException {
-        if (blacklist.contains(filename) || (allowDisabledVariant && blacklist.contains(filename + ".disabled"))) {
-            throw new IOException("Create denied: " + filename + " is blacklisted.");
+    private String createMetatypeFile(String filename, String content, boolean allowDisabledVariant, boolean isRootUser) throws IOException {
+        ensureFilenameAllowed(filename, isRootUser, ACTION_CREATE);
+        if (allowDisabledVariant) {
+            ensureFilenameAllowed(filename + DISABLED_SUFFIX, isRootUser, ACTION_CREATE);
         }
 
         Path filePath = resolveConfigPath(filename);
@@ -1217,10 +1235,124 @@ public class OsgiConfigService {
         return SUPPORTED_CONFIG_EXTENSIONS.stream().anyMatch(lowercaseName::endsWith);
     }
 
+    private void addConfiguredFilenames(Set<String> target, String csv) {
+        if (csv == null || csv.trim().isEmpty()) {
+            return;
+        }
+
+        for (String entry : csv.split(",")) {
+            addConfigNameAndVariant(target, entry.trim());
+        }
+    }
+
+    private void addConfigNameAndVariant(Set<String> target, String filename) {
+        if (filename == null || filename.isEmpty()) {
+            return;
+        }
+        target.add(filename);
+        if (filename.endsWith(DISABLED_SUFFIX)) {
+            target.add(filename.substring(0, filename.length() - DISABLED_SUFFIX.length()));
+        } else if (isSupportedConfigFilename(filename) && !filename.endsWith(DISABLED_SUFFIX)) {
+            target.add(filename + DISABLED_SUFFIX);
+        }
+    }
+
+    private void ensurePidAllowed(String pid, boolean isRootUser) throws IOException {
+        if (isSelfConfigurationPid(pid) && !isRootUser) {
+            throw new IOException("Access denied: " + pid + " is reserved for the root user.");
+        }
+    }
+
+    private void ensureFilenameAllowed(String filename, boolean isRootUser, String action) throws IOException {
+        if (!isFilenameAllowed(filename, isRootUser)) {
+            String reason = whitelist.isEmpty() ? "is blacklisted or reserved." : "is not permitted by the active white list.";
+            throw new IOException(action + " denied: " + filename + " " + reason);
+        }
+    }
+
+    private boolean isFilenameAllowed(String filename, boolean isRootUser) {
+        if (isSelfConfigurationFilename(filename)) {
+            return isRootUser;
+        }
+        if (!whitelist.isEmpty()) {
+            return whitelist.contains(filename);
+        }
+        return !blacklist.contains(filename);
+    }
+
+    private boolean hasWhitelistedFactoryCandidate(String factoryPid) {
+        if (whitelist.isEmpty()) {
+            return true;
+        }
+        String prefix = factoryPid + "-";
+        return whitelist.stream().anyMatch(entry -> entry.startsWith(prefix));
+    }
+
+    private boolean isSelfConfigurationPid(String pid) {
+        return SELF_CONFIG_PID.equals(pid);
+    }
+
+    private boolean isSelfConfigurationFilename(String filename) {
+        return SELF_CONFIG.equals(filename) || SELF_CONFIG_DISABLED.equals(filename);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void saveCfgContent(Path filePath, Object propertiesObj) throws IOException {
+        if (propertiesObj == null) {
+            LOGGER.warn("No properties or rawContent provided for .cfg save. Writing empty file.");
+            writeEmptyFile(filePath);
+            return;
+        }
+
+        if (propertiesObj instanceof Map) {
+            saveLegacyCfgProperties(filePath, (Map<String, String>) propertiesObj);
+            return;
+        }
+
+        saveCfgEntries(filePath, (List<Map<String, Object>>) propertiesObj);
+    }
+
+    private void writeRawContent(Path filePath, String raw) throws IOException {
+        Files.write(filePath, (raw == null ? "" : raw).getBytes(StandardCharsets.UTF_8));
+    }
+
+    private void writeEmptyFile(Path filePath) throws IOException {
+        try (Writer writer = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8);
+             java.io.BufferedWriter bufferedWriter = new java.io.BufferedWriter(writer)) {
+            bufferedWriter.write("");
+        }
+    }
+
+    private void saveLegacyCfgProperties(Path filePath, Map<String, String> properties) throws IOException {
+        Properties props = new Properties();
+        props.putAll(properties);
+        try (FileOutputStream out = new FileOutputStream(filePath.toFile())) {
+            props.store(out, "Modified by OSGi Configurations Manager");
+        }
+    }
+
+    private void saveCfgEntries(Path filePath, List<Map<String, Object>> entries) throws IOException {
+        try (Writer writer = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8);
+             java.io.BufferedWriter bufferedWriter = new java.io.BufferedWriter(writer)) {
+            for (Map<String, Object> entry : entries) {
+                String entryType = (String) entry.get("type");
+                if ("comment".equals(entryType)) {
+                    bufferedWriter.write((String) entry.get("value"));
+                    bufferedWriter.newLine();
+                } else if ("empty".equals(entryType)) {
+                    bufferedWriter.newLine();
+                } else if ("property".equals(entryType)) {
+                    bufferedWriter.write(entry.get("key") + " = " + entry.get("value"));
+                    bufferedWriter.newLine();
+                }
+            }
+        }
+    }
+
     private String normalizeConfigFilename(String filename) {
         String normalizedName = filename;
-        if (normalizedName.endsWith(".disabled")) {
-            normalizedName = normalizedName.substring(0, normalizedName.length() - ".disabled".length());
+        if (normalizedName.endsWith(DISABLED_SUFFIX)) {
+            normalizedName = normalizedName.substring(0, normalizedName.length() - DISABLED_SUFFIX.length());
         }
         if (normalizedName.endsWith(".cfg")) {
             return normalizedName.substring(0, normalizedName.length() - ".cfg".length());

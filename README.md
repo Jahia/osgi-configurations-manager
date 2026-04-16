@@ -10,7 +10,11 @@ A Jahia module to manage OSGi configurations directly from the Jahia Administrat
     -   Delete existing configuration files.
     -   Enable/Disable configurations (renaming to/from `.disabled`).
     -   **Advanced Search**: Filter configurations by name or perform a **Deep Search** looking into the file content.
-    -   **File Filtering (Blacklist)**: Hide sensitive configuration files from the UI (see Configuration section).
+    -   **File Filtering**:
+        -   Blacklist specific files from the UI.
+        -   Optionally switch to a white list and expose only an explicit subset of configuration files.
+        -   When a white list is defined, it takes precedence over the black list.
+        -   The manager's own configuration file is only visible and editable for the `root` user.
 
 -   **Configuration Editing**:
     -   **Visual Editor**: Structured view for `.cfg` files.
@@ -45,6 +49,10 @@ A Jahia module to manage OSGi configurations directly from the Jahia Administrat
     -   Automatic decryption of values for viewing (if authorized).
     -   **Audit Logging**: Every sensitive action (save, delete, toggle) is logged with the username of the performer for security auditing.
     -   **Safe Disable Flow**: Disabling a configuration now shows a warning dialog before renaming to `.disabled`.
+    -   **Jahia Configuration State Awareness**:
+        -   Distinguish `MODULE`, `MODULE_DEFAULT`, and `USER` configurations in the UI.
+        -   Show a dedicated warning when editing module-managed files whose changes may be overwritten.
+        -   Allow marking eligible user-managed files as `MODULE_DEFAULT` directly from the UI.
 
 -   **User Experience**:
     -   Built with **Jahia Moonstone** design system for a native look and feel.
@@ -54,12 +62,33 @@ A Jahia module to manage OSGi configurations directly from the Jahia Administrat
 
 ## Configuration
 
-You can filter sensitive files from the manager by creating/editing `org.jahia.modules.osgiconfigmanager.cfg` in your `karaf/etc` folder:
+You can filter the files exposed by the manager by creating/editing `org.jahia.modules.osgiconfigmanager.cfg` in your `karaf/etc` folder.
+
+This configuration is:
+
+-   exposed through OSGi Metatype
+-   only visible to the `root` user
+-   only creatable/editable by the `root` user when it does not exist yet
+
+### Blacklist example
 
 ```properties
 # Comma-separated list of filenames to hide from the manager
 filteredFiles = my-secret-config.cfg, another-file.yml
 ```
+
+### White list example
+
+```properties
+# Comma-separated list of filenames to expose in the manager
+allowedFiles = org.apache.felix.eventadmin.impl.EventAdmin.cfg, org.apache.karaf.features.cfg
+```
+
+When `allowedFiles` is defined:
+
+-   only the listed files are visible in the manager
+-   only the listed files can be read, edited, uploaded, created or toggled through the tool
+-   `filteredFiles` becomes effectively obsolete for the UI because the white list takes precedence
 
 ## Using Encrypted Properties in Java
 
@@ -116,7 +145,7 @@ public class MyService {
     cd tests
     ./run-e2e-local.sh
     ```
-3.  Deploy the generated JAR file (`target/osgi-configurations-manager-1.0.0-SNAPSHOT.jar`) to your Jahia instance.
+3.  Deploy the generated JAR file (`target/osgi-configurations-manager-1.0.2-SNAPSHOT.jar`) to your Jahia instance.
 
 ## Usage
 
@@ -127,6 +156,10 @@ public class MyService {
     - create a file from an available Metatype PID,
     - or create a new factory instance from a factory PID.
 4.  For `.cfg` and supported `.yml` files, switch to the raw editor to access Metatype-powered completion, hover documentation and property insertion.
+5.  Use the file-state badges in the sidebar and editor header to quickly identify whether a configuration is:
+    - module-managed (`MODULE`)
+    - a module default whose local changes are preserved (`MODULE_DEFAULT`)
+    - or instance-managed (`USER`)
 
 ## Metatype-backed Editing
 

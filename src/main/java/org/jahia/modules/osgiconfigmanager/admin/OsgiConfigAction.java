@@ -56,6 +56,7 @@ public class OsgiConfigAction extends Action {
         }
 
         HttpServletResponse response = renderContext.getResponse();
+        boolean isRootUser = "root".equals(renderContext.getUser().getName());
 
         String method = req.getMethod();
         Map<String, Object> result = new LinkedHashMap<>();
@@ -67,13 +68,13 @@ public class OsgiConfigAction extends Action {
                     // Read specific file
                     LOGGER.debug("[AUDIT] User: {} | Action: read | File: {}", renderContext.getUser().getName(),
                             filename);
-                    Map<String, Object> fileContent = configService.readFile(filename, req.getLocale());
+                    Map<String, Object> fileContent = configService.readFile(filename, req.getLocale(), isRootUser);
                     result.put("data", fileContent);
                 } else if ("availableMetatypes".equals(req.getParameter(PARAM_ACTION))) {
-                    result.put("metatypes", configService.listAvailableMetatypeConfigurations(req.getLocale()));
+                    result.put("metatypes", configService.listAvailableMetatypeConfigurations(req.getLocale(), isRootUser));
                 } else {
                     // List all files
-                    List<Map<String, Object>> allFiles = configService.listFiles();
+                    List<Map<String, Object>> allFiles = configService.listFiles(isRootUser);
                     String search = req.getParameter("search");
 
                     if (search != null && !search.isEmpty()) {
@@ -85,7 +86,7 @@ public class OsgiConfigAction extends Action {
                             String name = (String) file.get("name");
                             try {
                                 // For search, we need to read the content.
-                                Map<String, Object> content = configService.readFile(name);
+                                Map<String, Object> content = configService.readFile(name, req.getLocale(), isRootUser);
                                 String raw = (String) content.get("rawContent");
 
                                 boolean nameMatch = name.toLowerCase().contains(lowerSearch);
@@ -147,26 +148,26 @@ public class OsgiConfigAction extends Action {
                     if (payload.containsKey("rawContent")) {
                         contentMap.put("rawContent", payload.get("rawContent"));
                     }
-                    configService.saveFile(filename, contentMap);
+                    configService.saveFile(filename, contentMap, isRootUser);
                     result.put("status", "saved");
                 } else if ("toggle".equals(actionType)) { // Enable/Disable
-                    configService.toggleFileStatus(filename);
+                    configService.toggleFileStatus(filename, isRootUser);
                     result.put("status", "toggled");
                 } else if ("delete".equals(actionType)) {
-                    configService.deleteFile(filename);
+                    configService.deleteFile(filename, isRootUser);
                     result.put("status", "deleted");
                 } else if ("markAsDefault".equals(actionType)) {
-                    configService.markAsDefaultConfiguration(filename);
+                    configService.markAsDefaultConfiguration(filename, isRootUser);
                     result.put("status", "updated");
                 } else if ("create".equals(actionType)) {
-                    configService.createFile(filename);
+                    configService.createFile(filename, isRootUser);
                     result.put("status", STATUS_CREATED);
                 } else if ("createFromMetatype".equals(actionType)) {
                     String pid = (String) payload.get("pid");
                     String instanceIdentifier = (String) payload.get("instanceIdentifier");
                     String createdFilename = instanceIdentifier != null && !instanceIdentifier.trim().isEmpty()
-                            ? configService.createFactoryFileFromMetatype(pid, instanceIdentifier, req.getLocale())
-                            : configService.createFileFromMetatype(pid, req.getLocale());
+                            ? configService.createFactoryFileFromMetatype(pid, instanceIdentifier, req.getLocale(), isRootUser)
+                            : configService.createFileFromMetatype(pid, req.getLocale(), isRootUser);
                     result.put("status", STATUS_CREATED);
                     result.put(PARAM_FILENAME, createdFilename);
                 } else if ("encrypt".equals(actionType)) {
