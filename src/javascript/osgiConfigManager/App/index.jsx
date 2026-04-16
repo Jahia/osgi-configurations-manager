@@ -175,6 +175,8 @@ const AppContent = () => {
                                                         value={rawContent}
                                                         onChange={handleRawUpdate}
                                                         onValidate={setIsYamlValid}
+                                                        metatypeDefinition={metatypeInfo}
+                                                        filename={selectedFile.name}
                                                     />
                                                 ) : (selectedFile.name.endsWith('.cfg') || selectedFile.name.endsWith('.cfg.disabled')) ? (
                                                     isRawMode ? (

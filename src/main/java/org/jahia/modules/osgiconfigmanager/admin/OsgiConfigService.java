@@ -290,7 +290,7 @@ public class OsgiConfigService {
                 java.nio.charset.StandardCharsets.UTF_8);
         result.put("rawContent", rawContent);
 
-        if ("cfg".equals(type)) {
+        if ("cfg".equals(type) || "yml".equals(type)) {
             String pid = resolveMetatypePid(filename, locale);
             result.put("pid", pid);
 
@@ -298,7 +298,9 @@ public class OsgiConfigService {
             if (metaTypeDefinition != null) {
                 result.put("metatype", metaTypeDefinition);
             }
+        }
 
+        if ("cfg".equals(type)) {
             List<Map<String, String>> entries = new ArrayList<>();
             try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.FileReader(file))) {
                 String line;

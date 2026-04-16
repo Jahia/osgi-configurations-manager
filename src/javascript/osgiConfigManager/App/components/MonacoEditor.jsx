@@ -223,6 +223,112 @@ const extractExistingPropertyKeys = (text = '') => {
     return keys;
 };
 
+const getYamlTopLevelEntry = (line = '', lineNumber = 1) => {
+    const trailingTrimmedLine = line.replace(/\s+$/, '');
+    const trimmed = trailingTrimmedLine.trim();
+
+    if (!trimmed || trimmed.startsWith('#')) {
+        return null;
+    }
+
+    const leadingIndent = trailingTrimmedLine.length - trailingTrimmedLine.trimStart().length;
+    if (leadingIndent > 0) {
+        return null;
+    }
+
+    const content = trailingTrimmedLine.slice(leadingIndent);
+    if (content.startsWith('-')) {
+        return null;
+    }
+
+    const colonIndex = content.indexOf(':');
+    if (colonIndex <= 0) {
+        return null;
+    }
+
+    const key = content.substring(0, colonIndex).trim();
+    if (!key) {
+        return null;
+    }
+
+    return {
+        key,
+        lineNumber,
+        startColumn: leadingIndent + 1,
+        endColumn: leadingIndent + key.length + 1,
+        separatorColumn: leadingIndent + colonIndex + 1,
+        line: trailingTrimmedLine
+    };
+};
+
+const extractExistingYamlTopLevelKeys = (text = '') => {
+    const keys = new Set();
+    text.split('\n').forEach((line, index) => {
+        const entry = getYamlTopLevelEntry(line, index + 1);
+        if (entry?.key) {
+            keys.add(entry.key);
+        }
+    });
+    return keys;
+};
+
+const getYamlContext = (line, column) => {
+    const leadingIndent = line.length - line.trimStart().length;
+    const trimmed = line.trim();
+
+    if (trimmed.startsWith('#') || leadingIndent > 0) {
+        return null;
+    }
+
+    const content = line.slice(leadingIndent);
+    if (content.trimStart().startsWith('-')) {
+        return null;
+    }
+
+    const colonIndex = content.indexOf(':');
+    if (trimmed === '' || colonIndex === -1 || column - 1 <= leadingIndent + colonIndex) {
+        const keyStart = leadingIndent + 1;
+        return {
+            kind: 'key',
+            key: line.slice(keyStart - 1, Math.max(keyStart - 1, column - 1)).trim(),
+            range: {
+                startColumn: keyStart,
+                endColumn: Math.max(keyStart, column)
+            }
+        };
+    }
+
+    const key = content.substring(0, colonIndex).trim();
+    const valuePrefix = content.substring(colonIndex + 1, Math.max(colonIndex + 1, column - leadingIndent - 1));
+    const leadingWhitespace = (valuePrefix.match(/^\s*/) || [''])[0].length;
+    const valueStartColumn = leadingIndent + colonIndex + leadingWhitespace + 2;
+
+    return {
+        kind: 'value',
+        key,
+        range: {
+            startColumn: valueStartColumn,
+            endColumn: Math.max(valueStartColumn, column)
+        }
+    };
+};
+
+const getYamlHoverContext = (model, position) => {
+    const entry = getYamlTopLevelEntry(model.getLineContent(position.lineNumber), position.lineNumber);
+    if (!entry) {
+        return null;
+    }
+
+    if (position.column < entry.startColumn || position.column > entry.endColumn) {
+        return null;
+    }
+
+    return {
+        key: entry.key,
+        range: new monaco.Range(position.lineNumber, entry.startColumn, position.lineNumber, entry.endColumn)
+    };
+};
+
 const formatDefaultValue = property => {
     const defaultValues = Array.isArray(property?.defaultValues) ? property.defaultValues.filter(Boolean) : [];
     return defaultValues.join(', ');
@@ -340,6 +446,44 @@ const getInsertionText = property => {
     return `${property.id} = ${defaultValue}`;
 };
 
+const formatYamlScalar = (value, property) => {
+    if (value === undefined || value === null) {
+        return '';
+    }
+
+    const stringValue = String(value);
+    if (stringValue === '') {
+        return "''";
+    }
+
+    const type = property?.type;
+    if (['boolean', 'byte', 'short', 'integer', 'long', 'float', 'double'].includes(type)) {
+        return stringValue;
+    }
+
+    if (/^[A-Za-z0-9._/-]+$/.test(stringValue)) {
+        return stringValue;
+    }
+
+    return JSON.stringify(stringValue);
+};
+
+const getYamlInsertionText = property => {
+    const defaultValues = Array.isArray(property?.defaultValues) ? property.defaultValues.filter(value => value !== undefined && value !== null) : [];
+    const isMultiValued = property?.cardinality !== 0 || defaultValues.length > 1;
+
+    if (isMultiValued) {
+        if (defaultValues.length > 0) {
+            return `${property.id}:\n${defaultValues.map(value => `  - ${formatYamlScalar(value, property)}`).join('\n')}`;
+        }
+
+        return `${property.id}:\n  - `;
+    }
+
+    const defaultValue = defaultValues[0];
+    return `${property.id}: ${defaultValue !== undefined ? formatYamlScalar(defaultValue, property) : ''}`;
+};
+
 const getLocalizedTypeLabel = (type, t) => {
     if (!type) {
         return t('editor.metatype.suggestion.types.string');
@@ -454,6 +598,13 @@ const getValueSuggestions = (property, t) => {
     return suggestions;
 };
 
+const getYamlValueSuggestions = (property, t) => (
+    getValueSuggestions(property, t).map(suggestion => ({
+        ...suggestion,
+        insertText: formatYamlScalar(suggestion.insertText, property)
+    }))
+);
+
 export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', onSwitchMode, metatypeDefinition, filename }) => {
     const { t } = useTranslation('osgi-configurations-manager');
     const containerRef = useRef(null);
@@ -461,7 +612,9 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
     const validatePropertiesRef = useRef(() => {});
     const [showPropertyPanel, setShowPropertyPanel] = useState(false);
     const [propertySearch, setPropertySearch] = useState('');
-    const hasMetatype = language === 'properties' && Array.isArray(metatypeDefinition?.properties) && metatypeDefinition.properties.length > 0;
+    const supportsMetatypeAssistance = (language === 'properties' || language === 'yaml') &&
+        Array.isArray(metatypeDefinition?.properties) &&
+        metatypeDefinition.properties.length > 0;
     const propertyMap = useMemo(() => {
         const entries = Array.isArray(metatypeDefinition?.properties)
             ? metatypeDefinition.properties.map(property => [property.id, property])
@@ -469,10 +622,12 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
         return new Map(entries);
     }, [metatypeDefinition]);
     const propertyMapRef = useRef(propertyMap);
-    const hasMetatypeRef = useRef(hasMetatype);
-    const existingKeys = useMemo(() => extractExistingPropertyKeys(value), [value]);
+    const hasMetatypeRef = useRef(supportsMetatypeAssistance);
+    const existingKeys = useMemo(() => (
+        language === 'yaml' ? extractExistingYamlTopLevelKeys(value) : extractExistingPropertyKeys(value)
+    ), [language, value]);
     const filteredProperties = useMemo(() => {
-        if (!hasMetatype) {
+        if (!supportsMetatypeAssistance) {
             return [];
         }
 
@@ -500,7 +655,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
 
             return haystack.includes(search);
         });
-    }, [hasMetatype, metatypeDefinition, propertySearch]);
+    }, [supportsMetatypeAssistance, metatypeDefinition, propertySearch]);
 
     useEffect(() => {
         setPropertySearch('');
@@ -509,12 +664,22 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
 
     useEffect(() => {
         propertyMapRef.current = propertyMap;
-        hasMetatypeRef.current = hasMetatype;
+        hasMetatypeRef.current = supportsMetatypeAssistance;
 
-        if (language === 'properties' && editorRef.current) {
+        if ((language === 'properties' || language === 'yaml') && editorRef.current) {
             validatePropertiesRef.current();
         }
-    }, [hasMetatype, language, propertyMap, t]);
+    }, [supportsMetatypeAssistance, language, propertyMap, t]);
+
+    useEffect(() => {
+        if (!editorRef.current) {
+            return;
+        }
+
+        editorRef.current.updateOptions({
+            wordBasedSuggestions: (language === 'properties' || (language === 'yaml' && supportsMetatypeAssistance)) ? 'off' : 'matchingDocuments'
+        });
+    }, [language, supportsMetatypeAssistance]);
 
     useEffect(() => {
         if (containerRef.current) {
@@ -556,16 +721,93 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
             let markerSubscription = { dispose: () => { } };
 
             if (language === 'yaml') {
-                markerSubscription = monaco.editor.onDidChangeMarkers(() => {
-                    const model = editorRef.current.getModel();
-                    if (model) {
-                        const markers = monaco.editor.getModelMarkers({ owner: 'yaml', resource: model.uri });
-                        const hasErrors = markers.some(marker => marker.severity === monaco.MarkerSeverity.Error);
-                        if (onValidate) {
-                            onValidate(!hasErrors);
-                        }
+                const validateYamlMetatype = () => {
+                    const model = editorRef.current?.getModel();
+                    if (!model) {
+                        return;
                     }
+
+                    const currentPropertyMap = propertyMapRef.current;
+                    const currentHasMetatype = hasMetatypeRef.current;
+                    const markers = [];
+                    const seenKeys = new Map();
+
+                    if (currentHasMetatype) {
+                        model.getValue().split('\n').forEach((line, index) => {
+                            const entry = getYamlTopLevelEntry(line, index + 1);
+                            if (!entry) {
+                                return;
+                            }
+
+                            if (seenKeys.has(entry.key)) {
+                                markers.push({
+                                    severity: monaco.MarkerSeverity.Warning,
+                                    startLineNumber: entry.lineNumber,
+                                    startColumn: entry.startColumn,
+                                    endLineNumber: entry.lineNumber,
+                                    endColumn: line.length + 1,
+                                    message: t('editor.validation.duplicateKey', { key: entry.key })
+                                });
+                            } else {
+                                seenKeys.set(entry.key, entry.lineNumber);
+                            }
+
+                            if (!currentPropertyMap.has(entry.key)) {
+                                markers.push({
+                                    severity: monaco.MarkerSeverity.Warning,
+                                    startLineNumber: entry.lineNumber,
+                                    startColumn: entry.startColumn,
+                                    endLineNumber: entry.lineNumber,
+                                    endColumn: line.length + 1,
+                                    message: t('editor.validation.unknownMetatypeProperty', { key: entry.key })
+                                });
+                            }
+                        });
+                    }
+
+                    monaco.editor.setModelMarkers(model, 'yaml-metatype', markers);
+
+                    if (onValidate) {
+                        const allMarkers = monaco.editor.getModelMarkers({ resource: model.uri });
+                        const hasErrors = allMarkers.some(marker => marker.severity === monaco.MarkerSeverity.Error);
+                        onValidate(!hasErrors);
+                    }
+                };
+
+                validatePropertiesRef.current = validateYamlMetatype;
+                validateYamlMetatype();
+
+                subscription.dispose();
+
+                const changeListener = editorRef.current.onDidChangeModelContent(() => {
+                    validateYamlMetatype();
+                    const newValue = editorRef.current.getValue();
+                    onChange(newValue);
                 });
+
+                const yamlMarkersListener = monaco.editor.onDidChangeMarkers(changedResources => {
+                    const model = editorRef.current?.getModel();
+                    if (!model) {
+                        return;
+                    }
+
+                    const currentUri = model.uri.toString();
+                    const isCurrentModelUpdated = changedResources.some(resource => resource.toString() === currentUri);
+                    if (!isCurrentModelUpdated || !onValidate) {
+                        return;
+                    }
+
+                    const markers = monaco.editor.getModelMarkers({ resource: model.uri });
+                    const hasErrors = markers.some(marker => marker.severity === monaco.MarkerSeverity.Error);
+                    onValidate(!hasErrors);
+                });
+
+                markerSubscription = {
+                    dispose: () => {
+                        changeListener.dispose();
+                        yamlMarkersListener.dispose();
+                    }
+                };
             } else if (language === 'properties') {
                 // Custom validation for properties
                 const validateProperties = () => {
@@ -702,8 +944,8 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
             }
 
             return () => {
-                // subscription was disposed if language===properties
-                if (language !== 'properties') {
+                // subscription is disposed manually for properties/yaml custom listeners
+                if (language !== 'properties' && language !== 'yaml') {
                     subscription.dispose();
                 }
                 validatePropertiesRef.current = () => {};
@@ -715,20 +957,22 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
     }, [language]); // Re-create if language changes (rare)
 
     useEffect(() => {
-        if (language !== 'properties' || !editorRef.current) {
+        if ((language !== 'properties' && language !== 'yaml') || !editorRef.current) {
             return;
         }
 
         const editor = editorRef.current;
-        const completionProvider = monaco.languages.registerCompletionItemProvider('properties', {
-            triggerCharacters: ['=', ':', ' '],
+        const completionProvider = monaco.languages.registerCompletionItemProvider(language, {
+            triggerCharacters: language === 'yaml' ? [':', ' '] : ['=', ':', ' '],
             provideCompletionItems: (model, position) => {
-                if (!hasMetatype) {
+                if (!supportsMetatypeAssistance) {
                     return { suggestions: [] };
                 }
 
                 const line = model.getLineContent(position.lineNumber);
-                const context = getPropertyContext(line, position.column);
+                const context = language === 'yaml'
+                    ? getYamlContext(line, position.column)
+                    : getPropertyContext(line, position.column);
                 if (!context) {
                     return { suggestions: [] };
                 }
@@ -742,7 +986,9 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
                         documentation: {
                             value: buildPropertyDocumentation(property, t)
                         },
-                        insertText: showFullLineInsert ? getInsertionText(property) : property.id,
+                        insertText: showFullLineInsert
+                            ? (language === 'yaml' ? getYamlInsertionText(property) : getInsertionText(property))
+                            : property.id,
                         range: new monaco.Range(
                             position.lineNumber,
                             context.range.startColumn,
@@ -759,7 +1005,9 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
                     return { suggestions: [] };
                 }
 
-                const valueSuggestions = getValueSuggestions(property, t);
+                const valueSuggestions = language === 'yaml'
+                    ? getYamlValueSuggestions(property, t)
+                    : getValueSuggestions(property, t);
 
                 return {
                     suggestions: valueSuggestions.map(suggestion => ({
@@ -775,13 +1023,15 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
             }
         });
 
-        const hoverProvider = monaco.languages.registerHoverProvider('properties', {
+        const hoverProvider = monaco.languages.registerHoverProvider(language, {
             provideHover: (model, position) => {
-                if (!hasMetatype) {
+                if (!supportsMetatypeAssistance) {
                     return null;
                 }
 
-                const hoverContext = getHoverContext(model, position);
+                const hoverContext = language === 'yaml'
+                    ? getYamlHoverContext(model, position)
+                    : getHoverContext(model, position);
                 if (!hoverContext) {
                     return null;
                 }
@@ -799,7 +1049,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
         });
 
         const autoSuggestOnNewLine = editor.onDidChangeModelContent(event => {
-            if (!hasMetatype || !event.changes.some(change => change.text.includes('\n'))) {
+            if (!supportsMetatypeAssistance || !event.changes.some(change => change.text.includes('\n'))) {
                 return;
             }
 
@@ -820,7 +1070,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
             hoverProvider.dispose();
             autoSuggestOnNewLine.dispose();
         };
-    }, [hasMetatype, language, metatypeDefinition, propertyMap, t]);
+    }, [supportsMetatypeAssistance, language, metatypeDefinition, propertyMap, t]);
 
     // Update editor value if it changes from outside
     useEffect(() => {
@@ -965,7 +1215,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
         }
 
         const currentLine = model.getLineContent(position.lineNumber);
-        const insertionText = getInsertionText(property);
+        const insertionText = language === 'yaml' ? getYamlInsertionText(property) : getInsertionText(property);
         const lineIsEmpty = currentLine.trim() === '';
         const text = lineIsEmpty ? insertionText : `\n${insertionText}`;
         const range = lineIsEmpty
@@ -996,15 +1246,15 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
                 <Button label={t('editor.button.encrypt')} variant="ghost" icon={<Lock />} onClick={handleEncryptSelection} title={t('tooltip.encryptSelection')} />
                 <Button label={t('editor.button.decrypt')} variant="ghost" icon={<Unlock />} onClick={handleDecryptSelection} title={t('tooltip.decryptSelection')} />
 
-                {language === 'properties' && (
+                {(language === 'properties' || language === 'yaml') && (
                     <>
                         <div style={{ width: '1px', background: '#ccc', margin: '0 4px', height: '20px' }} />
                         <Button
                             label={t('editor.button.addMetatypeProperty')}
                             variant="ghost"
-                            onClick={() => hasMetatype && setShowPropertyPanel(true)}
-                            disabled={!hasMetatype}
-                            title={hasMetatype ? t('tooltip.addMetatypeProperty') : t('tooltip.addMetatypePropertyDisabled')}
+                            onClick={() => supportsMetatypeAssistance && setShowPropertyPanel(true)}
+                            disabled={!supportsMetatypeAssistance}
+                            title={supportsMetatypeAssistance ? t('tooltip.addMetatypeProperty') : t('tooltip.addMetatypePropertyDisabled')}
                         />
                     </>
                 )}
@@ -1044,7 +1294,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
                     />
                 </div>
 
-                {showPropertyPanel && hasMetatype && (
+                {showPropertyPanel && supportsMetatypeAssistance && (
                     <div style={{
                         flex: '0 0 340px',
                         width: '340px',
