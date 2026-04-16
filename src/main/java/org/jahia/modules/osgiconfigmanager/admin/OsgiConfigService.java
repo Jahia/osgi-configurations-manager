@@ -46,8 +46,15 @@ public class OsgiConfigService {
     private static final String DEFAULT_FACTORY_FILE_EXTENSION = ".cfg";
     private static final String FACTORY_IDENTIFIER_PATTERN = "^[A-Za-z0-9._-]+$";
     private static final String KEY_CREATED = "created";
+    private static final String KEY_CONFIG_STATE = "configState";
     private static final String KEY_FILENAME = "filename";
     private static final String KEY_PROPERTIES = "properties";
+    private static final String CONFIG_STATE_MODULE = "MODULE";
+    private static final String CONFIG_STATE_MODULE_DEFAULT = "MODULE_DEFAULT";
+    private static final String CONFIG_STATE_USER = "USER";
+    private static final String DEFAULT_CONFIGURATION_COMMENT = "# default configuration - won't be overriden";
+    private static final String DEFAULT_CONFIGURATION_PREFIX = "# default configuration";
+    private static final String DO_NOT_EDIT_PREFIX = "# do not edit";
     private static final String METATYPE_PID_NOT_FOUND_LOG = "Metatype PID {} not found in bundle {}";
     private static final String INVALID_FILENAME_MESSAGE = "Invalid configuration filename: ";
     private File karafEtcDir;
@@ -154,6 +161,7 @@ public class OsgiConfigService {
                     map.put("path", f.getAbsolutePath());
                     map.put("enabled", !f.getName().endsWith(".disabled"));
                     map.put("type", getFileType(f.getName()));
+                    map.put(KEY_CONFIG_STATE, readConfigStateSafely(f.toPath()));
                     return map;
                 })
                 .collect(Collectors.toList());
@@ -326,6 +334,7 @@ public class OsgiConfigService {
 
         Map<String, Object> result = new LinkedHashMap<>();
         String type = getFileType(safeFilename);
+        result.put(KEY_CONFIG_STATE, detectConfigState(filePath));
 
         // Always read raw content for Monaco Support
         String rawContent = Files.readString(filePath, StandardCharsets.UTF_8);
@@ -865,6 +874,32 @@ public class OsgiConfigService {
         Files.createFile(filePath);
     }
 
+    public void markAsDefaultConfiguration(String filename) throws IOException {
+        String safeFilename = validateFilename(filename);
+        if (blacklist.contains(safeFilename)) {
+            throw new IOException("Update denied: " + safeFilename + " is blacklisted.");
+        }
+
+        Path filePath = resolveConfigPath(safeFilename);
+        if (!Files.exists(filePath)) {
+            throw new IOException("File not found: " + safeFilename);
+        }
+
+        String configState = detectConfigState(filePath);
+        if (CONFIG_STATE_MODULE.equals(configState)) {
+            throw new IOException("Module-managed configurations cannot be converted to default configuration from this tool.");
+        }
+        if (CONFIG_STATE_MODULE_DEFAULT.equals(configState)) {
+            return;
+        }
+
+        String content = Files.readString(filePath, StandardCharsets.UTF_8);
+        String updatedContent = content.isEmpty()
+                ? DEFAULT_CONFIGURATION_COMMENT + '\n'
+                : DEFAULT_CONFIGURATION_COMMENT + '\n' + content;
+        Files.writeString(filePath, updatedContent, StandardCharsets.UTF_8);
+    }
+
     public String createFileFromMetatype(String pid, Locale locale) throws IOException {
         if (pid == null || pid.trim().isEmpty()) {
             throw new IOException("PID is required");
@@ -1072,6 +1107,33 @@ public class OsgiConfigService {
             LOGGER.debug("Ignoring invalid configuration filename candidate {}", filename, e);
             return false;
         }
+    }
+
+    private String readConfigStateSafely(Path filePath) {
+        try {
+            return detectConfigState(filePath);
+        } catch (IOException e) {
+            LOGGER.debug("Unable to determine configuration state for {}", filePath, e);
+            return CONFIG_STATE_USER;
+        }
+    }
+
+    private String detectConfigState(Path filePath) throws IOException {
+        try (Reader reader = Files.newBufferedReader(filePath, StandardCharsets.UTF_8);
+             java.io.BufferedReader bufferedReader = new java.io.BufferedReader(reader)) {
+            String line;
+            while ((line = bufferedReader.readLine()) != null) {
+                String normalizedLine = line.trim().toLowerCase(Locale.ROOT);
+                if (normalizedLine.startsWith(DO_NOT_EDIT_PREFIX)) {
+                    return CONFIG_STATE_MODULE;
+                }
+                if (normalizedLine.startsWith(DEFAULT_CONFIGURATION_PREFIX)) {
+                    return CONFIG_STATE_MODULE_DEFAULT;
+                }
+            }
+        }
+
+        return CONFIG_STATE_USER;
     }
 
     private String buildCfgTemplate(String pid, ObjectClassDefinition objectClassDefinition) {

@@ -3,6 +3,7 @@
     "app": {
         "title": "Gestionnaire de Configurations OSGi",
         "selectConfig": "Sélectionnez un fichier de configuration pour l'éditer",
+        "markAsDefault": "Marquer en défaut",
         "save": "Enregistrer",
         "searchPlaceholder": "Filtrer les configs...",
         "searchDeep": "Rechercher dans le contenu",
@@ -14,6 +15,7 @@
         "toggleSuccess": "Statut de {{name}} modifié",
         "deleteSuccess": "{{name}} supprimé",
         "createSuccess": "{{name}} créé",
+        "markAsDefaultSuccess": "{{name}} est maintenant marqué comme configuration par défaut",
         "uploadSuccess": "{{name}} téléchargé"
     },
     "modal": {
@@ -64,6 +66,11 @@
             "confirm": "Désactiver",
             "cancel": "Annuler"
         },
+        "markAsDefault": {
+            "title": "Marquer comme configuration par défaut",
+            "message": "Ajouter l'en-tête '# default configuration' à {{name}} ? Jahia préservera alors les changements locaux pour cette configuration fournie par un module.",
+            "confirm": "Marquer en défaut"
+        },
         "deleteProp": {
             "title": "Supprimer la propriété",
             "message": "Êtes-vous sûr de vouloir supprimer {{name}} ?"
@@ -81,6 +88,7 @@
             "save": "Erreur lors de l'enregistrement : {{error}}",
             "toggle": "Erreur lors du basculement : {{error}}",
             "create": "Erreur lors de la création : {{error}}",
+            "markAsDefault": "Erreur lors du marquage en configuration par défaut : {{error}}",
             "delete": "Erreur lors de la suppression : {{error}}",
             "invalidYaml": "Le contenu YAML est invalide. Veuillez corriger les erreurs de syntaxe avant d'enregistrer.",
             "propertyExists": "La propriété '{{name}}' existe déjà.",
@@ -169,10 +177,32 @@
         "empty": "vide",
         "emptyLine": "Ligne vide"
     },
+    "configState": {
+        "badge": {
+            "module": "Module",
+            "moduleDefault": "Défaut",
+            "user": "Utilisateur"
+        },
+        "badgeCompact": {
+            "module": "M",
+            "moduleDefault": "D",
+            "user": "U"
+        },
+        "tooltip": {
+            "module": "Configuration gérée par un module. Les modifications locales peuvent être écrasées au redémarrage ou au redéploiement.",
+            "moduleDefault": "Configuration par défaut d'un module. Jahia préserve les modifications locales.",
+            "user": "Configuration locale de l'instance."
+        },
+        "banner": {
+            "module": "Cette configuration gérée par un module peut être écrasée au redémarrage ou au redéploiement. Les modifications locales ne sont pas garanties.",
+            "moduleDefault": "Cette configuration par défaut de module est éditable. Jahia préserve les modifications locales."
+        }
+    },
     "tooltip": {
         "downloadFile": "Télécharger le fichier actuel (Données brutes)",
         "uploadFile": "Téléverser un fichier de configuration (.yml, .cfg)",
         "save": "Enregistrer les modifications",
+        "markAsDefault": "Ajouter l'en-tête '# default configuration' pour que Jahia préserve les modifications locales",
         "createFile": "Créer un nouveau fichier de configuration",
         "deleteFile": "Supprimer ce fichier",
         "toggleFile": "Activer ou désactiver cette configuration",

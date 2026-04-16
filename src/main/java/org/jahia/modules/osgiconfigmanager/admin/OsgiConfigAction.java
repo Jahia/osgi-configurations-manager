@@ -130,6 +130,7 @@ public class OsgiConfigAction extends Action {
                 String filename = (String) payload.get(PARAM_FILENAME);
 
                 if ("save".equals(actionType) || "toggle".equals(actionType) || "delete".equals(actionType)
+                        || "markAsDefault".equals(actionType)
                         || "create".equals(actionType) || "createFromMetatype".equals(actionType)) {
                     LOGGER.info("[AUDIT] User: {} | Action: {} | File: {}", renderContext.getUser().getName(),
                             actionType, filename);
@@ -154,6 +155,9 @@ public class OsgiConfigAction extends Action {
                 } else if ("delete".equals(actionType)) {
                     configService.deleteFile(filename);
                     result.put("status", "deleted");
+                } else if ("markAsDefault".equals(actionType)) {
+                    configService.markAsDefaultConfiguration(filename);
+                    result.put("status", "updated");
                 } else if ("create".equals(actionType)) {
                     configService.createFile(filename);
                     result.put("status", STATUS_CREATED);

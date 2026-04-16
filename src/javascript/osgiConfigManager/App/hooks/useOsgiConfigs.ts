@@ -8,6 +8,7 @@ import { useProperties } from './useProperties';
 interface OsgiFile {
     name: string;
     enabled?: boolean;
+    configState?: 'MODULE' | 'MODULE_DEFAULT' | 'USER';
     [key: string]: any;
 }
 
@@ -32,6 +33,21 @@ interface DiffConfig {
     filename: string;
     onConfirm: () => void;
 }
+
+const detectConfigStateFromRawContent = (content: string): 'MODULE' | 'MODULE_DEFAULT' | 'USER' => {
+    const lines = (content || '').split(/\r?\n/);
+    for (const line of lines) {
+        const lowered = line.trim().toLowerCase();
+        if (lowered.startsWith('# do not edit')) {
+            return 'MODULE';
+        }
+        if (lowered.startsWith('# default configuration')) {
+            return 'MODULE_DEFAULT';
+        }
+    }
+
+    return 'USER';
+};
 
 
 export const useOsgiConfigs = () => {
@@ -77,6 +93,27 @@ export const useOsgiConfigs = () => {
             const data = await osgiService.getAll(query, deep);
             if (data.files) {
                 setFiles(data.files);
+                setSelectedFile(previous => {
+                    if (!previous) {
+                        return previous;
+                    }
+
+                    const matchingFile = data.files?.find(file => file.name === previous.name);
+                    if (!matchingFile) {
+                        return previous;
+                    }
+
+                    const nextConfigState = matchingFile.configState || previous.configState;
+                    if (matchingFile.enabled === previous.enabled && nextConfigState === previous.configState) {
+                        return previous;
+                    }
+
+                    return {
+                        ...previous,
+                        enabled: matchingFile.enabled,
+                        configState: nextConfigState
+                    };
+                });
             }
         } catch (e: any) {
             setError(e.message);
@@ -92,6 +129,21 @@ export const useOsgiConfigs = () => {
             const data = await osgiService.read(filename);
             if (data.data) {
                 setMetatypeInfo(data.data.metatype || null);
+                setSelectedFile(prev => {
+                    if (!prev || prev.name !== filename) {
+                        return prev;
+                    }
+
+                    const nextConfigState = data.data?.configState || prev.configState;
+                    if (prev.configState === nextConfigState) {
+                        return prev;
+                    }
+
+                    return {
+                        ...prev,
+                        configState: nextConfigState
+                    };
+                });
                 // Standardization: For .cfg files, we MUST use the client-side parser (parseCfgContent)
                 // on the rawContent to ensure that the structure matches exactly what handleToggleRawMode produces.
                 // Using the server-side 'properties' often leads to structural differences (e.g. comments, type wrappers)
@@ -177,13 +229,20 @@ export const useOsgiConfigs = () => {
         return () => clearTimeout(timer);
     }, [fetchFiles, searchInContent, searchTerm, files.length]);
 
-    useEffect(() => {
-        if (selectedFile) {
-            // Keep previous mode preference
-            // setIsRawMode(false); 
-            fetchFileContent(selectedFile.name);
+    const selectFile = useCallback((file: OsgiFile | null) => {
+        setSelectedFile(file);
+        if (file?.name) {
+            void fetchFileContent(file.name);
+        } else {
+            setMetatypeInfo(null);
+            resetProperties({});
+            setOriginalProperties({});
+            setRawContent('');
+            setOriginalRawContent('');
+            setError(null);
+            setLoadingFile(false);
         }
-    }, [selectedFile, fetchFileContent]);
+    }, [fetchFileContent, resetProperties]);
 
 
 
@@ -360,10 +419,23 @@ export const useOsgiConfigs = () => {
                 setRawContent(finalContent || '');
             }
 
+            const nextConfigState = detectConfigStateFromRawContent(finalContent || '');
+            setSelectedFile(previous => previous && previous.name === selectedFile.name ? {
+                ...previous,
+                configState: nextConfigState
+            } : previous);
+            setFiles(previous => previous.map(file => file.name === selectedFile.name ? {
+                ...file,
+                configState: nextConfigState
+            } : file));
+
+            await fetchFiles();
+            await fetchFileContent(selectedFile.name);
+
         } catch (e: any) {
             toastError(e.message);
         }
-    }, [isRawMode, rawContent, selectedFile, isYamlValid, properties, t, success, toastError, resetProperties, encryptRecursive]);
+    }, [isRawMode, rawContent, selectedFile, isYamlValid, properties, t, success, toastError, resetProperties, encryptRecursive, fetchFiles, fetchFileContent]);
 
     const handleToggleComments = useCallback(async () => {
         const newValue = !showComments;
@@ -464,13 +536,13 @@ export const useOsgiConfigs = () => {
 
             // If the toggled file was selected, update selection to the new name
             if (selectedFile && selectedFile.name === f.name) {
-                setSelectedFile({ ...f, name: newName, enabled: !f.enabled });
+                selectFile({ ...f, name: newName, enabled: !f.enabled });
             }
             success(t('notification.toggleSuccess', { name: f.name }) || `Toggled ${f.name}`);
         } catch (e: any) {
             toastError(t('modal.error.toggle', { error: e.message }));
         }
-    }, [fetchFiles, selectedFile, success, t, toastError]);
+    }, [fetchFiles, selectFile, selectedFile, success, t, toastError]);
 
     const handleToggleFile = useCallback(async (f: OsgiFile) => {
         if (f.enabled === false || f.name.endsWith('.disabled')) {
@@ -499,7 +571,9 @@ export const useOsgiConfigs = () => {
             onConfirm: async () => {
                 try {
                     await osgiService.delete(f.name);
-                    if (selectedFile?.name === f.name) setSelectedFile(null);
+                    if (selectedFile?.name === f.name) {
+                        selectFile(null);
+                    }
                     fetchFiles();
                     success(t('notification.deleteSuccess', { name: f.name }) || `Deleted ${f.name}`);
                 } catch (e: any) {
@@ -507,7 +581,44 @@ export const useOsgiConfigs = () => {
                 }
             }
         });
-    }, [fetchFiles, selectedFile, success, t, toastError]);
+    }, [fetchFiles, selectFile, selectedFile, success, t, toastError]);
+
+    const handleMarkAsDefault = useCallback(async (f: OsgiFile) => {
+        if (hasUnsaved) {
+            setModalConfig({
+                type: 'confirm',
+                severity: 'warning',
+                title: t('modal.unsaved.title'),
+                message: t('modal.unsaved.message'),
+                cancelLabel: t('modal.ok'),
+                confirmLabel: null
+            });
+            return;
+        }
+
+        setModalConfig({
+            type: 'confirm',
+            severity: 'info',
+            title: t('modal.markAsDefault.title'),
+            message: t('modal.markAsDefault.message', { name: f.name }),
+            confirmLabel: t('modal.markAsDefault.confirm'),
+            cancelLabel: t('modal.cancel'),
+            onConfirm: async () => {
+                try {
+                    await osgiService.markAsDefault(f.name);
+                    await fetchFiles();
+                    setSelectedFile(prev => prev ? {
+                        ...prev,
+                        configState: 'MODULE_DEFAULT'
+                    } : prev);
+                    await fetchFileContent(f.name);
+                    success(t('notification.markAsDefaultSuccess', { name: f.name }));
+                } catch (e: any) {
+                    toastError(t('modal.error.markAsDefault', { error: e.message }));
+                }
+            }
+        });
+    }, [fetchFileContent, fetchFiles, hasUnsaved, success, t, toastError]);
 
     const handleCreateFile = useCallback(async (filename: string) => {
         const validExtensions = ['.cfg', '.yml', '.cfg.disabled', '.yml.disabled'];
@@ -529,24 +640,24 @@ export const useOsgiConfigs = () => {
             await osgiService.create(filename);
             await fetchFiles();
             const isEnabled = !filename.endsWith('.disabled');
-            setSelectedFile({ name: filename, enabled: isEnabled });
+            selectFile({ name: filename, enabled: isEnabled, configState: 'USER' });
             success(t('notification.createSuccess', { name: filename }) || `Created ${filename}`);
         } catch (e: any) {
             toastError(t('modal.error.create', { error: e.message }));
         }
-    }, [fetchFiles, success, t, toastError]);
+    }, [fetchFiles, selectFile, success, t, toastError]);
 
     const handleCreateFileFromMetatype = useCallback(async (pid: string, instanceIdentifier?: string) => {
         try {
             const response = await osgiService.createFromMetatype(pid, instanceIdentifier);
             const filename = response.filename || (instanceIdentifier ? `${pid}-${instanceIdentifier}.cfg` : `${pid}.cfg`);
             await fetchFiles();
-            setSelectedFile({ name: filename, enabled: true });
+            selectFile({ name: filename, enabled: true, configState: 'USER' });
             success(t('notification.createSuccess', { name: filename }) || `Created ${filename}`);
         } catch (e: any) {
             toastError(t('modal.error.create', { error: e.message }));
         }
-    }, [fetchFiles, success, t, toastError]);
+    }, [fetchFiles, selectFile, success, t, toastError]);
 
     const handleOpenCreateDialog = useCallback(async () => {
         try {
@@ -637,7 +748,7 @@ export const useOsgiConfigs = () => {
 
                     await fetchFiles();
                     const isEnabled = !filename.endsWith('.disabled');
-                    setSelectedFile({ name: filename, enabled: isEnabled });
+                    selectFile({ name: filename, enabled: isEnabled, configState: 'USER' });
                     success(t('notification.uploadSuccess', { name: filename }) || `Uploaded ${filename}`);
 
                 } catch (err: any) {
@@ -680,7 +791,7 @@ export const useOsgiConfigs = () => {
         } else {
             processUpload(file);
         }
-    }, [fetchFiles, files, success, t, toastError]);
+    }, [fetchFiles, files, selectFile, success, t, toastError]);
 
     const handleRawUpdate = useCallback((val: string) => {
         setRawContent(val);
@@ -748,6 +859,7 @@ export const useOsgiConfigs = () => {
         files,
         selectedFile,
         setSelectedFile,
+        selectFile,
         properties,
         rawContent,
         metatypeInfo,
@@ -763,6 +875,7 @@ export const useOsgiConfigs = () => {
         handleSave,
         handleToggleFile,
         handleDeleteFile,
+        handleMarkAsDefault,
         handleCreateFile,
         handleOpenCreateDialog,
         handleUploadFile,

@@ -17,6 +17,7 @@ import {
 } from '@jahia/moonstone';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { ConfigStateBadge } from './ConfigStateBadge';
 
 export const FileSidebar = ({
     files,
@@ -337,6 +338,7 @@ export const FileSidebar = ({
                                                 {f.name}
                                             </Typography>
                                         </div>
+                                        <ConfigStateBadge state={f.configState} compact />
                                     </div>
                                 </TableBodyCell>
                             </TableRow>

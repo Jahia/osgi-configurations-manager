@@ -3,6 +3,7 @@
     "app": {
         "title": "OSGi Configurations Manager",
         "selectConfig": "Select a configuration file to edit",
+        "markAsDefault": "Mark as Default",
         "save": "Save Changes",
         "searchPlaceholder": "Filter configs...",
         "searchDeep": "Search in content",
@@ -14,6 +15,7 @@
         "toggleSuccess": "Toggled status for {{name}}",
         "deleteSuccess": "Deleted {{name}}",
         "createSuccess": "Created {{name}}",
+        "markAsDefaultSuccess": "{{name}} is now marked as default configuration",
         "uploadSuccess": "Uploaded {{name}}"
     },
     "modal": {
@@ -64,6 +66,11 @@
             "confirm": "Disable",
             "cancel": "Cancel"
         },
+        "markAsDefault": {
+            "title": "Mark as default configuration",
+            "message": "Add the '# default configuration' header to {{name}}? Jahia will then preserve local changes for this module-provided default.",
+            "confirm": "Mark as Default"
+        },
         "deleteProp": {
             "title": "Delete Property",
             "message": "Are you sure you want to delete {{name}}?"
@@ -81,6 +88,7 @@
             "save": "Error saving: {{error}}",
             "toggle": "Error toggling: {{error}}",
             "create": "Error creating file: {{error}}",
+            "markAsDefault": "Error marking file as default configuration: {{error}}",
             "delete": "Error deleting: {{error}}",
             "invalidYaml": "The YAML content is invalid. Please fix syntax errors before saving.",
             "propertyExists": "Property '{{name}}' already exists.",
@@ -169,10 +177,32 @@
         "empty": "empty",
         "emptyLine": "Empty Line"
     },
+    "configState": {
+        "badge": {
+            "module": "Module",
+            "moduleDefault": "Default",
+            "user": "User"
+        },
+        "badgeCompact": {
+            "module": "M",
+            "moduleDefault": "D",
+            "user": "U"
+        },
+        "tooltip": {
+            "module": "Module-managed configuration. Local edits may be overwritten on restart or redeploy.",
+            "moduleDefault": "Module default configuration. Jahia preserves local changes.",
+            "user": "Local instance configuration."
+        },
+        "banner": {
+            "module": "This module-managed configuration may be overwritten on restart or redeploy. Local edits are not guaranteed to persist.",
+            "moduleDefault": "This module default configuration is editable. Jahia preserves local changes."
+        }
+    },
     "tooltip": {
         "downloadFile": "Download current file (Raw Data)",
         "uploadFile": "Upload configuration file (.yml, .cfg)",
         "save": "Save changes",
+        "markAsDefault": "Add the '# default configuration' header so Jahia preserves local changes for module defaults",
         "createFile": "Create a new configuration file",
         "deleteFile": "Delete this file",
         "toggleFile": "Enable or disable this configuration",

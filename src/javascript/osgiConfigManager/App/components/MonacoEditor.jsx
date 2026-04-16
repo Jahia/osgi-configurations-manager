@@ -6,6 +6,27 @@ import { Undo, RotateRight, Code, Lock, Unlock, ViewList } from '@jahia/moonston
 import { useTranslation } from 'react-i18next';
 import { osgiService } from '../api/osgiService';
 
+const isExpectedCancellation = reason => {
+    if (!reason) {
+        return false;
+    }
+
+    if (typeof reason === 'string') {
+        return reason === 'Canceled';
+    }
+
+    return reason.name === 'Canceled' || reason.message === 'Canceled';
+};
+
+if (!window.__osgiConfigManagerIgnoreMonacoCancellation) {
+    window.addEventListener('unhandledrejection', event => {
+        if (isExpectedCancellation(event.reason)) {
+            event.preventDefault();
+        }
+    });
+    window.__osgiConfigManagerIgnoreMonacoCancellation = true;
+}
+
 // Define workers for Monaco
 if (!window.MonacoEnvironment) {
     window.MonacoEnvironment = {
@@ -1236,15 +1257,15 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
                 backgroundColor: '#f9f9f9',
                 alignItems: 'center'
             }}>
-                <Button label={t('editor.button.undo')} variant="ghost" icon={<Undo />} onClick={handleUndo} title={t('tooltip.undo')} />
-                <Button label={t('editor.button.redo')} variant="ghost" icon={<RotateRight />} onClick={handleRedo} title={t('tooltip.redo')} />
+                <Button label={t('editor.button.undo')} variant="ghost" icon={<Undo style={{ width: '16px', height: '16px' }} />} onClick={handleUndo} title={t('tooltip.undo')} />
+                <Button label={t('editor.button.redo')} variant="ghost" icon={<RotateRight style={{ width: '16px', height: '16px' }} />} onClick={handleRedo} title={t('tooltip.redo')} />
                 <div style={{ width: '1px', background: '#ccc', margin: '0 4px', height: '20px' }} />
-                <Button label={t('editor.button.format')} variant="ghost" icon={<Code />} onClick={handleFormat} title={t('tooltip.format')} />
+                <Button label={t('editor.button.format')} variant="ghost" icon={<Code style={{ width: '16px', height: '16px' }} />} onClick={handleFormat} title={t('tooltip.format')} />
 
                 {/* Encrypt/Decrypt Buttons for Text Mode */}
                 <div style={{ width: '1px', background: '#ccc', margin: '0 4px', height: '20px' }} />
-                <Button label={t('editor.button.encrypt')} variant="ghost" icon={<Lock />} onClick={handleEncryptSelection} title={t('tooltip.encryptSelection')} />
-                <Button label={t('editor.button.decrypt')} variant="ghost" icon={<Unlock />} onClick={handleDecryptSelection} title={t('tooltip.decryptSelection')} />
+                <Button label={t('editor.button.encrypt')} variant="ghost" icon={<Lock style={{ width: '16px', height: '16px' }} />} onClick={handleEncryptSelection} title={t('tooltip.encryptSelection')} />
+                <Button label={t('editor.button.decrypt')} variant="ghost" icon={<Unlock style={{ width: '16px', height: '16px' }} />} onClick={handleDecryptSelection} title={t('tooltip.decryptSelection')} />
 
                 {(language === 'properties' || language === 'yaml') && (
                     <>
@@ -1266,7 +1287,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
                         <Button
                             label={t('editor.button.modeVisual')}
                             variant="ghost"
-                            icon={<ViewList />}
+                            icon={<ViewList style={{ width: '16px', height: '16px' }} />}
                             onClick={onSwitchMode}
                             title={t('tooltip.modeVisual')}
                         />

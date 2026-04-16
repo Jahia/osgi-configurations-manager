@@ -1,5 +1,6 @@
 interface OsgiFile {
     name: string;
+    configState?: 'MODULE' | 'MODULE_DEFAULT' | 'USER';
     [key: string]: any;
 }
 
@@ -46,6 +47,7 @@ interface OsgiFileData {
     properties?: any;
     pid?: string;
     metatype?: OsgiMetatypeDefinition;
+    configState?: 'MODULE' | 'MODULE_DEFAULT' | 'USER';
 }
 
 interface OsgiServiceResponse {
@@ -61,7 +63,7 @@ interface OsgiServiceResponse {
 }
 
 interface OsgiPayload {
-    action: 'save' | 'delete' | 'create' | 'createFromMetatype' | 'toggle' | 'encrypt' | 'decrypt' | 'setPreference';
+    action: 'save' | 'delete' | 'create' | 'createFromMetatype' | 'toggle' | 'markAsDefault' | 'encrypt' | 'decrypt' | 'setPreference';
     filename?: string;
     pid?: string;
     instanceIdentifier?: string;
@@ -128,6 +130,14 @@ export const osgiService = {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'toggle', filename })
+        }));
+    },
+
+    markAsDefault: async (filename: string): Promise<OsgiServiceResponse> => {
+        return handleResponse(await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'markAsDefault', filename })
         }));
     },
 
