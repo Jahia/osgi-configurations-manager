@@ -17,7 +17,7 @@
     "babel-plugin-istanbul": "^6.1.1",
     "compare-versions": "^6.1.1",
     "cross-fetch": "3.1.6",
-    "cypress": "15.7.0",
+    "cypress": "15.13.1",
     "cypress-file-upload": "^5.0.8",
     "cypress-iframe": "^1.0.1",
     "cypress-mailpit": "^1.4.0",
@@ -38,12 +38,11 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "graphql": "^15.10.1",
     "graphql-tag": "^2.12.6",
-    "jahia-reporter": "^0.4.2",
     "mocha": "^10.0.0",
     "mocha-junit-reporter": "^2.2.0",
-    "mochawesome": "^6.3.1",
+    "mochawesome": "^7.1.4",
     "mochawesome-merge": "^4.2.0",
-    "mochawesome-report-generator": "^5.2.0",
+    "mochawesome-report-generator": "^6.3.2",
     "prettier": "^2.0.0",
     "source-map-support": "^0.5.20",
     "supports-color": "^9.0.2",
@@ -69,5 +68,8 @@
     "url": "https://github.com/Jahia/osgi-configurations-manager/issues"
   },
   "homepage": "https://github.com/Jahia/osgi-configurations-manager#readme",
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
+  "resolutions": {
+    "mocha/serialize-javascript": "7.0.5"
+  }
 }
