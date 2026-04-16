@@ -206,8 +206,9 @@ export const ModalDialog = ({ config, onClose }) => {
                     </Typography>
 
                     {config.type === 'prompt' && (
-                        <div data-cy="modal-prompt-input" style={{ marginTop: '8px' }}>
+                        <div style={{ marginTop: '8px' }}>
                             <Input
+                                data-cy="modal-prompt-input"
                                 autoFocus
                                 value={promptValue}
                                 variant="outlined"
@@ -239,6 +240,7 @@ export const ModalDialog = ({ config, onClose }) => {
                                     return (
                                         <button
                                             key={tab.id}
+                                            data-cy={`modal-create-tab-${tab.id}`}
                                             type="button"
                                             onClick={() => setActiveCreateTab(tab.id)}
                                             style={{
@@ -264,6 +266,7 @@ export const ModalDialog = ({ config, onClose }) => {
                                         {t('modal.create.manualLabel')}
                                     </Typography>
                                     <Input
+                                        data-cy="modal-create-manual-input"
                                         autoFocus
                                         value={manualFilename}
                                         variant="outlined"
@@ -279,6 +282,7 @@ export const ModalDialog = ({ config, onClose }) => {
                                         {t('modal.create.filterLabel')}
                                     </Typography>
                                     <Input
+                                        data-cy="modal-create-filter-input"
                                         value={filterValue}
                                         variant="outlined"
                                         onChange={e => setFilterValue(e.target.value)}
@@ -315,6 +319,7 @@ export const ModalDialog = ({ config, onClose }) => {
                                             return (
                                                 <div
                                                     key={definition.pid}
+                                                    data-cy={`modal-create-metatype-option-${encodeURIComponent(definition.pid)}`}
                                                     style={{
                                                         padding: '12px 16px',
                                                         borderBottom: '1px solid #ececec',
@@ -386,6 +391,7 @@ export const ModalDialog = ({ config, onClose }) => {
                                             return (
                                                 <div
                                                     key={`factory-${definition.pid}`}
+                                                    data-cy={`modal-create-factory-option-${encodeURIComponent(definition.pid)}`}
                                                     style={{
                                                         padding: '12px 16px',
                                                         borderBottom: '1px solid #ececec',
@@ -443,6 +449,7 @@ export const ModalDialog = ({ config, onClose }) => {
                                                     {t('modal.create.factoryIdentifierLabel')}
                                                 </Typography>
                                                 <Input
+                                                    data-cy="modal-create-factory-identifier-input"
                                                     autoFocus
                                                     value={factoryIdentifier}
                                                     variant="outlined"
@@ -481,6 +488,7 @@ export const ModalDialog = ({ config, onClose }) => {
                                                         {(selectedFactoryMetatype.instances || []).map(instance => (
                                                             <div
                                                                 key={instance.filename}
+                                                                data-cy={`modal-create-existing-instance-${encodeURIComponent(instance.filename)}`}
                                                                 style={{
                                                                     padding: '10px 12px',
                                                                     borderBottom: '1px solid #ececec',

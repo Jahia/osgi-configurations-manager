@@ -4,15 +4,37 @@ describe('OSGi Configurations Manager', () => {
     const deletedFile = 'org.jahia.modules.e2e-delete.cfg';
     const uploadedFile = 'osgi-upload.cfg';
     const invalidFile = 'org.jahia.modules.invalid-name.txt';
+    const factoryInstanceIdentifier = 'e2e-factory';
+    const yamlFactoryInstanceIdentifier = 'e2e-yaml';
     const testFiles = [createdFile, toggledFile, deletedFile, uploadedFile, invalidFile];
+    let createdFromMetatypeFilename: string | null = null;
+    let createdFactoryFilename: string | null = null;
+    let createdYamlFilename: string | null = null;
+
+    const getAvailableMetatypes = () => cy.osgiRequest({
+        method: 'GET',
+        url: '/cms/render/default/en/sites/systemsite.osgiConfigManager.do?action=availableMetatypes'
+    }).its('body.metatypes');
 
     beforeEach(() => {
         cy.login();
+        createdFromMetatypeFilename = null;
+        createdFactoryFilename = null;
+        createdYamlFilename = null;
         testFiles.forEach(filename => cy.cleanupOsgiFile(filename));
     });
 
     afterEach(() => {
         testFiles.forEach(filename => cy.cleanupOsgiFile(filename));
+        if (createdFromMetatypeFilename) {
+            cy.cleanupOsgiFile(createdFromMetatypeFilename);
+        }
+        if (createdFactoryFilename) {
+            cy.cleanupOsgiFile(createdFactoryFilename);
+        }
+        if (createdYamlFilename) {
+            cy.cleanupOsgiFile(createdYamlFilename);
+        }
     });
 
     it('loads the administration application and its sidebar', () => {
@@ -28,14 +50,14 @@ describe('OSGi Configurations Manager', () => {
         cy.openOsgiConfigManager();
 
         cy.get('[data-cy="create-file-button"] button').click();
-        cy.get('[data-cy="modal-prompt-input"] input').type(createdFile);
+        cy.get('[data-cy="modal-create-manual-input"]').type(createdFile);
         cy.get('[data-cy="modal-confirm-button"] button').click();
 
         cy.get('[data-cy="selected-file-name"]', {timeout: 30000}).should('contain', createdFile);
         cy.ensureVisualCfgMode();
 
         cy.get('[data-cy="cfg-add-property"] button').click();
-        cy.get('[data-cy="modal-prompt-input"] input').type('sample.key');
+        cy.get('[data-cy="modal-prompt-input"]').type('sample.key');
         cy.get('[data-cy="modal-confirm-button"] button').click();
 
         cy.get('[data-cy="cfg-key-0"]', {timeout: 30000}).should('have.value', 'sample.key');
@@ -107,12 +129,78 @@ describe('OSGi Configurations Manager', () => {
         cy.openOsgiConfigManager();
 
         cy.get('[data-cy="create-file-button"] button').click();
-        cy.get('[data-cy="modal-prompt-input"] input').type(invalidFile);
+        cy.get('[data-cy="modal-create-manual-input"]').type(invalidFile);
         cy.get('[data-cy="modal-confirm-button"] button').click();
 
         cy.listOsgiFiles().then(files => {
             expect(files.map(file => file.name)).not.to.include(invalidFile);
         });
         cy.get('[data-cy="selected-file-name"]').should('not.exist');
+    });
+
+    it('creates a configuration from an available Metatype PID', () => {
+        getAvailableMetatypes().then((definitions: any[]) => {
+            const definition = definitions.find(item => !item.factory && !item.created);
+            expect(definition, 'an available simple Metatype definition').to.exist;
+            createdFromMetatypeFilename = definition.filename;
+
+            cy.openOsgiConfigManager();
+            cy.get('[data-cy="create-file-button"] button').click();
+            cy.get('[data-cy="modal-create-tab-configuration"]').click();
+            cy.get('[data-cy="modal-create-filter-input"]').type(definition.pid);
+            cy.get(`[data-cy="modal-create-metatype-option-${encodeURIComponent(definition.pid)}"]`, {timeout: 30000}).click();
+            cy.get('[data-cy="modal-confirm-button"] button').click();
+
+            cy.get('[data-cy="selected-file-name"]', {timeout: 30000}).should('contain', definition.filename);
+            cy.readOsgiFile(definition.filename)
+                .its('data.rawContent')
+                .should('contain', `# PID: ${definition.pid}`)
+                .and('match', /# .+=/);
+        });
+    });
+
+    it('creates a factory configuration instance from Metatype', () => {
+        getAvailableMetatypes().then((definitions: any[]) => {
+            const definition = definitions.find(item => item.factory);
+            expect(definition, 'an available factory Metatype definition').to.exist;
+            createdFactoryFilename = `${definition.pid}-${factoryInstanceIdentifier}.cfg`;
+
+            cy.openOsgiConfigManager();
+            cy.get('[data-cy="create-file-button"] button').click();
+            cy.get('[data-cy="modal-create-tab-factory"]').click();
+            cy.get('[data-cy="modal-create-filter-input"]').type(definition.pid);
+            cy.get(`[data-cy="modal-create-factory-option-${encodeURIComponent(definition.pid)}"]`, {timeout: 30000}).click();
+            cy.get('[data-cy="modal-create-factory-identifier-input"]').type(factoryInstanceIdentifier);
+            cy.get('[data-cy="modal-confirm-button"] button').click();
+
+            cy.get('[data-cy="selected-file-name"]', {timeout: 30000}).should('contain', createdFactoryFilename);
+            cy.readOsgiFile(createdFactoryFilename)
+                .its('data.rawContent')
+                .should('contain', `# PID: ${definition.pid}`)
+                .and('contain', `# Instance: ${factoryInstanceIdentifier}`);
+        });
+    });
+
+    it('enables Metatype assistance in the raw YAML editor when the filename resolves to a PID', () => {
+        getAvailableMetatypes().then((definitions: any[]) => {
+            const definition = definitions.find(item => item.factory);
+            expect(definition, 'an available factory Metatype definition for YAML assistance').to.exist;
+            createdYamlFilename = `${definition.pid}-${yamlFactoryInstanceIdentifier}.yml`;
+
+            cy.upsertOsgiFile(createdYamlFilename, '');
+            cy.openOsgiConfigManager();
+            cy.openOsgiFile(createdYamlFilename);
+
+            cy.get('[data-cy="editor-add-metatype-property"]', {timeout: 30000}).should('not.be.disabled').click();
+            cy.get('[data-cy="metatype-property-panel"]', {timeout: 30000}).should('be.visible');
+            cy.get(`[data-cy="metatype-property-card-${encodeURIComponent(definition.properties[0].id)}"]`, {timeout: 30000}).should('be.visible');
+            cy.get(`[data-cy="metatype-property-insert-${encodeURIComponent(definition.properties[0].id)}"]`).click();
+            cy.get('[data-cy="save-config-button"] button').click();
+            cy.get('[data-cy="toast-message"]', {timeout: 30000}).should('contain', 'Configuration saved successfully');
+            cy.readOsgiFile(createdYamlFilename).then((body: any) => {
+                expect(body.error, `read error for ${createdYamlFilename}`).to.not.exist;
+                expect(body.data?.rawContent, `raw content for ${createdYamlFilename}`).to.contain(definition.properties[0].id);
+            });
+        });
     });
 });

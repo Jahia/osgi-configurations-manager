@@ -1250,6 +1250,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
                     <>
                         <div style={{ width: '1px', background: '#ccc', margin: '0 4px', height: '20px' }} />
                         <Button
+                            data-cy="editor-add-metatype-property"
                             label={t('editor.button.addMetatypeProperty')}
                             variant="ghost"
                             onClick={() => supportsMetatypeAssistance && setShowPropertyPanel(true)}
@@ -1295,7 +1296,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
                 </div>
 
                 {showPropertyPanel && supportsMetatypeAssistance && (
-                    <div style={{
+                    <div data-cy="metatype-property-panel" style={{
                         flex: '0 0 340px',
                         width: '340px',
                         borderLeft: '1px solid var(--color-gray_light40)',
@@ -1350,7 +1351,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
                                 const defaultValue = formatDefaultValue(property);
 
                                 return (
-                                    <div key={property.id} style={{
+                                    <div data-cy={`metatype-property-card-${encodeURIComponent(property.id)}`} key={property.id} style={{
                                         border: '1px solid var(--color-gray_light40)',
                                         borderRadius: '6px',
                                         padding: '10px',
@@ -1384,6 +1385,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
                                             </div>
                                             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                                                 <Button
+                                                    data-cy={`metatype-property-insert-${encodeURIComponent(property.id)}`}
                                                     label={alreadyPresent ? t('editor.metatype.alreadyPresent') : t('editor.metatype.insert')}
                                                     variant="ghost"
                                                     disabled={alreadyPresent}
