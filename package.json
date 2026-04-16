@@ -23,7 +23,7 @@
         "@jahia/ui-extender": "^1.0.6",
         "@types/diff": "^7.0.2",
         "css-loader": "^7.1.2",
-        "diff": "^8.0.2",
+        "diff": "^8.0.3",
         "i18next": "^19.1.0",
         "monaco-editor": "0.52.0",
         "monaco-yaml": "^5.4.0",
