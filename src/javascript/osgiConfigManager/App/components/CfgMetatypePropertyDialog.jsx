@@ -2,7 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Close, Input, Paper, Typography } from '@jahia/moonstone';
 import { useTranslation } from 'react-i18next';
-import { buildPropertyDocumentation, formatDefaultValue, getLocalizedTypeLabel, getPropertyLabel } from '../utils/metatypeUtils';
+import { buildPropertyDocumentation, findExactMetatypePropertyMatch, formatDefaultValue, getLocalizedTypeLabel, getPropertyLabel, matchesMetatypePropertyQuery } from '../utils/metatypeUtils';
 
 const renderDocumentation = (property, t) => {
     const description = buildPropertyDocumentation(property, t, {includeHeader: false})
@@ -43,6 +43,7 @@ export const CfgMetatypePropertyDialog = ({
 
     const trimmedQuery = query.trim();
     const normalizedQuery = trimmedQuery.toLowerCase();
+    const exactMatch = React.useMemo(() => findExactMetatypePropertyMatch(properties, trimmedQuery), [properties, trimmedQuery]);
 
     const filteredProperties = React.useMemo(() => {
         if (!Array.isArray(properties)) {
@@ -53,20 +54,7 @@ export const CfgMetatypePropertyDialog = ({
             return properties;
         }
 
-        return properties.filter(property => {
-            const haystack = [
-                property.id,
-                property.name,
-                property.description,
-                property.type,
-                ...(Array.isArray(property.options) ? property.options.map(option => `${option.value} ${option.label || ''}`) : [])
-            ]
-                .filter(Boolean)
-                .join(' ')
-                .toLowerCase();
-
-            return haystack.includes(normalizedQuery);
-        });
+        return properties.filter(property => matchesMetatypePropertyQuery(property, normalizedQuery));
     }, [normalizedQuery, properties]);
 
     const customAlreadyExists = Boolean(trimmedQuery) && existingKeys.has(trimmedQuery);
@@ -125,8 +113,12 @@ export const CfgMetatypePropertyDialog = ({
                         value={query}
                         onChange={event => setQuery(event.target.value)}
                         onKeyDown={event => {
-                            if (event.key === 'Enter' && trimmedQuery && !customAlreadyExists) {
-                                onCreateCustomProperty(trimmedQuery);
+                            if (event.key === 'Enter' && trimmedQuery) {
+                                if (exactMatch) {
+                                    onSelectMetatypeProperty(exactMatch);
+                                } else if (!customAlreadyExists) {
+                                    onCreateCustomProperty(trimmedQuery);
+                                }
                                 onClose();
                             }
                         }}
@@ -209,9 +201,15 @@ export const CfgMetatypePropertyDialog = ({
                                 )}
                                 <Button
                                     data-cy="cfg-metatype-property-custom-create"
-                                    label={t('editor.metatype.cfgPicker.customAction', { name: trimmedQuery })}
+                                    label={exactMatch
+                                        ? t('editor.metatype.cfgPicker.customAction', { name: exactMatch.id })
+                                        : t('editor.metatype.cfgPicker.customAction', { name: trimmedQuery })}
                                     onClick={() => {
-                                        onCreateCustomProperty(trimmedQuery);
+                                        if (exactMatch) {
+                                            onSelectMetatypeProperty(exactMatch);
+                                        } else {
+                                            onCreateCustomProperty(trimmedQuery);
+                                        }
                                         onClose();
                                     }}
                                     disabled={customAlreadyExists}

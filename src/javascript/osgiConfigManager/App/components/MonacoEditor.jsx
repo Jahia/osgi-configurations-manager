@@ -5,7 +5,7 @@ import { Button, Typography } from '@jahia/moonstone';
 import { Undo, RotateRight, Code, Lock, Unlock, ViewList } from '@jahia/moonstone';
 import { useTranslation } from 'react-i18next';
 import { osgiService } from '../api/osgiService';
-import { buildPropertyDocumentation, formatDefaultValue, getLocalizedTypeLabel, getPropertyLabel } from '../utils/metatypeUtils';
+import { buildPropertyDocumentation, findExactMetatypePropertyMatch, formatDefaultValue, getLocalizedTypeLabel, getPropertyLabel, matchesMetatypePropertyQuery } from '../utils/metatypeUtils';
 
 const isExpectedCancellation = reason => {
     if (!reason) {
@@ -604,25 +604,11 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
             return properties;
         }
 
-        return properties.filter(property => {
-            const haystack = [
-                property.id,
-                property.name,
-                property.description,
-                property.type,
-                ...(property.defaultValues || []),
-                ...((property.options || []).reduce((acc, option) => {
-                    acc.push(option.value, option.label);
-                    return acc;
-                }, []))
-            ]
-                .filter(Boolean)
-                .join(' ')
-                .toLowerCase();
-
-            return haystack.includes(search);
-        });
+        return properties.filter(property => matchesMetatypePropertyQuery(property, search));
     }, [supportsMetatypeAssistance, metatypeDefinition, propertySearch]);
+    const exactSearchMatch = useMemo(() => (
+        findExactMetatypePropertyMatch(metatypeDefinition?.properties || [], propertySearch)
+    ), [metatypeDefinition, propertySearch]);
 
     useEffect(() => {
         setPropertySearch('');
@@ -1295,6 +1281,17 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
                         <input
                             value={propertySearch}
                             onChange={event => setPropertySearch(event.target.value)}
+                            onKeyDown={event => {
+                                if (event.key !== 'Enter') {
+                                    return;
+                                }
+
+                                if (exactSearchMatch) {
+                                    insertProperty(exactSearchMatch);
+                                } else if (filteredProperties.length === 1) {
+                                    insertProperty(filteredProperties[0]);
+                                }
+                            }}
                             placeholder={t('editor.metatype.searchPlaceholder')}
                             style={{
                                 width: '100%',
