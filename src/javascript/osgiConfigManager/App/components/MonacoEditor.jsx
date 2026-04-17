@@ -5,6 +5,7 @@ import { Button, Typography } from '@jahia/moonstone';
 import { Undo, RotateRight, Code, Lock, Unlock, ViewList } from '@jahia/moonstone';
 import { useTranslation } from 'react-i18next';
 import { osgiService } from '../api/osgiService';
+import { buildPropertyDocumentation, formatDefaultValue, getLocalizedTypeLabel, getPropertyLabel } from '../utils/metatypeUtils';
 
 const isExpectedCancellation = reason => {
     if (!reason) {
@@ -350,51 +351,6 @@ const getYamlHoverContext = (model, position) => {
     };
 };
 
-const formatDefaultValue = property => {
-    const defaultValues = Array.isArray(property?.defaultValues) ? property.defaultValues.filter(Boolean) : [];
-    return defaultValues.join(', ');
-};
-
-const getPropertyLabel = property => property?.name || property?.id || '';
-
-const buildPropertyDocumentation = (property, t) => {
-    const sections = [`**${getPropertyLabel(property)}**`];
-
-    if (property?.id && property.name && property.name !== property.id) {
-        sections.push(`\`${property.id}\``);
-    } else if (property?.id) {
-        sections.push(`\`${property.id}\``);
-    }
-
-    if (property?.description) {
-        sections.push(property.description);
-    }
-
-    const details = [];
-    if (property?.type) {
-        details.push(`${t('editor.metatype.type')}: \`${property.type}\``);
-    }
-    details.push(`${t('editor.metatype.optional')}: ${property?.optional ? t('editor.metatype.yes') : t('editor.metatype.no')}`);
-
-    const defaultValue = formatDefaultValue(property);
-    if (defaultValue) {
-        details.push(`${t('editor.metatype.default')}: \`${defaultValue}\``);
-    }
-
-    if (details.length > 0) {
-        sections.push(details.join('\n\n'));
-    }
-
-    if (Array.isArray(property?.options) && property.options.length > 0) {
-        sections.push([
-            `${t('editor.metatype.values')}:`,
-            ...property.options.map(option => `- \`${option.value}\`${option.label && option.label !== option.value ? `: ${option.label}` : ''}`)
-        ].join('\n'));
-    }
-
-    return sections.join('\n\n');
-};
-
 const getPropertyContext = (line, column) => {
     const linePrefix = line.slice(0, Math.max(0, column - 1));
     const trimmedPrefix = linePrefix.trim();
@@ -503,16 +459,6 @@ const getYamlInsertionText = property => {
 
     const defaultValue = defaultValues[0];
     return `${property.id}: ${defaultValue !== undefined ? formatYamlScalar(defaultValue, property) : ''}`;
-};
-
-const getLocalizedTypeLabel = (type, t) => {
-    if (!type) {
-        return t('editor.metatype.suggestion.types.string');
-    }
-
-    const key = `editor.metatype.suggestion.types.${type}`;
-    const translated = t(key);
-    return translated === key ? type : translated;
 };
 
 const getValueSuggestions = (property, t) => {

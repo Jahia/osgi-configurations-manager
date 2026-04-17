@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
     Table,
@@ -19,7 +19,8 @@ import {
     AddCircleOutline
 } from '@jahia/moonstone';
 import { useTranslation } from 'react-i18next';
-import { osgiService } from '../api/osgiService';
+import { CfgMetatypeInfoTooltip, CfgMetatypePropertyDialog } from './CfgMetatypePropertyDialog';
+import { getSuggestedPropertyValue } from '../utils/metatypeUtils';
 
 // Internal Auto-Resizing Text Area Component
 const AutoResizeTextArea = ({ value, onChange, placeholder, style, onFocus, onBlur, inputRef, preventNewlines, ...props }) => {
@@ -88,12 +89,13 @@ const AutoResizeTextArea = ({ value, onChange, placeholder, style, onFocus, onBl
     );
 };
 
-export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, handleAddCfgEntry, handleReorder, setModalConfig, handleToggleEncryption, showComments, handleToggleComments, setShowComments }) => {
+export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, handleAddCfgEntry, handleReorder, setModalConfig, handleToggleEncryption, showComments, handleToggleComments, setShowComments, metatypeDefinition }) => {
     const { t } = useTranslation('osgi-configurations-manager');
     const [selectedIndex, setSelectedIndex] = useState(null);
     const [draggedIndex, setDraggedIndex] = useState(null);
     const [overlay, setOverlay] = useState(null);
     const [visibleSecrets, setVisibleSecrets] = useState({});
+    const [isMetatypeDialogOpen, setIsMetatypeDialogOpen] = useState(false);
 
     // Refs map to store input references: { [index]: { key: HTMLElement, value: HTMLElement } }
     const inputRefs = useRef({});
@@ -137,6 +139,64 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
         handlePropUpdate([index, field], 'value', value);
     };
 
+    const propertyMap = useMemo(() => {
+        const map = new Map();
+        (metatypeDefinition?.properties || []).forEach(property => {
+            if (property?.id) {
+                map.set(property.id, property);
+            }
+        });
+        return map;
+    }, [metatypeDefinition]);
+
+    const existingPropertyKeys = useMemo(() => new Set(
+        (Array.isArray(entries) ? entries : [])
+            .filter(entry => (entry.type?.value ?? entry.type) === 'property')
+            .map(entry => entry.key?.value ?? entry.key)
+            .filter(Boolean)
+    ), [entries]);
+
+    const availableMetatypeProperties = useMemo(() => (
+        (metatypeDefinition?.properties || []).filter(property => property?.id && !existingPropertyKeys.has(property.id))
+    ), [existingPropertyKeys, metatypeDefinition]);
+
+    const focusEntryValue = index => {
+        setTimeout(() => {
+            const el = inputRefs.current[index]?.value;
+            if (el) {
+                el.focus();
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 100);
+    };
+
+    const insertOrFocusProperty = (propertyName, propertyDefinition) => {
+        if (!propertyName) {
+            return;
+        }
+
+        const existingIndex = entries.findIndex(entry => {
+            const entryType = entry.type?.value ?? entry.type;
+            const entryKey = entry.key?.value ?? entry.key;
+            return entryType === 'property' && entryKey === propertyName;
+        });
+
+        if (existingIndex !== -1) {
+            setSelectedIndex(existingIndex);
+            focusEntryValue(existingIndex);
+            return;
+        }
+
+        const insertIndex = selectedIndex !== null ? selectedIndex + 1 : (Array.isArray(entries) ? entries.length : 0);
+        handleAddCfgEntry({
+            type: 'property',
+            key: propertyName,
+            value: propertyDefinition ? getSuggestedPropertyValue(propertyDefinition) : ''
+        }, insertIndex);
+        setSelectedIndex(insertIndex);
+        focusEntryValue(insertIndex);
+    };
+
     // Modified Drag Handlers: Only active if initiated from Handle
     const handleDragStart = (e, index) => {
         // Robust check: if the event target is inside an input/textarea/button, DO NOT drag.
@@ -171,41 +231,18 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
         const insertIndex = selectedIndex !== null ? selectedIndex + 1 : (Array.isArray(entries) ? entries.length : 0);
 
         if (type === 'property') {
+            if ((metatypeDefinition?.properties || []).length > 0) {
+                setIsMetatypeDialogOpen(true);
+                return;
+            }
+
             setModalConfig({
                 type: 'prompt',
                 title: t('modal.addProp.title'),
                 message: t('modal.addProp.message'),
                 onConfirm: (newKey) => {
                     if (!newKey) return;
-
-                    const existingIndex = entries.findIndex(e => {
-                        const eType = e.type?.value ?? e.type;
-                        const eKey = e.key?.value ?? e.key;
-                        return eType === 'property' && eKey === newKey;
-                    });
-
-                    if (existingIndex !== -1) {
-                        // Focus existing
-                        setSelectedIndex(existingIndex);
-                        setTimeout(() => {
-                            // Only focus value. If value is missing (e.g. specialized type?), do nothing or user can manually click.
-                            // Focusing key is confusing as user wants to check/edit the value of the duplicate.
-                            const el = inputRefs.current[existingIndex]?.value;
-                            if (el) {
-                                el.focus();
-                                // Optional: highlight/scrollIntoView?
-                                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            }
-                        }, 100);
-                    } else {
-                        // Add new
-                        handleAddCfgEntry({ type, key: newKey, value: '' }, insertIndex);
-                        setSelectedIndex(insertIndex);
-                        setTimeout(() => {
-                            const el = inputRefs.current[insertIndex]?.value;
-                            if (el) el.focus();
-                        }, 100);
-                    }
+                    insertOrFocusProperty(newKey);
                 }
             });
             return;
@@ -444,9 +481,7 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                                     ) : (
                                         <>
                                             <TableBodyCell style={{ ...cellStyle, flex: '0 0 24%', width: '24%', minWidth: '220px' }}>
-                                                <div
-                                                    style={{ width: '100%' }}
-                                                >
+                                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', width: '100%' }}>
                                                     <AutoResizeTextArea
                                                         inputRef={el => setInputRef(index, 'key', el)}
                                                         data-cy={`cfg-key-${index}`}
@@ -457,6 +492,31 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                                                         placeholder={t('editor.placeholder.key')}
                                                         style={textInputStyle}
                                                     />
+                                                    {propertyMap.get(key) && (
+                                                        <Tooltip label={<CfgMetatypeInfoTooltip property={propertyMap.get(key)} />}>
+                                                            <div
+                                                                data-cy={`cfg-metatype-info-${index}`}
+                                                                style={{
+                                                                    width: '20px',
+                                                                    height: '20px',
+                                                                    borderRadius: '50%',
+                                                                    border: '1px solid #b6e0f2',
+                                                                    background: '#eef8fd',
+                                                                    color: '#0077b6',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                    fontSize: '12px',
+                                                                    fontWeight: 700,
+                                                                    cursor: 'help',
+                                                                    marginTop: '6px',
+                                                                    flexShrink: 0
+                                                                }}
+                                                            >
+                                                                i
+                                                            </div>
+                                                        </Tooltip>
+                                                    )}
                                                 </div>
                                             </TableBodyCell>
 
@@ -549,6 +609,14 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                     </TableBody>
                 </Table>
             </div>
+            <CfgMetatypePropertyDialog
+                open={isMetatypeDialogOpen}
+                properties={availableMetatypeProperties}
+                existingKeys={existingPropertyKeys}
+                onClose={() => setIsMetatypeDialogOpen(false)}
+                onSelectMetatypeProperty={property => insertOrFocusProperty(property.id, property)}
+                onCreateCustomProperty={propertyName => insertOrFocusProperty(propertyName)}
+            />
         </div>
     );
 };

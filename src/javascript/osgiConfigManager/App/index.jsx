@@ -283,6 +283,7 @@ const AppContent = () => {
                                                             showComments={showComments}
                                                             handleToggleComments={handleToggleComments}
                                                             setShowComments={setShowComments}
+                                                            metatypeDefinition={metatypeInfo}
                                                         />
                                                     )
                                                 ) : (

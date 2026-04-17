@@ -139,6 +139,16 @@
             "availableProperties": "Verfügbare Eigenschaften",
             "searchPlaceholder": "Eigenschaften filtern...",
             "noResults": "Keine passenden Eigenschaften",
+            "cfgPicker": {
+                "title": "Eigenschaft hinzufügen",
+                "description": "Metatype-Eigenschaften suchen oder einen benutzerdefinierten Eigenschaftsnamen eingeben.",
+                "searchPlaceholder": "Eigenschaft suchen oder eingeben",
+                "customTitle": "Benutzerdefinierte Eigenschaft",
+                "customDescription": "Verwenden Sie dasselbe Feld, um eine nicht im Metatype deklarierte Eigenschaft hinzuzufügen.",
+                "customAction": "Benutzerdefinierte Eigenschaft \"{{name}}\" hinzufügen",
+                "customAlreadyExists": "Diese Eigenschaft existiert bereits in der aktuellen Datei.",
+                "knownProperty": "Dieser Name entspricht einer bekannten Metatype-Eigenschaft. Die Auswahl aus der Liste übernimmt auch den Standardwert."
+            },
             "type": "Typ",
             "optional": "Optional",
             "default": "Standardwert",

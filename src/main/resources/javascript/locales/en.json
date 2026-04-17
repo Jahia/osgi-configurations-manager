@@ -148,6 +148,16 @@
             "availableProperties": "Available Properties",
             "searchPlaceholder": "Filter properties...",
             "noResults": "No matching properties",
+            "cfgPicker": {
+                "title": "Add Property",
+                "description": "Search Metatype properties or enter a custom property name.",
+                "searchPlaceholder": "Search or enter a property name",
+                "customTitle": "Custom property",
+                "customDescription": "Use the same field to add a property not declared in Metatype.",
+                "customAction": "Add custom property \"{{name}}\"",
+                "customAlreadyExists": "This property already exists in the current file.",
+                "knownProperty": "This name matches a known Metatype property. Selecting it from the list will also apply its default value."
+            },
             "type": "Type",
             "optional": "Optional",
             "default": "Default value",

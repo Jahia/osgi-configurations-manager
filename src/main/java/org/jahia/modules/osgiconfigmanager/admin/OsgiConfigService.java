@@ -77,13 +77,15 @@ public class OsgiConfigService {
     public @interface Config {
         @org.osgi.service.metatype.annotations.AttributeDefinition(
                 name = "Blacklisted files",
-                description = "Comma-separated configuration filenames to hide and block. Ignored when a white list is defined."
+                description = "Comma-separated configuration filenames to hide and block. Ignored when a white list is defined.",
+                required = false
         )
         String filteredFiles() default "";
 
         @org.osgi.service.metatype.annotations.AttributeDefinition(
                 name = "Whitelisted files",
-                description = "Comma-separated configuration filenames to exclusively expose. When defined, only these files remain visible and editable."
+                description = "Comma-separated configuration filenames to exclusively expose. When defined, only these files remain visible and editable.",
+                required = false
         )
         String allowedFiles() default "";
     }

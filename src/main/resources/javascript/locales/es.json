@@ -139,6 +139,16 @@
             "availableProperties": "Propiedades disponibles",
             "searchPlaceholder": "Filtrar propiedades...",
             "noResults": "No hay propiedades coincidentes",
+            "cfgPicker": {
+                "title": "Añadir propiedad",
+                "description": "Busca propiedades Metatype o introduce un nombre de propiedad personalizado.",
+                "searchPlaceholder": "Buscar o introducir un nombre de propiedad",
+                "customTitle": "Propiedad personalizada",
+                "customDescription": "Usa el mismo campo para añadir una propiedad no declarada en Metatype.",
+                "customAction": "Añadir propiedad personalizada \"{{name}}\"",
+                "customAlreadyExists": "Esta propiedad ya existe en el archivo actual.",
+                "knownProperty": "Este nombre coincide con una propiedad Metatype conocida. Seleccionarla en la lista aplicará también su valor por defecto."
+            },
             "type": "Tipo",
             "optional": "Opcional",
             "default": "Valor por defecto",
