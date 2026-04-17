@@ -5,6 +5,42 @@ export const formatDefaultValue = property => {
 
 export const getPropertyLabel = property => property?.name || property?.id || '';
 
+export const matchesMetatypePropertyQuery = (property, query) => {
+    const normalizedQuery = String(query || '').trim().toLowerCase();
+    if (!normalizedQuery) {
+        return true;
+    }
+
+    const searchableValues = [
+        property?.id,
+        property?.name,
+        ...(Array.isArray(property?.defaultValues) ? property.defaultValues : []),
+        ...(Array.isArray(property?.options)
+            ? property.options.reduce((acc, option) => {
+                acc.push(option?.value, option?.label);
+                return acc;
+            }, [])
+            : [])
+    ]
+        .filter(Boolean)
+        .map(value => String(value).toLowerCase());
+
+    return searchableValues.some(value => value.includes(normalizedQuery));
+};
+
+export const findExactMetatypePropertyMatch = (properties, query) => {
+    const normalizedQuery = String(query || '').trim().toLowerCase();
+    if (!normalizedQuery || !Array.isArray(properties)) {
+        return null;
+    }
+
+    return properties.find(property => {
+        const id = String(property?.id || '').trim().toLowerCase();
+        const name = String(property?.name || '').trim().toLowerCase();
+        return id === normalizedQuery || name === normalizedQuery;
+    }) || null;
+};
+
 export const getLocalizedTypeLabel = (type, t) => {
     if (!type) {
         return '';

@@ -706,46 +706,59 @@ public class OsgiConfigService {
         metatype.put("description", objectClassDefinition.getDescription());
 
         List<Map<String, Object>> properties = new ArrayList<>();
-        appendAttributeDefinitions(properties, objectClassDefinition.getAttributeDefinitions(ObjectClassDefinition.REQUIRED), false);
-        appendAttributeDefinitions(properties, objectClassDefinition.getAttributeDefinitions(ObjectClassDefinition.OPTIONAL), true);
+        Set<String> seenAttributeIds = new LinkedHashSet<>();
+        appendDistinctAttributeDefinitions(objectClassDefinition.getAttributeDefinitions(ObjectClassDefinition.REQUIRED), seenAttributeIds,
+                definition -> properties.add(toAttributeDefinitionMap(definition, false)));
+        appendDistinctAttributeDefinitions(objectClassDefinition.getAttributeDefinitions(ObjectClassDefinition.OPTIONAL), seenAttributeIds,
+                definition -> properties.add(toAttributeDefinitionMap(definition, true)));
         metatype.put(KEY_PROPERTIES, properties);
         return metatype;
     }
 
-    private void appendAttributeDefinitions(List<Map<String, Object>> properties, AttributeDefinition[] definitions, boolean optional) {
+    private Map<String, Object> toAttributeDefinitionMap(AttributeDefinition definition, boolean optional) {
+        Map<String, Object> property = new LinkedHashMap<>();
+        property.put("id", definition.getID());
+        property.put("name", definition.getName());
+        property.put("description", definition.getDescription());
+        property.put("type", getAttributeTypeName(definition.getType()));
+        property.put("cardinality", definition.getCardinality());
+        property.put("optional", optional);
+
+        String[] defaultValues = definition.getDefaultValue();
+        if (defaultValues != null) {
+            property.put("defaultValues", Arrays.asList(defaultValues));
+        } else {
+            property.put("defaultValues", Collections.emptyList());
+        }
+
+        String[] optionValues = definition.getOptionValues();
+        String[] optionLabels = definition.getOptionLabels();
+        List<Map<String, String>> options = new ArrayList<>();
+        if (optionValues != null) {
+            for (int i = 0; i < optionValues.length; i++) {
+                Map<String, String> option = new LinkedHashMap<>();
+                option.put("value", optionValues[i]);
+                option.put("label", optionLabels != null && optionLabels.length > i ? optionLabels[i] : optionValues[i]);
+                options.add(option);
+            }
+        }
+        property.put("options", options);
+        return property;
+    }
+
+    private void appendDistinctAttributeDefinitions(AttributeDefinition[] definitions, Set<String> seenAttributeIds,
+                                                     Consumer<AttributeDefinition> definitionConsumer) {
         if (definitions == null) {
             return;
         }
 
         for (AttributeDefinition definition : definitions) {
-            Map<String, Object> property = new LinkedHashMap<>();
-            property.put("id", definition.getID());
-            property.put("name", definition.getName());
-            property.put("description", definition.getDescription());
-            property.put("type", getAttributeTypeName(definition.getType()));
-            property.put("cardinality", definition.getCardinality());
-            property.put("optional", optional);
-
-            String[] defaultValues = definition.getDefaultValue();
-            if (defaultValues != null) {
-                property.put("defaultValues", Arrays.asList(defaultValues));
-            } else {
-                property.put("defaultValues", Collections.emptyList());
-            }
-
-            String[] optionValues = definition.getOptionValues();
-            String[] optionLabels = definition.getOptionLabels();
-            List<Map<String, String>> options = new ArrayList<>();
-            if (optionValues != null) {
-                for (int i = 0; i < optionValues.length; i++) {
-                    Map<String, String> option = new LinkedHashMap<>();
-                    option.put("value", optionValues[i]);
-                    option.put("label", optionLabels != null && optionLabels.length > i ? optionLabels[i] : optionValues[i]);
-                    options.add(option);
+            if (definition != null) {
+                String id = definition.getID();
+                if (id != null && !id.isBlank() && seenAttributeIds.add(id)) {
+                    definitionConsumer.accept(definition);
                 }
             }
-            property.put("options", options);
-            properties.add(property);
         }
     }
 
@@ -1162,6 +1175,7 @@ public class OsgiConfigService {
 
     private String buildCfgTemplate(String pid, ObjectClassDefinition objectClassDefinition, String instanceIdentifier) {
         StringBuilder builder = new StringBuilder();
+        Set<String> seenAttributeIds = new LinkedHashSet<>();
 
         appendCommentLine(builder, objectClassDefinition.getName());
         appendCommentLine(builder, "PID: " + pid);
@@ -1172,34 +1186,30 @@ public class OsgiConfigService {
 
         builder.append('\n');
 
-        appendTemplateDefinitions(builder, objectClassDefinition.getAttributeDefinitions(ObjectClassDefinition.REQUIRED));
-        appendTemplateDefinitions(builder, objectClassDefinition.getAttributeDefinitions(ObjectClassDefinition.OPTIONAL));
+        appendDistinctAttributeDefinitions(objectClassDefinition.getAttributeDefinitions(ObjectClassDefinition.REQUIRED), seenAttributeIds,
+                definition -> appendTemplateDefinition(builder, definition));
+        builder.append('\n');
+        appendDistinctAttributeDefinitions(objectClassDefinition.getAttributeDefinitions(ObjectClassDefinition.OPTIONAL), seenAttributeIds,
+                definition -> appendTemplateDefinition(builder, definition));
+        builder.append('\n');
 
         return builder.toString();
     }
 
-    private void appendTemplateDefinitions(StringBuilder builder, AttributeDefinition[] definitions) {
-        if (definitions == null) {
-            return;
+    private void appendTemplateDefinition(StringBuilder builder, AttributeDefinition definition) {
+        String defaultValue = "";
+        String[] defaultValues = definition.getDefaultValue();
+        if (defaultValues != null && defaultValues.length > 0) {
+            defaultValue = Arrays.stream(defaultValues)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.joining(", "));
         }
 
-        for (AttributeDefinition definition : definitions) {
-            String defaultValue = "";
-            String[] defaultValues = definition.getDefaultValue();
-            if (defaultValues != null && defaultValues.length > 0) {
-                defaultValue = Arrays.stream(defaultValues)
-                        .filter(Objects::nonNull)
-                        .collect(Collectors.joining(", "));
-            }
-
-            builder.append("# ")
-                    .append(definition.getID())
-                    .append(" = ")
-                    .append(defaultValue)
-                    .append('\n');
-        }
-
-        builder.append('\n');
+        builder.append("# ")
+                .append(definition.getID())
+                .append(" = ")
+                .append(defaultValue)
+                .append('\n');
     }
 
     private void appendCommentLine(StringBuilder builder, String text) {
