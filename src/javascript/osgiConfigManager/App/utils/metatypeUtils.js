@@ -13,13 +13,18 @@ export const getLocalizedTypeLabel = (type, t) => {
     return t(`editor.metatype.suggestion.types.${type}`, {defaultValue: type});
 };
 
-export const buildPropertyDocumentation = (property, t) => {
-    const sections = [`**${getPropertyLabel(property)}**`];
+export const buildPropertyDocumentation = (property, t, options = {}) => {
+    const {includeHeader = true} = options;
+    const sections = [];
 
-    if (property?.id && property.name && property.name !== property.id) {
-        sections.push(`\`${property.id}\``);
-    } else if (property?.id) {
-        sections.push(`\`${property.id}\``);
+    if (includeHeader) {
+        sections.push(`**${getPropertyLabel(property)}**`);
+
+        if (property?.id && property.name && property.name !== property.id) {
+            sections.push(`\`${property.id}\``);
+        } else if (property?.id) {
+            sections.push(`\`${property.id}\``);
+        }
     }
 
     if (property?.description) {

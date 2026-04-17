@@ -125,7 +125,8 @@
             "modeVisual": "Modalità Visuale",
             "encrypt": "Cifra",
             "decrypt": "Decifra",
-            "toggleComments": "Attiva/disattiva commenti"
+            "toggleComments": "Attiva/disattiva commenti",
+            "toggleEmptyLines": "Mostra/nascondi righe vuote"
         },
         "placeholder": {
             "key": "Chiave",
@@ -201,7 +202,8 @@
         "decryptSelection": "Decifra il testo selezionato",
         "showSecret": "Mostra il valore segreto",
         "hideSecret": "Nascondi il valore segreto",
-        "toggleComments": "Attiva/disattiva visibilità commenti (eccetto intestazione)"
+        "toggleComments": "Attiva/disattiva visibilità commenti (eccetto intestazione)",
+        "toggleEmptyLines": "Mostra o nasconde le righe vuote (tranne l’intestazione)"
     },
     "sidebar": {
         "on": "On",

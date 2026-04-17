@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { buildPropertyDocumentation, formatDefaultValue, getLocalizedTypeLabel, getPropertyLabel } from '../utils/metatypeUtils';
 
 const renderDocumentation = (property, t) => {
-    const description = buildPropertyDocumentation(property, t)
+    const description = buildPropertyDocumentation(property, t, {includeHeader: false})
         .replace(/\*\*/g, '')
         .replace(/`/g, '');
 

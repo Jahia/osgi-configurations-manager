@@ -124,7 +124,8 @@
             "modeRaw": "Textmodus",
             "modeVisual": "Visueller Modus",
             "encrypt": "Verschlüsseln",
-            "decrypt": "Entschlüsseln"
+            "decrypt": "Entschlüsseln",
+            "toggleEmptyLines": "Leerzeilen umschalten"
         },
         "placeholder": {
             "key": "Schlüssel",
@@ -200,7 +201,8 @@
         "decryptSelection": "Ausgewählten Text entschlüsseln",
         "showSecret": "Geheimen Wert anzeigen",
         "hideSecret": "Geheimen Wert ausblenden",
-        "toggleComments": "Kommentarsichtbarkeit umschalten (außer Kopfzeile)"
+        "toggleComments": "Kommentarsichtbarkeit umschalten (außer Kopfzeile)",
+        "toggleEmptyLines": "Sichtbarkeit leerer Zeilen umschalten (außer Kopfzeile)"
     },
     "sidebar": {
         "on": "Ein",

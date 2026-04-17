@@ -87,6 +87,9 @@ const AppContent = () => {
         showComments,
         handleToggleComments,
         setShowComments,
+        showEmptyLines,
+        handleToggleEmptyLines,
+        setShowEmptyLines,
         handleToggleEncryption
     } = useOsgiConfigs();
 
@@ -283,6 +286,9 @@ const AppContent = () => {
                                                             showComments={showComments}
                                                             handleToggleComments={handleToggleComments}
                                                             setShowComments={setShowComments}
+                                                            showEmptyLines={showEmptyLines}
+                                                            handleToggleEmptyLines={handleToggleEmptyLines}
+                                                            setShowEmptyLines={setShowEmptyLines}
                                                             metatypeDefinition={metatypeInfo}
                                                         />
                                                     )

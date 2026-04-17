@@ -125,7 +125,8 @@
             "modeVisual": "Modo Visual",
             "encrypt": "Criptografar",
             "decrypt": "Descriptografar",
-            "toggleComments": "Alternar comentários"
+            "toggleComments": "Alternar comentários",
+            "toggleEmptyLines": "Alternar linhas vazias"
         },
         "placeholder": {
             "key": "Chave",
@@ -201,7 +202,8 @@
         "decryptSelection": "Descriptografar texto selecionado",
         "showSecret": "Mostrar valor secreto",
         "hideSecret": "Ocultar valor secreto",
-        "toggleComments": "Alternar visibilidade dos comentários (exceto cabeçalho)"
+        "toggleComments": "Alternar visibilidade dos comentários (exceto cabeçalho)",
+        "toggleEmptyLines": "Mostrar ou ocultar linhas vazias (exceto o cabeçalho)"
     },
     "sidebar": {
         "on": "Ligado",

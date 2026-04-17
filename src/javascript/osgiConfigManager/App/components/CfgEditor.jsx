@@ -89,7 +89,22 @@ const AutoResizeTextArea = ({ value, onChange, placeholder, style, onFocus, onBl
     );
 };
 
-export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, handleAddCfgEntry, handleReorder, setModalConfig, handleToggleEncryption, showComments, handleToggleComments, setShowComments, metatypeDefinition }) => {
+export const CfgEditor = ({
+    entries,
+    handlePropUpdate,
+    handleDeleteProperty,
+    handleAddCfgEntry,
+    handleReorder,
+    setModalConfig,
+    handleToggleEncryption,
+    showComments,
+    handleToggleComments,
+    setShowComments,
+    showEmptyLines,
+    handleToggleEmptyLines,
+    setShowEmptyLines,
+    metatypeDefinition
+}) => {
     const { t } = useTranslation('osgi-configurations-manager');
     const [selectedIndex, setSelectedIndex] = useState(null);
     const [draggedIndex, setDraggedIndex] = useState(null);
@@ -260,6 +275,8 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                 const el = inputRefs.current[insertIndex]?.value;
                 if (el) el.focus();
             }, 100);
+        } else if (type === 'empty' && !showEmptyLines) {
+            setShowEmptyLines(true);
         }
     };
 
@@ -303,6 +320,16 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                             icon={showComments ? <Visibility /> : <Hidden />}
                             variant="ghost"
                             onClick={handleToggleComments}
+                        />
+                    </Tooltip>
+                </div>
+                <div data-cy="cfg-toggle-empty-lines">
+                    <Tooltip label={t('tooltip.toggleEmptyLines')}>
+                        <Button
+                            label={t('editor.button.toggleEmptyLines')}
+                            icon={showEmptyLines ? <Visibility /> : <Hidden />}
+                            variant="ghost"
+                            onClick={handleToggleEmptyLines}
                         />
                     </Tooltip>
                 </div>
@@ -370,6 +397,9 @@ export const CfgEditor = ({ entries, handlePropUpdate, handleDeleteProperty, han
                             // Filtering Logic: Hide comments if showComments=false, 
                             // EXCEPT the absolute first line of the file (index 0)
                             if (!showComments && type === 'comment' && index !== 0) {
+                                return null;
+                            }
+                            if (!showEmptyLines && type === 'empty' && index !== 0) {
                                 return null;
                             }
                             const key = entry.key?.value ?? entry.key ?? '';

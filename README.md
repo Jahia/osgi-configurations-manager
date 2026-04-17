@@ -22,6 +22,11 @@ A Jahia module to manage OSGi configurations directly from the Jahia Administrat
         -   Drag-and-drop reordering of properties and comments.
         -   Multiline text support with adaptive hover overlay for long values.
         -   **Comment Visibility**: Toggle comments on/off to focus on active properties.
+        -   **Empty Line Visibility**: Toggle empty lines on/off, with the preference persisted per user.
+        -   **Metatype assistance for `.cfg`**:
+            -   `Add Property` opens a searchable Metatype-aware picker when metadata is available.
+            -   The same field can also create a custom property not declared in Metatype.
+            -   Property hovers expose descriptions, type, optionality, defaults and allowed values.
     -   **Raw Editor**: Integrated **Monaco Editor** for advanced raw YAML or Properties editing with syntax highlighting and validation.
         -   **Metatype assistance for `.cfg`**:
             -   Show available properties, descriptions, defaults and allowed values.
@@ -156,7 +161,8 @@ public class MyService {
     - create a file from an available Metatype PID,
     - or create a new factory instance from a factory PID.
 4.  For `.cfg` and supported `.yml` files, switch to the raw editor to access Metatype-powered completion, hover documentation and property insertion.
-5.  Use the file-state badges in the sidebar and editor header to quickly identify whether a configuration is:
+5.  In the visual `.cfg` editor, use the dedicated `Add Property` dialog to pick Metatype-backed properties or create a custom one, and use the visibility toggles to hide/show comments and empty lines.
+6.  Use the file-state badges in the sidebar and editor header to quickly identify whether a configuration is:
     - module-managed (`MODULE`)
     - a module default whose local changes are preserved (`MODULE_DEFAULT`)
     - or instance-managed (`USER`)
@@ -172,6 +178,12 @@ When the selected file can be matched to an OSGi Metatype definition, the raw ed
 -   warnings for unknown keys without blocking save
 
 This works best for `.cfg` files and for `.yml` files whose filename can still be matched to a PID or factory PID.
+
+The visual `.cfg` editor also consumes the same Metatype metadata when available:
+
+-   searchable property picker instead of a free-text-only prompt
+-   inline hover documentation on known property names
+-   support for both Metatype-backed properties and custom free-form properties
 
 ## Metatype-backed Creation
 

@@ -133,7 +133,8 @@
             "modeVisual": "Visual Edit",
             "encrypt": "Encrypt",
             "decrypt": "Decrypt",
-            "toggleComments": "Toggle Comments"
+            "toggleComments": "Toggle Comments",
+            "toggleEmptyLines": "Toggle Empty Lines"
         },
         "placeholder": {
             "key": "Key",
@@ -231,7 +232,8 @@
         "decryptSelection": "Decrypt selected text",
         "showSecret": "Show secret value",
         "hideSecret": "Hide secret value",
-        "toggleComments": "Toggle comments visibility (except header)"
+        "toggleComments": "Toggle comments visibility (except header)",
+        "toggleEmptyLines": "Toggle empty line visibility (except header)"
     },
     "sidebar": {
         "on": "On",

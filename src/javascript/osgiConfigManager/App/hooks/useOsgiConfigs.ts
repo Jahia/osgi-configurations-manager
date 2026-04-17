@@ -250,14 +250,16 @@ export const useOsgiConfigs = () => {
 
     const [isRawMode, setIsRawMode] = useState<boolean>(true);
     const [showComments, setShowComments] = useState<boolean>(true);
+    const [showEmptyLines, setShowEmptyLines] = useState<boolean>(true);
 
     // Initial load of user preferences
     useEffect(() => {
         const loadPreferences = async () => {
             try {
-                const [modeData, commentsData] = await Promise.all([
+                const [modeData, commentsData, emptyLinesData] = await Promise.all([
                     osgiService.getPreference('osgiEditorMode'),
-                    osgiService.getPreference('osgiShowComments')
+                    osgiService.getPreference('osgiShowComments'),
+                    osgiService.getPreference('osgiShowEmptyLines')
                 ]);
 
                 if (modeData.value) {
@@ -265,6 +267,9 @@ export const useOsgiConfigs = () => {
                 }
                 if (commentsData.value) {
                     setShowComments(commentsData.value === 'true');
+                }
+                if (emptyLinesData.value) {
+                    setShowEmptyLines(emptyLinesData.value === 'true');
                 }
             } catch (e) {
                 console.error("Failed to load user preferences", e);
@@ -447,6 +452,17 @@ export const useOsgiConfigs = () => {
             console.error("Failed to save comment visibility preference", e);
         }
     }, [showComments]);
+
+    const handleToggleEmptyLines = useCallback(async () => {
+        const newValue = !showEmptyLines;
+        setShowEmptyLines(newValue);
+
+        try {
+            await osgiService.setPreference('osgiShowEmptyLines', String(newValue));
+        } catch (e) {
+            console.error("Failed to save empty line visibility preference", e);
+        }
+    }, [showEmptyLines]);
 
     const handleToggleRawMode = useCallback(async () => {
         // Capture cleanliness state before toggle
@@ -904,6 +920,9 @@ export const useOsgiConfigs = () => {
         showComments,
         setShowComments,
         handleToggleComments,
+        showEmptyLines,
+        setShowEmptyLines,
+        handleToggleEmptyLines,
         handleToggleEncryption
     };
 };

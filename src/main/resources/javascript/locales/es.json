@@ -124,7 +124,8 @@
             "modeRaw": "Modo Texto",
             "modeVisual": "Modo Visual",
             "encrypt": "Cifrar",
-            "decrypt": "Descifrar"
+            "decrypt": "Descifrar",
+            "toggleEmptyLines": "Alternar líneas vacías"
         },
         "placeholder": {
             "key": "Clave",
@@ -200,7 +201,8 @@
         "decryptSelection": "Descifrar el texto seleccionado",
         "showSecret": "Mostrar valor secreto",
         "hideSecret": "Ocultar valor secreto",
-        "toggleComments": "Alternar visibilidad de comentarios (excepto cabecera)"
+        "toggleComments": "Alternar visibilidad de comentarios (excepto cabecera)",
+        "toggleEmptyLines": "Mostrar u ocultar líneas vacías (excepto la cabecera)"
     },
     "sidebar": {
         "on": "On",

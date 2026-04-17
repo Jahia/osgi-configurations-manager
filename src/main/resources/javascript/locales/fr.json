@@ -133,7 +133,8 @@
             "modeVisual": "Mode Visuel",
             "encrypt": "Chiffrer",
             "decrypt": "Déchiffrer",
-            "toggleComments": "Basculer les commentaires"
+            "toggleComments": "Basculer les commentaires",
+            "toggleEmptyLines": "Afficher les lignes vides"
         },
         "placeholder": {
             "key": "Clé",
@@ -231,7 +232,8 @@
         "decryptSelection": "Déchiffrer le texte sélectionné",
         "showSecret": "Afficher la valeur secrète",
         "hideSecret": "Masquer la valeur secrète",
-        "toggleComments": "Afficher/Masquer les commentaires (sauf en-tête)"
+        "toggleComments": "Afficher/Masquer les commentaires (sauf en-tête)",
+        "toggleEmptyLines": "Afficher ou masquer les lignes vides (sauf l’en-tête)"
     },
     "sidebar": {
         "on": "On",
