@@ -72,7 +72,17 @@ public class OsgiConfigAction extends Action {
                     result.put("data", fileContent);
                 } else if ("availableMetatypes".equals(req.getParameter(PARAM_ACTION))) {
                     result.put("metatypes", configService.listAvailableMetatypeConfigurations(req.getLocale(), isRootUser));
+                } else if ("getPreference".equals(req.getParameter(PARAM_ACTION))) {
+                    String key = req.getParameter("key");
+                    String userPath = renderContext.getUser().getLocalPath();
+                    if (session.nodeExists(userPath)) {
+                        org.jahia.services.content.JCRNodeWrapper userNode = session.getNode(userPath);
+                        if (userNode.hasProperty(key)) {
+                            result.put("value", userNode.getProperty(key).getString());
+                        }
+                    }
                 } else {
+                    result.put("uiConfig", configService.getUiConfig());
                     // List all files
                     List<Map<String, Object>> allFiles = configService.listFiles(isRootUser);
                     String search = req.getParameter("search");
@@ -105,15 +115,6 @@ public class OsgiConfigAction extends Action {
                         }
                         LOGGER.debug("Deep Search: Found {} matching files", filteredFiles.size());
                         result.put("files", filteredFiles);
-                    } else if ("getPreference".equals(req.getParameter(PARAM_ACTION))) {
-                        String key = req.getParameter("key");
-                        String userPath = renderContext.getUser().getLocalPath();
-                        if (session.nodeExists(userPath)) {
-                            org.jahia.services.content.JCRNodeWrapper userNode = session.getNode(userPath);
-                            if (userNode.hasProperty(key)) {
-                                result.put("value", userNode.getProperty(key).getString());
-                            }
-                        }
                     } else {
                         result.put("files", allFiles);
                     }

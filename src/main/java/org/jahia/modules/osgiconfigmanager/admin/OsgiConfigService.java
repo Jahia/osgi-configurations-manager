@@ -65,6 +65,7 @@ public class OsgiConfigService {
     private Set<String> blacklist = new HashSet<>();
     private Set<String> whitelist = new HashSet<>();
     private MetaTypeService metaTypeService;
+    private boolean visualFormattingControlsEnabled;
 
     static final String SELF_CONFIG_PID = "org.jahia.modules.osgiconfigmanager";
     private static final String SELF_CONFIG = SELF_CONFIG_PID + ".cfg";
@@ -88,6 +89,13 @@ public class OsgiConfigService {
                 required = false
         )
         String allowedFiles() default "";
+
+        @org.osgi.service.metatype.annotations.AttributeDefinition(
+                name = "Enable visual formatting controls",
+                description = "Shows the visual editor controls for comments and empty lines. When disabled, the visual editor hides comments and empty lines by default.",
+                required = false
+        )
+        boolean visualFormattingControlsEnabled() default false;
     }
 
     private static final class MetatypeCollectionContext {
@@ -139,10 +147,18 @@ public class OsgiConfigService {
             String allowedFiles = (String) properties.get("allowedFiles");
             addConfiguredFilenames(newWhitelist, allowedFiles);
         }
+        this.visualFormattingControlsEnabled = getBooleanProperty(properties, "visualFormattingControlsEnabled", false);
         this.blacklist = newBlacklist;
         this.whitelist = newWhitelist;
         LOGGER.info("Updated blacklist: {}", blacklist);
         LOGGER.info("Updated whitelist: {}", whitelist);
+        LOGGER.info("Updated visual formatting controls flag: {}", visualFormattingControlsEnabled);
+    }
+
+    public Map<String, Object> getUiConfig() {
+        Map<String, Object> uiConfig = new LinkedHashMap<>();
+        uiConfig.put("visualFormattingControlsEnabled", visualFormattingControlsEnabled);
+        return uiConfig;
     }
 
     /**
@@ -1255,6 +1271,23 @@ public class OsgiConfigService {
         for (String entry : csv.split(",")) {
             addConfigNameAndVariant(target, entry.trim());
         }
+    }
+
+    private boolean getBooleanProperty(Map<String, Object> properties, String key, boolean defaultValue) {
+        if (properties == null || !properties.containsKey(key)) {
+            return defaultValue;
+        }
+
+        Object value = properties.get(key);
+        if (value instanceof Boolean) {
+            return (Boolean) value;
+        }
+
+        if (value instanceof String) {
+            return Boolean.parseBoolean((String) value);
+        }
+
+        return defaultValue;
     }
 
     private void addConfigNameAndVariant(Set<String> target, String filename) {

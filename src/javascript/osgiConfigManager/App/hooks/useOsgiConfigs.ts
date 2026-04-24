@@ -22,6 +22,7 @@ interface ModalConfig {
     confirmLabel?: string | null;
     cancelLabel?: string;
     otherLabel?: string;
+    deferConfirm?: boolean;
     onConfirm?: (value?: any) => void;
     onOther?: () => void;
 }
@@ -86,11 +87,15 @@ export const useOsgiConfigs = () => {
     const hasUnsaved = JSON.stringify(properties) !== JSON.stringify(originalProperties) || rawContent !== originalRawContent;
 
     const [searchInContent, setSearchInContent] = useState<boolean>(false);
+    const [visualFormattingControlsEnabled, setVisualFormattingControlsEnabled] = useState<boolean>(false);
 
     const fetchFiles = useCallback(async (query: string = '', deep: boolean = false) => {
         setLoadingFiles(true);
         try {
             const data = await osgiService.getAll(query, deep);
+            if (data.uiConfig) {
+                setVisualFormattingControlsEnabled(Boolean(data.uiConfig.visualFormattingControlsEnabled));
+            }
             if (data.files) {
                 setFiles(data.files);
                 setSelectedFile(previous => {
@@ -249,8 +254,8 @@ export const useOsgiConfigs = () => {
     // ... (rest of state)
 
     const [isRawMode, setIsRawMode] = useState<boolean>(true);
-    const [showComments, setShowComments] = useState<boolean>(true);
-    const [showEmptyLines, setShowEmptyLines] = useState<boolean>(true);
+    const [showCommentsPreference, setShowCommentsPreference] = useState<boolean>(false);
+    const [showEmptyLinesPreference, setShowEmptyLinesPreference] = useState<boolean>(false);
 
     // Initial load of user preferences
     useEffect(() => {
@@ -266,10 +271,10 @@ export const useOsgiConfigs = () => {
                     setIsRawMode(modeData.value === 'raw');
                 }
                 if (commentsData.value) {
-                    setShowComments(commentsData.value === 'true');
+                    setShowCommentsPreference(commentsData.value === 'true');
                 }
                 if (emptyLinesData.value) {
-                    setShowEmptyLines(emptyLinesData.value === 'true');
+                    setShowEmptyLinesPreference(emptyLinesData.value === 'true');
                 }
             } catch (e) {
                 console.error("Failed to load user preferences", e);
@@ -277,6 +282,9 @@ export const useOsgiConfigs = () => {
         };
         loadPreferences();
     }, []);
+
+    const showComments = visualFormattingControlsEnabled && showCommentsPreference;
+    const showEmptyLines = visualFormattingControlsEnabled && showEmptyLinesPreference;
 
     // Helper to encrypt properties tree before saving/converting to raw
     const encryptRecursive = useCallback(async (obj: any): Promise<any> => {
@@ -443,26 +451,34 @@ export const useOsgiConfigs = () => {
     }, [isRawMode, rawContent, selectedFile, isYamlValid, properties, t, success, toastError, resetProperties, encryptRecursive, fetchFiles, fetchFileContent]);
 
     const handleToggleComments = useCallback(async () => {
-        const newValue = !showComments;
-        setShowComments(newValue);
+        if (!visualFormattingControlsEnabled) {
+            return;
+        }
+
+        const newValue = !showCommentsPreference;
+        setShowCommentsPreference(newValue);
 
         try {
             await osgiService.setPreference('osgiShowComments', String(newValue));
         } catch (e) {
             console.error("Failed to save comment visibility preference", e);
         }
-    }, [showComments]);
+    }, [showCommentsPreference, visualFormattingControlsEnabled]);
 
     const handleToggleEmptyLines = useCallback(async () => {
-        const newValue = !showEmptyLines;
-        setShowEmptyLines(newValue);
+        if (!visualFormattingControlsEnabled) {
+            return;
+        }
+
+        const newValue = !showEmptyLinesPreference;
+        setShowEmptyLinesPreference(newValue);
 
         try {
             await osgiService.setPreference('osgiShowEmptyLines', String(newValue));
         } catch (e) {
             console.error("Failed to save empty line visibility preference", e);
         }
-    }, [showEmptyLines]);
+    }, [showEmptyLinesPreference, visualFormattingControlsEnabled]);
 
     const handleToggleRawMode = useCallback(async () => {
         // Capture cleanliness state before toggle
@@ -541,6 +557,35 @@ export const useOsgiConfigs = () => {
         setIsRawMode(newMode);
     }, [hasUnsaved, isRawMode, rawContent, encryptRecursive, properties, resetProperties]);
 
+    const handleSetEditorMode = useCallback(async (mode: 'raw' | 'visual') => {
+        const shouldBeRaw = mode === 'raw';
+        if (shouldBeRaw === isRawMode) {
+            return;
+        }
+
+        await handleToggleRawMode();
+    }, [handleToggleRawMode, isRawMode]);
+
+    const handleCancelChanges = useCallback(async () => {
+        if (!selectedFile?.name) {
+            return;
+        }
+
+        await fetchFileContent(selectedFile.name);
+    }, [fetchFileContent, selectedFile]);
+
+    const handleRefreshFiles = useCallback(async () => {
+        if (searchInContent) {
+            await fetchFiles(searchTerm, true);
+        } else {
+            await fetchFiles();
+        }
+
+        if (selectedFile?.name) {
+            await fetchFileContent(selectedFile.name);
+        }
+    }, [fetchFileContent, fetchFiles, searchInContent, searchTerm, selectedFile]);
+
     const toggleFileStatus = useCallback(async (f: OsgiFile) => {
         try {
             await osgiService.toggle(f.name);
@@ -600,18 +645,6 @@ export const useOsgiConfigs = () => {
     }, [fetchFiles, selectFile, selectedFile, success, t, toastError]);
 
     const handleMarkAsDefault = useCallback(async (f: OsgiFile) => {
-        if (hasUnsaved) {
-            setModalConfig({
-                type: 'confirm',
-                severity: 'warning',
-                title: t('modal.unsaved.title'),
-                message: t('modal.unsaved.message'),
-                cancelLabel: t('modal.ok'),
-                confirmLabel: null
-            });
-            return;
-        }
-
         setModalConfig({
             type: 'confirm',
             severity: 'info',
@@ -634,7 +667,7 @@ export const useOsgiConfigs = () => {
                 }
             }
         });
-    }, [fetchFileContent, fetchFiles, hasUnsaved, success, t, toastError]);
+    }, [fetchFileContent, fetchFiles, success, t, toastError]);
 
     const handleCreateFile = useCallback(async (filename: string) => {
         const validExtensions = ['.cfg', '.yml', '.cfg.disabled', '.yml.disabled'];
@@ -917,11 +950,15 @@ export const useOsgiConfigs = () => {
         fetchFiles,
         isRawMode,
         handleToggleRawMode,
+        handleSetEditorMode,
+        handleCancelChanges,
+        handleRefreshFiles,
+        visualFormattingControlsEnabled,
         showComments,
-        setShowComments,
+        setShowComments: setShowCommentsPreference,
         handleToggleComments,
         showEmptyLines,
-        setShowEmptyLines,
+        setShowEmptyLines: setShowEmptyLinesPreference,
         handleToggleEmptyLines,
         handleToggleEncryption
     };

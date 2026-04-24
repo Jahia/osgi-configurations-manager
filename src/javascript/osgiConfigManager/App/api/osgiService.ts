@@ -50,10 +50,15 @@ interface OsgiFileData {
     configState?: 'MODULE' | 'MODULE_DEFAULT' | 'USER';
 }
 
+export interface OsgiUiConfig {
+    visualFormattingControlsEnabled?: boolean;
+}
+
 interface OsgiServiceResponse {
     files?: OsgiFile[];
     data?: OsgiFileData;
     metatypes?: OsgiAvailableMetatypeDefinition[];
+    uiConfig?: OsgiUiConfig;
     error?: string;
     encryptedValue?: string;
     decryptedValue?: string;

@@ -25,7 +25,7 @@ describe('useOsgiConfigs', () => {
 
     it('fetched files on mount', async () => {
         jest.useFakeTimers();
-        osgiService.getAll.mockResolvedValue({ files: [{ name: 'test.cfg' }] });
+        osgiService.getAll.mockResolvedValue({ files: [{ name: 'test.cfg' }], uiConfig: { visualFormattingControlsEnabled: false } });
 
         const { result } = renderHook(() => useOsgiConfigs());
 
@@ -38,6 +38,28 @@ describe('useOsgiConfigs', () => {
         expect(result.current.loadingFiles).toBe(false);
         expect(result.current.files).toEqual([{ name: 'test.cfg' }]);
         expect(osgiService.getAll).toHaveBeenCalled();
+        jest.useRealTimers();
+    });
+
+    it('keeps visual formatting controls disabled and comments hidden by default', async () => {
+        jest.useFakeTimers();
+        osgiService.getAll.mockResolvedValue({ files: [{ name: 'test.cfg' }], uiConfig: { visualFormattingControlsEnabled: false } });
+        osgiService.getPreference
+            .mockResolvedValueOnce({})
+            .mockResolvedValueOnce({ value: 'true' })
+            .mockResolvedValueOnce({ value: 'true' });
+
+        const { result } = renderHook(() => useOsgiConfigs());
+
+        await act(async () => {
+            jest.advanceTimersByTime(500);
+            await Promise.resolve();
+            await Promise.resolve();
+        });
+
+        expect(result.current.visualFormattingControlsEnabled).toBe(false);
+        expect(result.current.showComments).toBe(false);
+        expect(result.current.showEmptyLines).toBe(false);
         jest.useRealTimers();
     });
 

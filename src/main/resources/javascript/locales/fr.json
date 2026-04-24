@@ -2,8 +2,14 @@
     "label": "Gestionnaire de Config OSGi",
     "app": {
         "title": "Gestionnaire de Configurations OSGi",
+        "new": "Nouveau",
+        "import": "Importer",
+        "refresh": "Rafraîchir",
         "selectConfig": "Sélectionnez un fichier de configuration pour l'éditer",
         "markAsDefault": "Marquer en défaut",
+        "download": "Télécharger",
+        "delete": "Supprimer",
+        "enable": "Activer",
         "save": "Enregistrer",
         "searchPlaceholder": "Filtrer les configs...",
         "searchDeep": "Rechercher dans le contenu",
@@ -52,7 +58,7 @@
         },
         "unsaved": {
             "title": "Modifications non enregistrées",
-            "message": "Vous avez des modifications non enregistrées qui seront perdues si vous changez de fichier. Voulez-vous abandonner les modifications et continuer ?",
+            "message": "Vous avez des modifications non enregistrées qui seront perdues si vous continuez. Voulez-vous abandonner les modifications et continuer ?",
             "confirm": "Abandonner",
             "cancel": "Continuer l'édition"
         },
@@ -212,6 +218,7 @@
     "tooltip": {
         "downloadFile": "Télécharger le fichier actuel (Données brutes)",
         "uploadFile": "Téléverser un fichier de configuration (.yml, .cfg)",
+        "refreshFiles": "Recharger la liste des configurations",
         "save": "Enregistrer les modifications",
         "markAsDefault": "Ajouter l'en-tête '# default configuration' pour que Jahia préserve les modifications locales",
         "createFile": "Créer un nouveau fichier de configuration",

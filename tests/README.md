@@ -1,6 +1,8 @@
 # Tests
 Two options are available to run the tests, you can either run everything in Docker or only run Jahia in Docker and run the tests using your local node.
 
+The Cypress suite is now split by functional area under `tests/cypress/e2e` rather than kept in a single monolithic spec. Common helpers live in `tests/cypress/support/commands.js`.
+
 ### Run all in Docker
 
 Once you have a built test container, the entirety of the tests, from environment provisioning to report generation, can be executed using a single command.
@@ -41,3 +43,21 @@ The advantage of this approach is that you'll get to run the tests in headless o
 Do *NOT* forget to load your environment variables using `source set-env.sh` prior to running Cypress, as well as **everytime you open a new terminal**.
 
 In most situations you will end-up with a lot of unit tests, slightly less API e2e, and fewer UI e2e. Note that the purpose of these tests is to validate the proper behavior/operation of the module being developed. It would likely still be necessary to implement various high level integration tests to ensure your module operate well with other in different "real-life" deployment scenarios (but those tests are typically executed after merging of the code).
+
+## Practical shortcuts
+
+For day-to-day work on this module, the following wrappers are usually the most convenient:
+
+```bash
+# Run the E2E suite against the dockerized Jahia test stack
+./run-e2e-docker.sh
+
+# Run the E2E suite against a locally exposed Jahia on localhost:8080
+./run-e2e-local.sh
+```
+
+If you run Cypress against a locally started Jahia, make sure the expected environment variables are loaded first:
+
+```bash
+source set-env.sh
+```

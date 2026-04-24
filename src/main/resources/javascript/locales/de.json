@@ -2,7 +2,14 @@
     "label": "OSGi Konfigurations-Manager",
     "app": {
         "title": "OSGi Konfigurations-Manager",
+        "new": "Neu",
+        "import": "Importieren",
+        "refresh": "Aktualisieren",
         "selectConfig": "Wählen Sie eine Konfigurationsdatei zum Bearbeiten aus",
+        "markAsDefault": "Als Standard markieren",
+        "download": "Herunterladen",
+        "delete": "Löschen",
+        "enable": "Aktivieren",
         "save": "Änderungen speichern",
         "searchPlaceholder": "Konfigurationen filtern...",
         "searchDeep": "Im Inhalt suchen",
@@ -50,7 +57,7 @@
         },
         "unsaved": {
             "title": "Ungespeicherte Änderungen",
-            "message": "Sie haben ungespeicherte Änderungen, die verloren gehen, wenn Sie die Datei wechseln. Möchten Sie die Änderungen verwerfen und fortfahren?",
+            "message": "Sie haben ungespeicherte Änderungen, die verloren gehen, wenn Sie fortfahren. Möchten Sie die Änderungen verwerfen und fortfahren?",
             "confirm": "Änderungen verwerfen",
             "cancel": "Weiter bearbeiten"
         },
@@ -182,6 +189,7 @@
     "tooltip": {
         "downloadFile": "Aktuelle Datei herunterladen (Rohdaten)",
         "uploadFile": "Konfigurationsdatei hochladen (.yml, .cfg)",
+        "refreshFiles": "Konfigurationsliste neu laden",
         "save": "Änderungen speichern",
         "createFile": "Neue Konfigurationsdatei erstellen",
         "deleteFile": "Diese Datei löschen",

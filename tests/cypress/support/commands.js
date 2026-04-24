@@ -249,6 +249,14 @@ Cypress.Commands.add('cleanupOsgiFile', filename => {
 });
 
 /**
+ * Cleanup multiple files in one call.
+ * This keeps setup/teardown concise when specs manage several fixtures.
+ */
+Cypress.Commands.add('cleanupOsgiFiles', filenames => {
+    return cy.wrap(filenames).each(filename => cy.cleanupOsgiFile(filename));
+});
+
+/**
  * Open the administration application through its canonical route.
  * Purpose: keep the test independent from translated labels and menu visibility rules.
  */
@@ -282,9 +290,73 @@ Cypress.Commands.add('openOsgiFile', filename => {
 Cypress.Commands.add('ensureVisualCfgMode', () => {
     cy.get('[data-cy="editor-mode-toggle"]', {timeout: 30000}).then($toggle => {
         if ($toggle.attr('data-mode') !== 'visual') {
-            cy.wrap($toggle).find('button').click();
+            cy.wrap($toggle).find('[role="listbox"]').click();
+            cy.contains('.moonstone-menuItem', 'Visual Edit', {timeout: 30000}).click({force: true});
         }
     });
 
     cy.get('[data-cy="editor-mode-toggle"]').should('have.attr', 'data-mode', 'visual');
+});
+
+/**
+ * Switch the CFG editor to raw mode when needed.
+ */
+Cypress.Commands.add('ensureRawCfgMode', () => {
+    cy.get('[data-cy="editor-mode-toggle"]', {timeout: 30000}).then($toggle => {
+        if ($toggle.attr('data-mode') !== 'raw') {
+            cy.wrap($toggle).find('[role="listbox"]').click();
+            cy.contains('.moonstone-menuItem', 'Raw Edit', {timeout: 30000}).click({force: true});
+        }
+    });
+
+    cy.get('[data-cy="editor-mode-toggle"]').should('have.attr', 'data-mode', 'raw');
+});
+
+/**
+ * Open the create configuration dialog and wait for it to be ready.
+ */
+Cypress.Commands.add('openCreateConfigDialog', () => {
+    cy.get('[data-cy="create-file-button"] button', {timeout: 30000}).click();
+    cy.get('[data-cy="modal-dialog"]', {timeout: 30000}).should('be.visible');
+});
+
+/**
+ * Confirm the currently opened modal.
+ */
+Cypress.Commands.add('confirmModal', () => {
+    cy.get('[data-cy="modal-confirm-button"] button', {timeout: 30000}).click();
+});
+
+/**
+ * Cancel the currently opened modal.
+ */
+Cypress.Commands.add('cancelModal', () => {
+    cy.get('[data-cy="modal-cancel-button"] button', {timeout: 30000}).click();
+});
+
+/**
+ * Create a new configuration through the manual tab of the dialog.
+ */
+Cypress.Commands.add('createManualOsgiFile', filename => {
+    cy.openCreateConfigDialog();
+    cy.get('[data-cy="modal-create-manual-input"]', {timeout: 30000}).clear().type(filename);
+    cy.confirmModal();
+    cy.get('[data-cy="selected-file-name"]', {timeout: 30000}).should('contain', filename);
+});
+
+/**
+ * Assert the standard toast feedback emitted by the application.
+ */
+Cypress.Commands.add('assertToastContains', message => {
+    cy.get('[data-cy="toast-message"]', {timeout: 30000}).should('contain', message);
+});
+
+/**
+ * Fetch the metatype catalog exposed by the backend.
+ */
+Cypress.Commands.add('getAvailableMetatypes', () => {
+    return cy.osgiRequest({
+        method: 'GET',
+        url: '/cms/render/default/en/sites/systemsite.osgiConfigManager.do?action=availableMetatypes'
+    }).its('body.metatypes');
 });
