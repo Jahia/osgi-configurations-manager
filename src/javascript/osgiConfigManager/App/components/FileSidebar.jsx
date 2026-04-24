@@ -1,7 +1,6 @@
 import React from 'react';
 import {
     Paper,
-    Button,
     Typography,
     Tooltip,
     SearchInput,
@@ -9,106 +8,40 @@ import {
     TableBody,
     TableRow,
     TableBodyCell,
-    Delete,
-    Add,
-    Switch,
-    CloudDownload,
-    CloudUpload
+    Switch
 } from '@jahia/moonstone';
-import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { ConfigStateBadge } from './ConfigStateBadge';
+import {
+    CHROME_TOKENS,
+    getFileStatusIndicatorStyle,
+    OverflowPreviewText,
+    PANEL_STYLE,
+    SEARCH_SECTION_STYLE
+} from './AppChrome';
 
 export const FileSidebar = ({
     files,
     selectedFile,
     handleFileClick,
-    handleToggleFile,
-    handleDeleteFile,
-    handleCreateFile,
-    handleOpenCreateDialog,
     searchTerm,
     setSearchTerm,
-    setModalConfig,
-    handleUploadFile,
-    hasUnsaved,
-    rawContent,
     searchInContent,
     setSearchInContent
 }) => {
     const { t } = useTranslation('osgi-configurations-manager');
-    const [hoveredFile, setHoveredFile] = React.useState(null);
-    const [hoverPos, setHoverPos] = React.useState({ top: 0, left: 0 });
-    const fileInputRef = React.useRef(null);
 
-    const handleDownload = () => {
-        if (!selectedFile) return;
-
-        // For download, we prefer rawContent from hook if available (for YML), 
-        // OR we might need to construct it for CFG if we edited it? 
-        // Actually, for download "Raw Data" imply what is currently Saved on server or what is in Editor?
-        // User said "download file (raw data) selected". Usually implies the file content.
-        // If we have unsaved changes, should we download unsaved? probably better for backup.
-        // But for CFG, 'rawContent' in hook might be empty or stale if we edited using CfgEditor (which updates 'properties').
-        // We only have 'prepareDataForSave' which returns properties. We don't have a 'propertiesToCfgString' generator.
-        // HOWEVER, the backend 'readFile' returns 'rawContent' for BOTH cfg and yml now (I saw it in Java: lines 95-97).
-        // So 'rawContent' in hook SHOULD correspond to the loaded file content.
-        // BUT if user modified Cfg properties, 'rawContent' is NOT updated in real-time in CfgEditor (it updates 'properties').
-        // So downloading 'rawContent' will download the version ON DISK (last saved), not current edits. This is acceptable for "Download File".
-        // If we want "Export Current State", that's harder for CFG.
-        // Let's implement "Download Saved File" using rawContent.
-
-        if (!rawContent) return;
-
-        const element = document.createElement("a");
-        const file = new Blob([rawContent], { type: 'text/plain' });
-        element.href = URL.createObjectURL(file);
-        element.download = selectedFile.name;
-        document.body.appendChild(element);
-        element.click();
-        document.body.removeChild(element);
-    };
-
-    const handleUploadClick = () => {
-        if (fileInputRef.current) {
-            fileInputRef.current.click();
-        }
-    };
-
-    const onFileChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            handleUploadFile(file);
-        }
-        e.target.value = null; // Reset
-    };
-
-
-    const onCreateClick = () => {
-        if (handleOpenCreateDialog) {
-            handleOpenCreateDialog();
-            return;
+    const getFilenameColor = React.useCallback((filename, isSelected) => {
+        if (isSelected) {
+            return 'inherit';
         }
 
-        setModalConfig({
-            type: 'prompt',
-            title: t('modal.create.title'),
-            message: t('modal.create.message'),
-            onConfirm: (name) => {
-                if (name) handleCreateFile(name);
-            }
-        });
-    };
+        if (filename.endsWith('.yml') || filename.endsWith('.yml.disabled')) {
+            return 'var(--color-accent_dark)';
+        }
 
-    const handleMouseEnter = (e, f) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        setHoverPos({ top: rect.top, left: rect.left, height: rect.height });
-        setHoveredFile(f.name);
-    };
-
-    // Helper to get the full file object currently selected (to access 'enabled' state up-to-date)
-    const currentFile = selectedFile ? files.find(f => f.name === selectedFile.name) : null;
-
+        return CHROME_TOKENS.strongTextColor;
+    }, []);
     // Memoize the filtered and sorted list to enable index-based navigation
     const processedFiles = React.useMemo(() => {
         return files
@@ -161,89 +94,9 @@ export const FileSidebar = ({
     };
 
     return (
-        <Paper style={{ width: '350px', display: 'flex', flexDirection: 'column', padding: '16px', height: '100%' }}>
-            {/* Toolbar */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '12px', minHeight: '56px', borderBottom: '1px solid var(--color-gray_light40)' }}>
-                {/* Left: Context Actions */}
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <Tooltip label={t('tooltip.toggleFile')}>
-                        <div data-cy="toggle-file-switch" style={{ display: 'flex', alignItems: 'center' }}>
-                            <Switch
-                                data-cy="toggle-file-switch-control"
-                                checked={currentFile ? currentFile.enabled : false}
-                                onChange={() => currentFile && handleToggleFile(currentFile)}
-                                disabled={!currentFile}
-                            />
-                        </div>
-                    </Tooltip>
-                    <div data-cy="delete-file-button">
-                        <Tooltip label={t('tooltip.deleteFile')}>
-                            <Button
-                                size="big"
-                                color="danger"
-                                variant="ghost"
-                                icon={<Delete size="big" />}
-                                onClick={() => currentFile && handleDeleteFile(currentFile)}
-                                disabled={!currentFile}
-                            />
-                        </Tooltip>
-                    </div>
-                </div>
-
-                {/* Right: Global Actions */}
-                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                    <div data-cy="upload-file-button">
-                        <Tooltip label={t('tooltip.uploadFile')}>
-                            <Button
-                                size="big"
-                                icon={<CloudUpload size="big" />}
-                                color="primary"
-                                onClick={handleUploadClick}
-                            />
-                        </Tooltip>
-                    </div>
-                    <div data-cy="download-file-button">
-                        <Tooltip label={t('tooltip.downloadFile')}>
-                            <Button
-                                size="big"
-                                icon={<CloudDownload size="big" />}
-                                color="primary"
-                                onClick={handleDownload}
-                                disabled={!currentFile}
-                            />
-                        </Tooltip>
-                    </div>
-                    <input
-                        data-cy="upload-file-input"
-                        type="file"
-                        ref={fileInputRef}
-                        style={{ display: 'none' }}
-                        accept=".yml,.cfg"
-                        onChange={onFileChange}
-                    />
-                    <div data-cy="create-file-button">
-                        <Tooltip label={t('tooltip.createFile')}>
-                            <Button
-                                size="big"
-                                icon={<Add size="big" />}
-                                color="accent"
-                                onClick={onCreateClick}
-                            />
-                        </Tooltip>
-                    </div>
-                </div>
-            </div>
-
+        <Paper style={{ ...PANEL_STYLE, width: '350px', height: '100%' }}>
             {/* Search & Filter Section */}
-            <div style={{
-                backgroundColor: '#f5f5f5',
-                padding: '10px',
-                borderRadius: '4px',
-                marginBottom: '10px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px'
-            }}>
+            <div style={SEARCH_SECTION_STYLE}>
                 <div data-cy="file-search-input">
                     <SearchInput
                         value={searchTerm}
@@ -275,7 +128,6 @@ export const FileSidebar = ({
             {/* File List */}
             <div
                 style={{ flex: 1, overflowY: 'auto', outline: 'none' }}
-                onScroll={() => setHoveredFile(null)}
                 tabIndex={0}
                 onKeyDown={handleKeyDown}
             >
@@ -290,54 +142,37 @@ export const FileSidebar = ({
                                 onClick={() => handleFileClick(f)}
                                 style={{ cursor: 'pointer' }}
                             >
+                                <TableBodyCell
+                                    className="osgi-sidebar-status-cell"
+                                    width="12px"
+                                >
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'stretch',
+                                            justifyContent: 'flex-start',
+                                            width: '100%',
+                                            height: '48px'
+                                        }}
+                                    >
+                                        <div data-cy={`sidebar-file-status-${encodeURIComponent(f.name)}`} style={getFileStatusIndicatorStyle(f.enabled)} />
+                                    </div>
+                                </TableBodyCell>
                                 <TableBodyCell>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
-                                        <div style={{
-                                            width: '10px',
-                                            height: '10px',
-                                            borderRadius: '50%',
-                                            backgroundColor: f.enabled ? '#4caf50' : '#bdbdbd',
-                                            flexShrink: 0
-                                        }} />
-                                        <div
-                                            style={{
-                                                position: 'relative',
-                                                flex: 1,
-                                                minWidth: 0,
-                                                overflow: 'hidden'
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', minWidth: 0, height: '48px', paddingRight: '4px' }}>
+                                        <OverflowPreviewText
+                                            text={f.name}
+                                            dataCy={`sidebar-file-name-${encodeURIComponent(f.name)}`}
+                                            typographyProps={{
+                                                variant: 'body',
+                                                weight: selectedFile?.name === f.name ? 'bold' : 'default'
                                             }}
-                                            onMouseEnter={(e) => handleMouseEnter(e, f)}
-                                            onMouseLeave={() => setHoveredFile(null)}
-                                        >
-                                            {hoveredFile === f.name && createPortal(
-                                                <div style={{
-                                                    position: 'fixed',
-                                                    top: hoverPos.top,
-                                                    left: hoverPos.left + 20, // Offset slightly
-                                                    padding: '4px 8px',
-                                                    backgroundColor: '#333',
-                                                    color: '#fff',
-                                                    borderRadius: '4px',
-                                                    zIndex: 1000000,
-                                                    whiteSpace: 'nowrap',
-                                                    fontSize: '0.875rem',
-                                                    boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
-                                                    pointerEvents: 'none'
-                                                }}>
-                                                    {f.name}
-                                                </div>,
-                                                document.body
-                                            )}
-                                            <Typography variant="body" weight={selectedFile?.name === f.name ? "bold" : "default"} style={{
-                                                whiteSpace: 'nowrap',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                                color: selectedFile?.name === f.name ? 'inherit' : (f.name.endsWith('.yml') ? '#00a0e3' : '#333'),
+                                            wrapperStyle={{flex: 1, display: 'flex', alignItems: 'center'}}
+                                            textStyle={{
+                                                color: getFilenameColor(f.name, selectedFile?.name === f.name),
                                                 textDecoration: f.enabled ? 'none' : 'line-through'
-                                            }}>
-                                                {f.name}
-                                            </Typography>
-                                        </div>
+                                            }}
+                                        />
                                         <ConfigStateBadge state={f.configState} compact />
                                     </div>
                                 </TableBodyCell>

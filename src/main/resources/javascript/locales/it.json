@@ -2,7 +2,14 @@
     "label": "Gestore Config OSGi",
     "app": {
         "title": "Gestore Configurazioni OSGi",
+        "new": "Nuovo",
+        "import": "Importa",
+        "refresh": "Aggiorna",
         "selectConfig": "Seleziona un file di configurazione da modificare",
+        "markAsDefault": "Segna come predefinito",
+        "download": "Scarica",
+        "delete": "Elimina",
+        "enable": "Attiva",
         "save": "Salva modifiche",
         "searchPlaceholder": "Filtra configurazioni...",
         "searchDeep": "Cerca nel contenuto",
@@ -50,7 +57,7 @@
         },
         "unsaved": {
             "title": "Modifiche non salvate",
-            "message": "Hai modifiche non salvate che andranno perse se cambi file. Vuoi scartare le modifiche e continuare?",
+            "message": "Hai modifiche non salvate che andranno perse se continui. Vuoi scartare le modifiche e continuare?",
             "confirm": "Scarta modifiche",
             "cancel": "Continua a modificare"
         },
@@ -183,6 +190,7 @@
     "tooltip": {
         "downloadFile": "Scarica file corrente (Dati grezzi)",
         "uploadFile": "Carica file di configurazione (.yml, .cfg)",
+        "refreshFiles": "Ricarica l'elenco delle configurazioni",
         "save": "Salva le modifiche",
         "createFile": "Crea un nuovo file di configurazione",
         "deleteFile": "Elimina questo file",

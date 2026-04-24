@@ -21,8 +21,10 @@ A Jahia module to manage OSGi configurations directly from the Jahia Administrat
         -   Supports adding, modifying, and deleting properties.
         -   Drag-and-drop reordering of properties and comments.
         -   Multiline text support with adaptive hover overlay for long values.
-        -   **Comment Visibility**: Toggle comments on/off to focus on active properties.
-        -   **Empty Line Visibility**: Toggle empty lines on/off, with the preference persisted per user.
+        -   **Comment and Empty Line Controls**:
+            -   Hidden by default to keep the visual editor focused on editable properties.
+            -   Can be re-enabled through the OSGi module configuration with `visualFormattingControlsEnabled=true`.
+            -   When enabled, comment and empty-line visibility preferences are persisted per user.
         -   **Metatype assistance for `.cfg`**:
             -   `Add Property` opens a searchable Metatype-aware picker when metadata is available.
             -   The same field can also create a custom property not declared in Metatype.
@@ -63,7 +65,7 @@ A Jahia module to manage OSGi configurations directly from the Jahia Administrat
     -   Built with **Jahia Moonstone** design system for a native look and feel.
     -   **Internationalization (i18n)**: Fully translated in English 🇬🇧, French 🇫🇷, German 🇩🇪, Italian 🇮🇹, Spanish 🇪🇸, and Portuguese 🇵🇹.
     -   Responsive layout with sticky headers and optimized scrolling.
-    -   Unsaved changes protection (confirmation modals).
+    -   Unsaved changes protection (confirmation modals) across file switching, create, upload, refresh, disable and mark-as-default flows.
 
 ## Configuration
 
@@ -87,6 +89,13 @@ filteredFiles = my-secret-config.cfg, another-file.yml
 ```properties
 # Comma-separated list of filenames to expose in the manager
 allowedFiles = org.apache.felix.eventadmin.impl.EventAdmin.cfg, org.apache.karaf.features.cfg
+```
+
+### Visual formatting controls
+
+```properties
+# Optional: re-enable comment and empty-line controls in the visual .cfg editor
+visualFormattingControlsEnabled = true
 ```
 
 When `allowedFiles` is defined:
@@ -138,6 +147,7 @@ public class MyService {
 
 1.  Build the module:
     ```bash
+    export JAVA_HOME=$(/usr/libexec/java_home -v 17)
     mvn clean install
     ```
 2.  Run the Cypress end-to-end tests from the `tests` directory when needed:
@@ -150,19 +160,27 @@ public class MyService {
     cd tests
     ./run-e2e-local.sh
     ```
-3.  Deploy the generated JAR file (`target/osgi-configurations-manager-1.0.2-SNAPSHOT.jar`) to your Jahia instance.
+3.  Optionally run the same Maven + Sonar validation used during development:
+    ```bash
+    export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+    mvn clean install sonar:sonar
+    ```
+4.  Deploy the generated JAR file (`target/osgi-configurations-manager-1.0.3-SNAPSHOT.jar`) to your Jahia instance.
 
 ## Usage
 
 1.  Navigate to **Jahia Administration** > **Server** > **OSGi Configurations Manager**.
-2.  Select a configuration file from the sidebar to edit it.
-3.  Use **Create** to:
+2.  Use the global header actions to **New**, **Import** or **Refresh** the configuration list.
+3.  Select a configuration file from the sidebar to edit it.
+4.  Use **New** to:
     - create a file manually,
     - create a file from an available Metatype PID,
     - or create a new factory instance from a factory PID.
-4.  For `.cfg` and supported `.yml` files, switch to the raw editor to access Metatype-powered completion, hover documentation and property insertion.
-5.  In the visual `.cfg` editor, use the dedicated `Add Property` dialog to pick Metatype-backed properties or create a custom one, and use the visibility toggles to hide/show comments and empty lines.
-6.  Use the file-state badges in the sidebar and editor header to quickly identify whether a configuration is:
+5.  Use the file toolbar to disable/enable a configuration, mark it as default, download it, delete it, or switch between **Visual Edit** and **Raw Edit**.
+6.  For `.cfg` and supported `.yml` files, switch to the raw editor to access Metatype-powered completion, hover documentation and property insertion.
+7.  In the visual `.cfg` editor, use the dedicated `Add Property` dialog to pick Metatype-backed properties or create a custom one.
+8.  If `visualFormattingControlsEnabled=true` is configured, the visual `.cfg` editor also exposes comment and empty-line controls in the footer.
+9.  Use the file-state badges in the sidebar and editor header to quickly identify whether a configuration is:
     - module-managed (`MODULE`)
     - a module default whose local changes are preserved (`MODULE_DEFAULT`)
     - or instance-managed (`USER`)

@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as monaco from 'monaco-editor';
 import { configureMonacoYaml } from 'monaco-yaml';
-import { Button, Typography } from '@jahia/moonstone';
-import { Undo, RotateRight, Code, Lock, Unlock, ViewList } from '@jahia/moonstone';
+import { Button, Input, Typography } from '@jahia/moonstone';
+import { Add, Undo, RotateRight, Code, Lock, Unlock } from '@jahia/moonstone';
 import { useTranslation } from 'react-i18next';
 import { osgiService } from '../api/osgiService';
 import { buildPropertyDocumentation, findExactMetatypePropertyMatch, formatDefaultValue, getLocalizedTypeLabel, getPropertyLabel, matchesMetatypePropertyQuery } from '../utils/metatypeUtils';
+import { CHROME_TOKENS, PANEL_ACTIONS_STYLE } from './AppChrome';
 
 const isExpectedCancellation = reason => {
     if (!reason) {
@@ -18,6 +19,85 @@ const isExpectedCancellation = reason => {
 
     return reason.name === 'Canceled' || reason.message === 'Canceled';
 };
+
+const TOOLBAR_BUTTON_ICON_STYLE = { width: '16px', height: '16px' };
+
+const RAW_EDITOR_TOOLBAR_STYLE = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '12px',
+    padding: '10px 12px',
+    borderBottom: `1px solid ${CHROME_TOKENS.panelBorderColor}`,
+    backgroundColor: CHROME_TOKENS.subtleSurfaceColor,
+    flexWrap: 'wrap'
+};
+
+const RAW_EDITOR_TOOLBAR_GROUP_STYLE = {
+    ...PANEL_ACTIONS_STYLE,
+    gap: '8px',
+    flexWrap: 'wrap'
+};
+
+const RAW_EDITOR_DIVIDER_STYLE = {
+    width: '1px',
+    height: '20px',
+    background: CHROME_TOKENS.panelBorderColor
+};
+
+const RAW_EDITOR_SURFACE_STYLE = {
+    flex: 1,
+    minHeight: 0,
+    display: 'flex',
+    gap: '16px',
+    marginTop: '12px'
+};
+
+const RAW_EDITOR_MAIN_PANEL_STYLE = {
+    flex: '1 1 auto',
+    minWidth: 0,
+    border: `1px solid ${CHROME_TOKENS.panelBorderColor}`,
+    borderRadius: '6px',
+    overflow: 'hidden',
+    background: CHROME_TOKENS.panelBackgroundColor,
+    display: 'flex',
+    flexDirection: 'column'
+};
+
+const RAW_EDITOR_CANVAS_STYLE = {
+    flex: 1,
+    minHeight: 0,
+    position: 'relative',
+    background: CHROME_TOKENS.panelBackgroundColor
+};
+
+const RAW_EDITOR_PANEL_STYLE = {
+    flex: '0 0 340px',
+    width: '340px',
+    minHeight: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    border: `1px solid ${CHROME_TOKENS.panelBorderColor}`,
+    borderRadius: '6px',
+    background: CHROME_TOKENS.panelBackgroundColor,
+    overflow: 'hidden'
+};
+
+const RAW_EDITOR_PANEL_SECTION_STYLE = {
+    padding: '14px 16px'
+};
+
+const RAW_EDITOR_SEARCH_STYLE = {
+    width: '100%'
+};
+
+const RawToolbarDivider = () => <div style={RAW_EDITOR_DIVIDER_STYLE} />;
+
+const RawToolbarButton = ({ dataCy, ...props }) => (
+    <div data-cy={dataCy}>
+        <Button variant="ghost" {...props} />
+    </div>
+);
 
 if (!window.__osgiConfigManagerIgnoreMonacoCancellation) {
     window.addEventListener('unhandledrejection', event => {
@@ -572,7 +652,7 @@ const getYamlValueSuggestions = (property, t) => (
     }))
 );
 
-export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', onSwitchMode, metatypeDefinition, filename }) => {
+export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', metatypeDefinition, filename }) => {
     const { t } = useTranslation('osgi-configurations-manager');
     const containerRef = useRef(null);
     const editorRef = useRef(null);
@@ -1179,131 +1259,139 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', o
         editor.focus();
     };
 
+    const showRawPropertyPanel = language === 'properties' || language === 'yaml';
+
     return (
         <div style={{ flex: 1, minHeight: 0, minWidth: 0, width: '100%', display: 'flex', flexDirection: 'column' }}>
-            <div style={{
-                display: 'flex',
-                gap: '8px',
-                padding: '8px',
-                borderBottom: '1px solid #ddd',
-                backgroundColor: '#f9f9f9',
-                alignItems: 'center'
-            }}>
-                <Button label={t('editor.button.undo')} variant="ghost" icon={<Undo style={{ width: '16px', height: '16px' }} />} onClick={handleUndo} title={t('tooltip.undo')} />
-                <Button label={t('editor.button.redo')} variant="ghost" icon={<RotateRight style={{ width: '16px', height: '16px' }} />} onClick={handleRedo} title={t('tooltip.redo')} />
-                <div style={{ width: '1px', background: '#ccc', margin: '0 4px', height: '20px' }} />
-                <Button label={t('editor.button.format')} variant="ghost" icon={<Code style={{ width: '16px', height: '16px' }} />} onClick={handleFormat} title={t('tooltip.format')} />
+            <div data-cy="raw-editor-surface" style={RAW_EDITOR_SURFACE_STYLE}>
+                <div style={RAW_EDITOR_MAIN_PANEL_STYLE}>
+                    <div data-cy="raw-editor-toolbar" style={RAW_EDITOR_TOOLBAR_STYLE}>
+                        <div style={RAW_EDITOR_TOOLBAR_GROUP_STYLE}>
+                            <RawToolbarButton
+                                dataCy="raw-editor-undo"
+                                label={t('editor.button.undo')}
+                                icon={<Undo style={TOOLBAR_BUTTON_ICON_STYLE} />}
+                                onClick={handleUndo}
+                                title={t('tooltip.undo')}
+                            />
+                            <RawToolbarButton
+                                dataCy="raw-editor-redo"
+                                label={t('editor.button.redo')}
+                                icon={<RotateRight style={TOOLBAR_BUTTON_ICON_STYLE} />}
+                                onClick={handleRedo}
+                                title={t('tooltip.redo')}
+                            />
+                            <RawToolbarDivider />
+                            <RawToolbarButton
+                                dataCy="raw-editor-format"
+                                label={t('editor.button.format')}
+                                icon={<Code style={TOOLBAR_BUTTON_ICON_STYLE} />}
+                                onClick={handleFormat}
+                                title={t('tooltip.format')}
+                            />
+                            <RawToolbarDivider />
+                            <RawToolbarButton
+                                dataCy="raw-editor-encrypt"
+                                label={t('editor.button.encrypt')}
+                                icon={<Lock style={TOOLBAR_BUTTON_ICON_STYLE} />}
+                                onClick={handleEncryptSelection}
+                                title={t('tooltip.encryptSelection')}
+                            />
+                            <RawToolbarButton
+                                dataCy="raw-editor-decrypt"
+                                label={t('editor.button.decrypt')}
+                                icon={<Unlock style={TOOLBAR_BUTTON_ICON_STYLE} />}
+                                onClick={handleDecryptSelection}
+                                title={t('tooltip.decryptSelection')}
+                            />
+                            {showRawPropertyPanel && (
+                                <>
+                                    <RawToolbarDivider />
+                                    <RawToolbarButton
+                                        dataCy="editor-add-metatype-property"
+                                        label={t('editor.button.addProperty')}
+                                        icon={<Add style={TOOLBAR_BUTTON_ICON_STYLE} />}
+                                        onClick={() => supportsMetatypeAssistance && setShowPropertyPanel(true)}
+                                        disabled={!supportsMetatypeAssistance}
+                                        title={supportsMetatypeAssistance ? t('tooltip.addMetatypeProperty') : t('tooltip.addMetatypePropertyDisabled')}
+                                    />
+                                </>
+                            )}
+                        </div>
 
-                {/* Encrypt/Decrypt Buttons for Text Mode */}
-                <div style={{ width: '1px', background: '#ccc', margin: '0 4px', height: '20px' }} />
-                <Button label={t('editor.button.encrypt')} variant="ghost" icon={<Lock style={{ width: '16px', height: '16px' }} />} onClick={handleEncryptSelection} title={t('tooltip.encryptSelection')} />
-                <Button label={t('editor.button.decrypt')} variant="ghost" icon={<Unlock style={{ width: '16px', height: '16px' }} />} onClick={handleDecryptSelection} title={t('tooltip.decryptSelection')} />
+                    </div>
 
-                {(language === 'properties' || language === 'yaml') && (
-                    <>
-                        <div style={{ width: '1px', background: '#ccc', margin: '0 4px', height: '20px' }} />
-                        <Button
-                            data-cy="editor-add-metatype-property"
-                            label={t('editor.button.addMetatypeProperty')}
-                            variant="ghost"
-                            onClick={() => supportsMetatypeAssistance && setShowPropertyPanel(true)}
-                            disabled={!supportsMetatypeAssistance}
-                            title={supportsMetatypeAssistance ? t('tooltip.addMetatypeProperty') : t('tooltip.addMetatypePropertyDisabled')}
+                    <div style={RAW_EDITOR_CANVAS_STYLE}>
+                        <div
+                            ref={containerRef}
+                            style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                overflow: 'hidden'
+                            }}
                         />
-                    </>
-                )}
-
-                {onSwitchMode && (
-                    <>
-                        <div style={{ width: '1px', background: '#ccc', margin: '0 4px', height: '20px' }} />
-                        <Button
-                            label={t('editor.button.modeVisual')}
-                            variant="ghost"
-                            icon={<ViewList style={{ width: '16px', height: '16px' }} />}
-                            onClick={onSwitchMode}
-                            title={t('tooltip.modeVisual')}
-                        />
-                    </>
-                )}
-            </div>
-
-            <div style={{ flex: 1, minHeight: 0, display: 'flex', gap: '12px' }}>
-                <div
-                    style={{
-                        flex: '1 1 auto',
-                        position: 'relative',
-                        minWidth: 0
-                    }}
-                >
-                    <div
-                        ref={containerRef}
-                        style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            overflow: 'hidden'
-                        }}
-                    />
+                    </div>
                 </div>
 
                 {showPropertyPanel && supportsMetatypeAssistance && (
-                    <div data-cy="metatype-property-panel" style={{
-                        flex: '0 0 340px',
-                        width: '340px',
-                        borderLeft: '1px solid var(--color-gray_light40)',
-                        paddingLeft: '12px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        minHeight: 0
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
-                            <div style={{ minWidth: 0 }}>
+                    <div
+                        data-cy="metatype-property-panel"
+                        style={RAW_EDITOR_PANEL_STYLE}
+                    >
+                        <div
+                            style={{
+                                ...RAW_EDITOR_PANEL_SECTION_STYLE,
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'flex-start',
+                                gap: '8px',
+                                borderBottom: `1px solid ${CHROME_TOKENS.panelBorderColor}`
+                            }}
+                        >
+                            <div style={{ minWidth: 0, flex: 1 }}>
                                 <Typography variant="body" weight="bold">{t('editor.metatype.availableProperties')}</Typography>
                                 {metatypeDefinition?.name && (
                                     <Typography variant="caption" color="textSecondary">{metatypeDefinition.name}</Typography>
                                 )}
                             </div>
-                            <Button
+                            <RawToolbarButton
+                                dataCy="raw-editor-hide-property-panel"
                                 label={t('editor.button.hideAvailableProperties')}
-                                variant="ghost"
                                 onClick={() => setShowPropertyPanel(false)}
                             />
                         </div>
 
-                        {metatypeDefinition?.description && (
-                            <Typography variant="caption" color="textSecondary" style={{ marginBottom: '12px' }}>
-                                {metatypeDefinition.description}
-                            </Typography>
-                        )}
+                        <div style={RAW_EDITOR_PANEL_SECTION_STYLE}>
+                            {metatypeDefinition?.description && (
+                                <Typography variant="caption" color="textSecondary" style={{ display: 'block', marginBottom: '12px' }}>
+                                    {metatypeDefinition.description}
+                                </Typography>
+                            )}
 
-                        <input
-                            value={propertySearch}
-                            onChange={event => setPropertySearch(event.target.value)}
-                            onKeyDown={event => {
-                                if (event.key !== 'Enter') {
-                                    return;
-                                }
+                            <Input
+                                data-cy="raw-editor-property-search"
+                                value={propertySearch}
+                                onChange={event => setPropertySearch(event.target.value)}
+                                onKeyDown={event => {
+                                    if (event.key !== 'Enter') {
+                                        return;
+                                    }
 
-                                if (exactSearchMatch) {
-                                    insertProperty(exactSearchMatch);
-                                } else if (filteredProperties.length === 1) {
-                                    insertProperty(filteredProperties[0]);
-                                }
-                            }}
-                            placeholder={t('editor.metatype.searchPlaceholder')}
-                            style={{
-                                width: '100%',
-                                boxSizing: 'border-box',
-                                border: '1px solid var(--color-gray_light40)',
-                                borderRadius: '4px',
-                                padding: '8px 10px',
-                                marginBottom: '12px'
-                            }}
-                        />
+                                    if (exactSearchMatch) {
+                                        insertProperty(exactSearchMatch);
+                                    } else if (filteredProperties.length === 1) {
+                                        insertProperty(filteredProperties[0]);
+                                    }
+                                }}
+                                placeholder={t('editor.metatype.searchPlaceholder')}
+                                style={RAW_EDITOR_SEARCH_STYLE}
+                            />
+                        </div>
 
-                        <div style={{ overflow: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div style={{ ...RAW_EDITOR_PANEL_SECTION_STYLE, overflow: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: 0 }}>
                             {filteredProperties.length === 0 && (
                                 <Typography variant="caption" color="textSecondary">
                                     {t('editor.metatype.noResults')}

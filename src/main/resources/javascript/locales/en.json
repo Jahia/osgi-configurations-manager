@@ -2,8 +2,14 @@
     "label": "OSGi Config Manager",
     "app": {
         "title": "OSGi Configurations Manager",
+        "new": "New",
+        "import": "Import",
+        "refresh": "Refresh",
         "selectConfig": "Select a configuration file to edit",
         "markAsDefault": "Mark as Default",
+        "download": "Download",
+        "delete": "Delete",
+        "enable": "Enable",
         "save": "Save Changes",
         "searchPlaceholder": "Filter configs...",
         "searchDeep": "Search in content",
@@ -52,7 +58,7 @@
         },
         "unsaved": {
             "title": "Unsaved Changes",
-            "message": "You have unsaved changes which will be lost if you switch files. Do you want to discard changes and continue?",
+            "message": "You have unsaved changes which will be lost if you continue. Do you want to discard changes and continue?",
             "confirm": "Discard Changes",
             "cancel": "Keep Editing"
         },
@@ -212,6 +218,7 @@
     "tooltip": {
         "downloadFile": "Download current file (Raw Data)",
         "uploadFile": "Upload configuration file (.yml, .cfg)",
+        "refreshFiles": "Reload the configuration list",
         "save": "Save changes",
         "markAsDefault": "Add the '# default configuration' header so Jahia preserves local changes for module defaults",
         "createFile": "Create a new configuration file",
