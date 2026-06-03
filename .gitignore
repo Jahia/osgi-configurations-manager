@@ -27,3 +27,7 @@ build/
 .agent/
 __mocks__/
 build_log.txt
+FigmaScreenshots/
+Result.txt
+pom.xml.releaseBackup
+release.properties

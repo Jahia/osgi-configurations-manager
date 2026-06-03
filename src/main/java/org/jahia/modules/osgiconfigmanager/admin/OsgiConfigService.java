@@ -34,6 +34,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -55,7 +56,7 @@ public class OsgiConfigService {
     private static final String CONFIG_STATE_MODULE_DEFAULT = "MODULE_DEFAULT";
     private static final String CONFIG_STATE_USER = "USER";
     private static final String DISABLED_SUFFIX = ".disabled";
-    private static final String DEFAULT_CONFIGURATION_COMMENT = "# default configuration - won't be overriden";
+    private static final String DEFAULT_CONFIGURATION_COMMENT = "# default configuration, can be edited";
     private static final String DEFAULT_CONFIGURATION_PREFIX = "# default configuration";
     private static final String DO_NOT_EDIT_PREFIX = "# do not edit";
     private static final String METATYPE_PID_NOT_FOUND_LOG = "Metatype PID {} not found in bundle {}";
@@ -64,6 +65,8 @@ public class OsgiConfigService {
     private File karafEtcDir;
     private Set<String> blacklist = new HashSet<>();
     private Set<String> whitelist = new HashSet<>();
+    private List<Pattern> blacklistPatterns = new ArrayList<>();
+    private List<Pattern> whitelistPatterns = new ArrayList<>();
     private MetaTypeService metaTypeService;
     private boolean visualFormattingControlsEnabled;
 
@@ -138,20 +141,26 @@ public class OsgiConfigService {
     public void updateConfig(Map<String, Object> properties) {
         Set<String> newBlacklist = new HashSet<>();
         Set<String> newWhitelist = new HashSet<>();
+        List<Pattern> newBlacklistPatterns = new ArrayList<>();
+        List<Pattern> newWhitelistPatterns = new ArrayList<>();
 
         if (properties != null && properties.containsKey("filteredFiles")) {
             String filteredFiles = (String) properties.get("filteredFiles");
-            addConfiguredFilenames(newBlacklist, filteredFiles);
+            addConfiguredFilenames(newBlacklist, newBlacklistPatterns, filteredFiles);
         }
         if (properties != null && properties.containsKey("allowedFiles")) {
             String allowedFiles = (String) properties.get("allowedFiles");
-            addConfiguredFilenames(newWhitelist, allowedFiles);
+            addConfiguredFilenames(newWhitelist, newWhitelistPatterns, allowedFiles);
         }
         this.visualFormattingControlsEnabled = getBooleanProperty(properties, "visualFormattingControlsEnabled", false);
         this.blacklist = newBlacklist;
         this.whitelist = newWhitelist;
+        this.blacklistPatterns = newBlacklistPatterns;
+        this.whitelistPatterns = newWhitelistPatterns;
         LOGGER.info("Updated blacklist: {}", blacklist);
+        LOGGER.info("Updated blacklist wildcard count: {}", blacklistPatterns.size());
         LOGGER.info("Updated whitelist: {}", whitelist);
+        LOGGER.info("Updated whitelist wildcard count: {}", whitelistPatterns.size());
         LOGGER.info("Updated visual formatting controls flag: {}", visualFormattingControlsEnabled);
     }
 
@@ -324,8 +333,9 @@ public class OsgiConfigService {
         if (isSelfConfigurationPid(pid)) {
             return !isRootUser;
         }
-        if (whitelist.isEmpty()) {
-            return !effectiveFactory && (blacklist.contains(suggestedFilename) || blacklist.contains(suggestedFilename + DISABLED_SUFFIX));
+        if (!hasConfiguredEntries(whitelist, whitelistPatterns)) {
+            return !effectiveFactory && (matchesConfiguredFilename(suggestedFilename, blacklist, blacklistPatterns)
+                    || matchesConfiguredFilename(suggestedFilename + DISABLED_SUFFIX, blacklist, blacklistPatterns));
         }
         if (effectiveFactory) {
             return !hasWhitelistedFactoryCandidate(pid);
@@ -1263,13 +1273,13 @@ public class OsgiConfigService {
         return SUPPORTED_CONFIG_EXTENSIONS.stream().anyMatch(lowercaseName::endsWith);
     }
 
-    private void addConfiguredFilenames(Set<String> target, String csv) {
+    private void addConfiguredFilenames(Set<String> target, List<Pattern> patterns, String csv) {
         if (csv == null || csv.trim().isEmpty()) {
             return;
         }
 
         for (String entry : csv.split(",")) {
-            addConfigNameAndVariant(target, entry.trim());
+            addConfigNameAndVariant(target, patterns, entry.trim());
         }
     }
 
@@ -1290,16 +1300,52 @@ public class OsgiConfigService {
         return defaultValue;
     }
 
-    private void addConfigNameAndVariant(Set<String> target, String filename) {
+    private void addConfigNameAndVariant(Set<String> target, List<Pattern> patterns, String filename) {
         if (filename == null || filename.isEmpty()) {
             return;
         }
+
+        if (filename.contains("*")) {
+            patterns.add(buildWildcardPattern(filename));
+            if (filename.endsWith(DISABLED_SUFFIX)) {
+                patterns.add(buildWildcardPattern(filename.substring(0, filename.length() - DISABLED_SUFFIX.length())));
+            } else {
+                patterns.add(buildWildcardPattern(filename + DISABLED_SUFFIX));
+            }
+            return;
+        }
+
         target.add(filename);
         if (filename.endsWith(DISABLED_SUFFIX)) {
             target.add(filename.substring(0, filename.length() - DISABLED_SUFFIX.length()));
         } else if (isSupportedConfigFilename(filename) && !filename.endsWith(DISABLED_SUFFIX)) {
             target.add(filename + DISABLED_SUFFIX);
         }
+    }
+
+    private Pattern buildWildcardPattern(String wildcard) {
+        StringBuilder regex = new StringBuilder("^");
+        for (char c : wildcard.toCharArray()) {
+            if (c == '*') {
+                regex.append(".*");
+            } else {
+                regex.append(Pattern.quote(String.valueOf(c)));
+            }
+        }
+        regex.append('$');
+        return Pattern.compile(regex.toString());
+    }
+
+    private boolean matchesConfiguredFilename(String filename, Set<String> exactMatches, List<Pattern> wildcardPatterns) {
+        if (exactMatches.contains(filename)) {
+            return true;
+        }
+
+        return wildcardPatterns.stream().anyMatch(pattern -> pattern.matcher(filename).matches());
+    }
+
+    private boolean hasConfiguredEntries(Set<String> exactMatches, List<Pattern> wildcardPatterns) {
+        return !exactMatches.isEmpty() || !wildcardPatterns.isEmpty();
     }
 
     private void ensurePidAllowed(String pid, boolean isRootUser) throws IOException {
@@ -1310,27 +1356,32 @@ public class OsgiConfigService {
 
     private void ensureFilenameAllowed(String filename, boolean isRootUser, String action) throws IOException {
         if (!isFilenameAllowed(filename, isRootUser)) {
-            String reason = whitelist.isEmpty() ? "is blacklisted or reserved." : "is not permitted by the active white list.";
+            String reason = hasConfiguredEntries(whitelist, whitelistPatterns)
+                    ? "is not permitted by the active white list."
+                    : "is blacklisted or reserved.";
             throw new IOException(action + " denied: " + filename + " " + reason);
         }
     }
 
-    private boolean isFilenameAllowed(String filename, boolean isRootUser) {
+    boolean isFilenameAllowed(String filename, boolean isRootUser) {
         if (isSelfConfigurationFilename(filename)) {
             return isRootUser;
         }
-        if (!whitelist.isEmpty()) {
-            return whitelist.contains(filename);
+        if (hasConfiguredEntries(whitelist, whitelistPatterns)) {
+            return matchesConfiguredFilename(filename, whitelist, whitelistPatterns);
         }
-        return !blacklist.contains(filename);
+        return !matchesConfiguredFilename(filename, blacklist, blacklistPatterns);
     }
 
-    private boolean hasWhitelistedFactoryCandidate(String factoryPid) {
-        if (whitelist.isEmpty()) {
+    boolean hasWhitelistedFactoryCandidate(String factoryPid) {
+        if (!hasConfiguredEntries(whitelist, whitelistPatterns)) {
             return true;
         }
-        String prefix = factoryPid + "-";
-        return whitelist.stream().anyMatch(entry -> entry.startsWith(prefix));
+        String sampleCandidate = factoryPid + "-placeholder" + DEFAULT_FACTORY_FILE_EXTENSION;
+        String disabledSampleCandidate = sampleCandidate + DISABLED_SUFFIX;
+        return whitelist.stream().anyMatch(entry -> entry.startsWith(factoryPid + "-"))
+                || matchesConfiguredFilename(sampleCandidate, whitelist, whitelistPatterns)
+                || matchesConfiguredFilename(disabledSampleCandidate, whitelist, whitelistPatterns);
     }
 
     private boolean isSelfConfigurationPid(String pid) {

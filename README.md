@@ -71,6 +71,8 @@ A Jahia module to manage OSGi configurations directly from the Jahia Administrat
 
 You can filter the files exposed by the manager by creating/editing `org.jahia.modules.osgiconfigmanager.cfg` in your `karaf/etc` folder.
 
+When the module ships a default configuration, place it in your module project under `src/main/resources/META-INF/configurations/org.jahia.modules.osgiconfigmanager.cfg`.
+
 This configuration is:
 
 -   exposed through OSGi Metatype
@@ -80,15 +82,16 @@ This configuration is:
 ### Blacklist example
 
 ```properties
-# Comma-separated list of filenames to hide from the manager
-filteredFiles = my-secret-config.cfg, another-file.yml
+# default configuration, can be edited
+# Comma-separated list of filenames or wildcard patterns to hide from the manager
+filteredFiles = my-secret-config.cfg, another-file.yml, org.apache.*, jmx.*
 ```
 
 ### White list example
 
 ```properties
-# Comma-separated list of filenames to expose in the manager
-allowedFiles = org.apache.felix.eventadmin.impl.EventAdmin.cfg, org.apache.karaf.features.cfg
+# Comma-separated list of filenames or wildcard patterns to expose in the manager
+allowedFiles = org.apache.felix.eventadmin.impl.EventAdmin.cfg, org.apache.karaf.features.cfg, org.jahia.*
 ```
 
 ### Visual formatting controls
