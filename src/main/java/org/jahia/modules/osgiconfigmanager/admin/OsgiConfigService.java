@@ -21,11 +21,11 @@ import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.Reader;
+import java.io.InputStream;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -52,6 +52,7 @@ public class OsgiConfigService {
     private static final String KEY_CONFIG_STATE = "configState";
     private static final String KEY_FILENAME = "filename";
     private static final String KEY_PROPERTIES = "properties";
+    private static final String KEY_RAW_CONTENT = "rawContent";
     private static final String CONFIG_STATE_MODULE = "MODULE";
     private static final String CONFIG_STATE_MODULE_DEFAULT = "MODULE_DEFAULT";
     private static final String CONFIG_STATE_USER = "USER";
@@ -434,7 +435,7 @@ public class OsgiConfigService {
 
         // Always read raw content for Monaco Support
         String rawContent = Files.readString(filePath, StandardCharsets.UTF_8);
-        result.put("rawContent", rawContent);
+        result.put(KEY_RAW_CONTENT, rawContent);
 
         enrichWithMetatype(result, safeFilename, type, locale);
 
@@ -466,8 +467,7 @@ public class OsgiConfigService {
 
     private List<Map<String, String>> readCfgProperties(Path filePath) throws IOException {
         List<Map<String, String>> entries = new ArrayList<>();
-        try (Reader reader = Files.newBufferedReader(filePath, StandardCharsets.UTF_8);
-             java.io.BufferedReader bufferedReader = new java.io.BufferedReader(reader)) {
+        try (BufferedReader bufferedReader = Files.newBufferedReader(filePath, StandardCharsets.UTF_8)) {
             String line;
             while ((line = bufferedReader.readLine()) != null) {
                 entries.add(parseCfgLine(line));
@@ -524,7 +524,7 @@ public class OsgiConfigService {
             }
         });
 
-        try (FileInputStream in = new FileInputStream(filePath.toFile())) {
+        try (InputStream in = Files.newInputStream(filePath)) {
             return yaml.load(in);
         }
     }
@@ -852,8 +852,8 @@ public class OsgiConfigService {
         String safeFilename = validateFilename(filename);
         ensureFilenameAllowed(safeFilename, isRootUser, "Save");
 
-        if (content != null && content.get("rawContent") instanceof String) {
-            validateRawContentSize((String) content.get("rawContent"));
+        if (content != null && content.get(KEY_RAW_CONTENT) instanceof String) {
+            validateRawContentSize((String) content.get(KEY_RAW_CONTENT));
         }
 
         Path filePath = resolveConfigPath(safeFilename);
@@ -873,8 +873,8 @@ public class OsgiConfigService {
         // If the frontend sends "rawContent", we trust it completely and write it to
         // disk.
         // This allows the frontend to handle encryption, formatting, and comments.
-        if (content.containsKey("rawContent")) {
-            writeRawContent(filePath, (String) content.get("rawContent"));
+        if (content.containsKey(KEY_RAW_CONTENT)) {
+            writeRawContent(filePath, (String) content.get(KEY_RAW_CONTENT));
             return;
         }
 
@@ -1211,8 +1211,7 @@ public class OsgiConfigService {
     }
 
     private String detectConfigState(Path filePath) throws IOException {
-        try (Reader reader = Files.newBufferedReader(filePath, StandardCharsets.UTF_8);
-             java.io.BufferedReader bufferedReader = new java.io.BufferedReader(reader)) {
+        try (BufferedReader bufferedReader = Files.newBufferedReader(filePath, StandardCharsets.UTF_8)) {
             String line;
             while ((line = bufferedReader.readLine()) != null) {
                 String normalizedLine = line.trim().toLowerCase(Locale.ROOT);
@@ -1457,23 +1456,21 @@ public class OsgiConfigService {
     }
 
     private void writeEmptyFile(Path filePath) throws IOException {
-        try (Writer writer = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8);
-             java.io.BufferedWriter bufferedWriter = new java.io.BufferedWriter(writer)) {
-            bufferedWriter.write("");
-        }
+        Files.write(filePath, new byte[0]);
     }
 
     private void saveLegacyCfgProperties(Path filePath, Map<String, String> properties) throws IOException {
         Properties props = new Properties();
         props.putAll(properties);
-        try (FileOutputStream out = new FileOutputStream(filePath.toFile())) {
-            props.store(out, "Modified by OSGi Configurations Manager");
+        // Store through a UTF-8 writer (Properties.store(OutputStream) would write ISO-8859-1,
+        // inconsistent with how the file is read back).
+        try (BufferedWriter writer = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8)) {
+            props.store(writer, "Modified by OSGi Configurations Manager");
         }
     }
 
     private void saveCfgEntries(Path filePath, List<Map<String, Object>> entries) throws IOException {
-        try (Writer writer = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8);
-             java.io.BufferedWriter bufferedWriter = new java.io.BufferedWriter(writer)) {
+        try (BufferedWriter bufferedWriter = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8)) {
             for (Map<String, Object> entry : entries) {
                 String entryType = (String) entry.get("type");
                 if ("comment".equals(entryType)) {
