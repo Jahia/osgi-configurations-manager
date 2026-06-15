@@ -32,6 +32,10 @@ public class OsgiConfigAction extends Action {
     private static final String PARAM_FILENAME = "filename";
     private static final String KEY_PROPERTIES = "properties";
     private static final String STATUS_CREATED = "created";
+    // CSRF defense: state-changing requests must carry this custom header. Browsers cannot set a
+    // non-safelisted header on a cross-origin request without a CORS preflight (which is not
+    // granted), so a forged cross-site POST cannot include it. Same-origin fetch() sets it.
+    private static final String CSRF_HEADER = "X-Requested-With";
     private OsgiConfigService configService;
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -63,6 +67,11 @@ public class OsgiConfigAction extends Action {
         Map<String, Object> result = new LinkedHashMap<>();
 
         try {
+            if ("POST".equals(method) && req.getHeader(CSRF_HEADER) == null) {
+                writeError(response, HttpServletResponse.SC_FORBIDDEN, "Missing required " + CSRF_HEADER + " header");
+                return null;
+            }
+
             if ("GET".equals(method)) {
                 String filename = req.getParameter(PARAM_FILENAME);
                 if (filename != null && !filename.isEmpty()) {

@@ -33,7 +33,8 @@ describe('osgiService request contract', () => {
         const [url, options] = lastCall();
         expect(url).toEqual(expect.stringContaining('systemsite.osgiConfigManager.do'));
         expect(options.method).toBe('POST');
-        expect(options.headers).toEqual({ 'Content-Type': 'application/json' });
+        // CSRF: every mutating POST carries the custom header alongside the JSON content type.
+        expect(options.headers).toEqual({ 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' });
         expect(options.body).toBe(expectedBody);
     });
 

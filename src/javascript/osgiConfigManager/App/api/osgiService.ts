@@ -88,6 +88,10 @@ declare global {
 
 const apiUrl = (window.contextJsParameters ? window.contextJsParameters.contextPath : '') + '/cms/render/default/en/sites/systemsite.osgiConfigManager.do';
 
+// CSRF defense: a non-safelisted custom header the browser only permits same-origin. The server
+// (OsgiConfigAction) rejects any state-changing POST that lacks it.
+const POST_HEADERS = { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' };
+
 const handleResponse = async (res: Response): Promise<OsgiServiceResponse> => {
     // The backend sometimes returns 500 with a JSON error, or plain text.
     // We should try to parse JSON if possible, or throw text.
@@ -125,7 +129,7 @@ export const osgiService = {
     save: async (payload: OsgiPayload): Promise<OsgiServiceResponse> => {
         return handleResponse(await fetch(apiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: POST_HEADERS,
             body: JSON.stringify(payload)
         }));
     },
@@ -133,7 +137,7 @@ export const osgiService = {
     toggle: async (filename: string): Promise<OsgiServiceResponse> => {
         return handleResponse(await fetch(apiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: POST_HEADERS,
             body: JSON.stringify({ action: 'toggle', filename })
         }));
     },
@@ -141,7 +145,7 @@ export const osgiService = {
     markAsDefault: async (filename: string): Promise<OsgiServiceResponse> => {
         return handleResponse(await fetch(apiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: POST_HEADERS,
             body: JSON.stringify({ action: 'markAsDefault', filename })
         }));
     },
@@ -149,7 +153,7 @@ export const osgiService = {
     delete: async (filename: string): Promise<OsgiServiceResponse> => {
         return handleResponse(await fetch(apiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: POST_HEADERS,
             body: JSON.stringify({ action: 'delete', filename })
         }));
     },
@@ -157,7 +161,7 @@ export const osgiService = {
     create: async (filename: string): Promise<OsgiServiceResponse> => {
         return handleResponse(await fetch(apiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: POST_HEADERS,
             body: JSON.stringify({ action: 'create', filename })
         }));
     },
@@ -165,7 +169,7 @@ export const osgiService = {
     createFromMetatype: async (pid: string, instanceIdentifier?: string): Promise<OsgiServiceResponse> => {
         return handleResponse(await fetch(apiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: POST_HEADERS,
             body: JSON.stringify({ action: 'createFromMetatype', pid, instanceIdentifier })
         }));
     },
@@ -175,7 +179,7 @@ export const osgiService = {
         // belongs to it, so decrypt cannot be used as a generic decryption oracle.
         return handleResponse(await fetch(apiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: POST_HEADERS,
             body: JSON.stringify({ action: 'decrypt', value, filename })
         }));
     },
@@ -183,7 +187,7 @@ export const osgiService = {
     encrypt: async (value: string): Promise<OsgiServiceResponse> => {
         return handleResponse(await fetch(apiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: POST_HEADERS,
             body: JSON.stringify({ action: 'encrypt', value })
         }));
     },
@@ -195,7 +199,7 @@ export const osgiService = {
     setPreference: async (key: string, value: string): Promise<OsgiServiceResponse> => {
         return handleResponse(await fetch(apiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: POST_HEADERS,
             body: JSON.stringify({ action: 'setPreference', key, value })
         }));
     }
