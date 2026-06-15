@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.BufferedReader;
+import java.io.IOException;
 
 /**
  * Action to interact with OsgiConfigService from React
@@ -189,10 +190,7 @@ public class OsgiConfigAction extends Action {
                     String key = (String) payload.get("key");
                     String value = (String) payload.get("value");
                     if (!PreferenceKeys.isAllowed(key)) {
-                        Map<String, String> error = new HashMap<>();
-                        error.put("error", "Unsupported preference key");
-                        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                        mapper.writeValue(response.getWriter(), error);
+                        writeError(response, HttpServletResponse.SC_BAD_REQUEST, "Unsupported preference key");
                         return null;
                     }
                     String userPath = renderContext.getUser().getLocalPath();
@@ -203,10 +201,7 @@ public class OsgiConfigAction extends Action {
                         result.put("status", "preferenceSaved");
                     }
                 } else {
-                    Map<String, String> error = new HashMap<>();
-                    error.put("error", "Unknown action");
-                    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                    mapper.writeValue(response.getWriter(), error);
+                    writeError(response, HttpServletResponse.SC_BAD_REQUEST, "Unknown action");
                     return null;
                 }
             }
@@ -218,14 +213,27 @@ public class OsgiConfigAction extends Action {
             response.getWriter().flush();
             return null;
 
+        } catch (IOException e) {
+            // Domain/validation errors (bad filename, already exists, access denied, ...) carry a
+            // safe, user-facing message. Surface it as a 400 and log server-side.
+            LOGGER.warn("Configuration operation rejected: {}", e.getMessage());
+            writeError(response, HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
+            return null;
         } catch (Exception e) {
-            LOGGER.error("Error in OsgiConfigAction", e);
-            Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            response.setContentType("application/json");
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            mapper.writeValue(response.getWriter(), error);
+            // Unexpected failure: log the detail server-side, return a generic message to the client
+            // so internal paths/state are never leaked.
+            LOGGER.error("Unexpected error in OsgiConfigAction", e);
+            writeError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "An internal error occurred");
             return null;
         }
+    }
+
+    private void writeError(HttpServletResponse response, int status, String message) throws IOException {
+        Map<String, String> error = new HashMap<>();
+        error.put("error", message);
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+        response.setStatus(status);
+        mapper.writeValue(response.getWriter(), error);
     }
 }
