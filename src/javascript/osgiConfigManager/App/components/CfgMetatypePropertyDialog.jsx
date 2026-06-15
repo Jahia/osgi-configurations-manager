@@ -2,6 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Close, Input, Paper, Typography } from '@jahia/moonstone';
 import { useTranslation } from 'react-i18next';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 import { buildPropertyDocumentation, findExactMetatypePropertyMatch, formatDefaultValue, getLocalizedTypeLabel, getPropertyLabel, matchesMetatypePropertyQuery } from '../utils/metatypeUtils';
 
 const renderDocumentation = (property, t) => {
@@ -34,6 +35,7 @@ export const CfgMetatypePropertyDialog = ({
 }) => {
     const { t } = useTranslation('osgi-configurations-manager');
     const [query, setQuery] = React.useState('');
+    const containerRef = useDialogA11y(open, onClose);
 
     React.useEffect(() => {
         if (open) {
@@ -66,6 +68,7 @@ export const CfgMetatypePropertyDialog = ({
 
     return createPortal(
         <div
+            ref={containerRef}
             data-cy="cfg-metatype-property-dialog"
             onClick={onClose}
             style={{
@@ -79,6 +82,9 @@ export const CfgMetatypePropertyDialog = ({
             }}
         >
             <Paper
+                role="dialog"
+                aria-modal="true"
+                aria-label={t('editor.metatype.cfgPicker.title')}
                 onClick={event => event.stopPropagation()}
                 style={{
                     width: '760px',
@@ -101,9 +107,13 @@ export const CfgMetatypePropertyDialog = ({
                         <Typography variant="heading" weight="bold">{t('editor.metatype.cfgPicker.title')}</Typography>
                         <Typography variant="body" style={{ color: '#666' }}>{t('editor.metatype.cfgPicker.description')}</Typography>
                     </div>
-                    <div style={{ cursor: 'pointer' }} onClick={onClose}>
-                        <Close />
-                    </div>
+                    <Button
+                        variant="ghost"
+                        size="small"
+                        icon={<Close />}
+                        onClick={onClose}
+                        aria-label={t('modal.cancel')}
+                    />
                 </div>
 
                 <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px', overflow: 'hidden' }}>
@@ -141,9 +151,19 @@ export const CfgMetatypePropertyDialog = ({
                                 <div
                                     key={property.id}
                                     data-cy={`cfg-metatype-property-option-${encodeURIComponent(property.id)}`}
+                                    role="button"
+                                    tabIndex={0}
+                                    aria-label={property.id}
                                     onClick={() => {
                                         onSelectMetatypeProperty(property);
                                         onClose();
+                                    }}
+                                    onKeyDown={event => {
+                                        if (event.key === 'Enter' || event.key === ' ') {
+                                            event.preventDefault();
+                                            onSelectMetatypeProperty(property);
+                                            onClose();
+                                        }
                                     }}
                                     style={{
                                         padding: '12px 16px',

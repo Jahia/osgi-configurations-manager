@@ -90,8 +90,18 @@ const EXISTING_INSTANCE_STYLE = {
 const CreateOptionCard = ({dataCy, isSelected, onClick, title, subtitle, meta, description}) => (
     <div
         data-cy={dataCy}
+        role="button"
+        tabIndex={0}
+        aria-pressed={isSelected}
+        aria-label={title}
         style={getSelectableCardStyle(isSelected)}
         onClick={onClick}
+        onKeyDown={event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onClick();
+            }
+        }}
     >
         <Typography variant="body" weight="bold" style={{wordBreak: 'break-word'}}>
             {title}
@@ -301,6 +311,7 @@ export const ModalDialog = ({config, onClose}) => {
                             <Input
                                 data-cy="modal-prompt-input"
                                 autoFocus
+                                aria-label={config.title || t('modal.prompt.placeholder')}
                                 value={promptValue}
                                 variant="outlined"
                                 onChange={event => setPromptValue(event.target.value)}
@@ -337,6 +348,7 @@ export const ModalDialog = ({config, onClose}) => {
                                         <Input
                                             data-cy="modal-create-manual-input"
                                             autoFocus
+                                            aria-label={t('modal.create.manualLabel')}
                                             value={manualFilename}
                                             variant="outlined"
                                             onChange={event => setManualFilename(event.target.value)}
@@ -352,6 +364,7 @@ export const ModalDialog = ({config, onClose}) => {
                                         </Typography>
                                         <Input
                                             data-cy="modal-create-filter-input"
+                                            aria-label={t('modal.create.filterLabel')}
                                             value={filterValue}
                                             variant="outlined"
                                             onChange={event => setFilterValue(event.target.value)}
@@ -445,6 +458,7 @@ export const ModalDialog = ({config, onClose}) => {
                                                     <Input
                                                         data-cy="modal-create-factory-identifier-input"
                                                         autoFocus
+                                                        aria-label={t('modal.create.factoryIdentifierLabel')}
                                                         value={factoryIdentifier}
                                                         variant="outlined"
                                                         onChange={event => setFactoryIdentifier(event.target.value)}
