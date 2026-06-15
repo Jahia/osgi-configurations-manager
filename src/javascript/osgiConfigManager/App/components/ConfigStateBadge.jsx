@@ -23,9 +23,10 @@ const STATE_STYLES = {
     }
 };
 
-const renderChip = (state, config, label) => (
+const renderChip = (state, config, label, ariaLabel) => (
     <Chip
         data-cy={`config-state-badge-${state.toLowerCase()}`}
+        aria-label={ariaLabel}
         color={config.color}
         icon={<config.icon/>}
         label={label}
@@ -37,8 +38,9 @@ export const ConfigStateBadge = ({state, compact = false, showTooltip = true}) =
     const {t} = useTranslation('osgi-configurations-manager');
     const effectiveState = STATE_STYLES[state] ? state : 'USER';
     const config = STATE_STYLES[effectiveState];
-    const label = compact ? '' : t(config.labelKey);
-    const chip = renderChip(effectiveState, config, label);
+    const fullLabel = t(config.labelKey);
+    // Always expose the full state as the accessible name, even in compact (icon-only) mode.
+    const chip = renderChip(effectiveState, config, compact ? '' : fullLabel, fullLabel);
 
     if (!showTooltip) {
         return chip;

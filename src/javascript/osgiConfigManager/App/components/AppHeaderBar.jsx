@@ -34,7 +34,7 @@ export const AppHeaderBar = ({
 
             <Separator spacing="none" size="full"/>
 
-            <div role="toolbar" className="flexRow_between alignCenter moonstone-header_toolbar">
+            <div role="group" aria-label={title} className="flexRow_between alignCenter moonstone-header_toolbar">
                 <div className="flexRow alignCenter flexFluid moonstone-header_actions">
                     <ActionButton
                         dataCy="create-file-button"

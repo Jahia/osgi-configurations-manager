@@ -362,6 +362,14 @@ const App = () => (
         <style>
             {`
                 @keyframes osgi-config-manager-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+                @media (prefers-reduced-motion: reduce) {
+                    .osgi-config-manager-spinner { animation: none !important; }
+                }
+                .osgi-cfg-input:focus-visible {
+                    outline: 2px solid var(--color-accent) !important;
+                    outline-offset: -1px;
+                    border-radius: 2px;
+                }
                 .osgi-sidebar-status-cell .moonstone-TableCell {
                     padding-left: 0;
                     padding-right: 0;

@@ -107,8 +107,10 @@ const BANNER_VARIANTS = {
 };
 
 export const InlineLoader = ({label}) => (
-    <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: CHROME_TOKENS.sectionGap, color: CHROME_TOKENS.subtleTextColor}}>
+    <div role="status" aria-label={label} style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: CHROME_TOKENS.sectionGap, color: CHROME_TOKENS.subtleTextColor}}>
         <div
+            aria-hidden="true"
+            className="osgi-config-manager-spinner"
             style={{
                 width: '18px',
                 height: '18px',

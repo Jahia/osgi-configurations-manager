@@ -1377,6 +1377,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
 
                             <Input
                                 data-cy="raw-editor-property-search"
+                                aria-label={t('editor.metatype.searchPlaceholder')}
                                 value={propertySearch}
                                 onChange={event => setPropertySearch(event.target.value)}
                                 onKeyDown={event => {

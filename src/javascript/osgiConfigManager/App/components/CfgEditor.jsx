@@ -216,6 +216,7 @@ const AutoResizeTextArea = ({ value, onChange, placeholder, style, onFocus, onBl
     return (
         <textarea
             ref={textareaRef}
+            className="osgi-cfg-input"
             rows={1}
             value={value}
             onChange={handleChange}
