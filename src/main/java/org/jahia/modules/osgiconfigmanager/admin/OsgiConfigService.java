@@ -62,6 +62,7 @@ public class OsgiConfigService {
     private static final String METATYPE_PID_NOT_FOUND_LOG = "Metatype PID {} not found in bundle {}";
     private static final String INVALID_FILENAME_MESSAGE = "Invalid configuration filename: ";
     private static final String ACTION_CREATE = "Create";
+    static final int MAX_RAW_CONTENT_BYTES = 5 * 1024 * 1024; // 5 MiB guard against disk-exhaustion writes
     private File karafEtcDir;
     private Set<String> blacklist = new HashSet<>();
     private Set<String> whitelist = new HashSet<>();
@@ -824,6 +825,10 @@ public class OsgiConfigService {
         String safeFilename = validateFilename(filename);
         ensureFilenameAllowed(safeFilename, isRootUser, "Save");
 
+        if (content != null && content.get("rawContent") instanceof String) {
+            validateRawContentSize((String) content.get("rawContent"));
+        }
+
         Path filePath = resolveConfigPath(safeFilename);
 
         // Auto-Backup Logic
@@ -1410,6 +1415,14 @@ public class OsgiConfigService {
 
     private void writeRawContent(Path filePath, String raw) throws IOException {
         Files.write(filePath, (raw == null ? "" : raw).getBytes(StandardCharsets.UTF_8));
+    }
+
+    private void validateRawContentSize(String rawContent) throws IOException {
+        int byteLength = rawContent.getBytes(StandardCharsets.UTF_8).length;
+        if (byteLength > MAX_RAW_CONTENT_BYTES) {
+            throw new IOException("Configuration content exceeds the maximum allowed size of "
+                    + MAX_RAW_CONTENT_BYTES + " bytes");
+        }
     }
 
     private void writeEmptyFile(Path filePath) throws IOException {

@@ -263,4 +263,16 @@ class OsgiConfigServiceFilesystemTest {
             return e;
         }
     }
+
+    @Test
+    @DisplayName("saveFile rejects rawContent larger than the size cap")
+    void saveFile_oversizedRawContent_throws() {
+        String tooBig = "x".repeat(OsgiConfigService.MAX_RAW_CONTENT_BYTES + 1);
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("rawContent", tooBig);
+
+        IOException ex = assertThrows(IOException.class, () -> service.saveFile("too-big.cfg", payload, true));
+        assertTrue(ex.getMessage().contains("maximum allowed size"), "Unexpected message: " + ex.getMessage());
+        assertFalse(Files.exists(etcDir.resolve("too-big.cfg")), "Oversized content must not be written");
+    }
 }
