@@ -64,12 +64,10 @@ public class OsgiConfigService {
     private static final String ACTION_CREATE = "Create";
     static final int MAX_RAW_CONTENT_BYTES = 5 * 1024 * 1024; // 5 MiB guard against disk-exhaustion writes
     private File karafEtcDir;
-    private Set<String> blacklist = new HashSet<>();
-    private Set<String> whitelist = new HashSet<>();
-    private List<Pattern> blacklistPatterns = new ArrayList<>();
-    private List<Pattern> whitelistPatterns = new ArrayList<>();
-    private MetaTypeService metaTypeService;
-    private boolean visualFormattingControlsEnabled;
+    // Filtering state is published atomically as a single immutable snapshot so request threads
+    // never observe a half-applied configuration update.
+    private volatile FilterConfig filterConfig = FilterConfig.EMPTY;
+    private volatile MetaTypeService metaTypeService;
 
     static final String SELF_CONFIG_PID = "org.jahia.modules.osgiconfigmanager";
     private static final String SELF_CONFIG = SELF_CONFIG_PID + ".cfg";
@@ -117,6 +115,32 @@ public class OsgiConfigService {
         }
     }
 
+    /**
+     * Immutable snapshot of the file-filtering configuration, published atomically via a single
+     * volatile reference so concurrent requests never see a partially-updated state.
+     */
+    private static final class FilterConfig {
+        private static final FilterConfig EMPTY = new FilterConfig(
+                Collections.emptySet(), Collections.emptySet(),
+                Collections.emptyList(), Collections.emptyList(), false);
+
+        private final Set<String> blacklist;
+        private final Set<String> whitelist;
+        private final List<Pattern> blacklistPatterns;
+        private final List<Pattern> whitelistPatterns;
+        private final boolean visualFormattingControlsEnabled;
+
+        private FilterConfig(Set<String> blacklist, Set<String> whitelist,
+                             List<Pattern> blacklistPatterns, List<Pattern> whitelistPatterns,
+                             boolean visualFormattingControlsEnabled) {
+            this.blacklist = blacklist;
+            this.whitelist = whitelist;
+            this.blacklistPatterns = blacklistPatterns;
+            this.whitelistPatterns = whitelistPatterns;
+            this.visualFormattingControlsEnabled = visualFormattingControlsEnabled;
+        }
+    }
+
     public OsgiConfigService() {
         String etcPath = System.getProperty("karaf.etc");
         if (etcPath != null && !etcPath.isEmpty()) {
@@ -153,21 +177,23 @@ public class OsgiConfigService {
             String allowedFiles = (String) properties.get("allowedFiles");
             addConfiguredFilenames(newWhitelist, newWhitelistPatterns, allowedFiles);
         }
-        this.visualFormattingControlsEnabled = getBooleanProperty(properties, "visualFormattingControlsEnabled", false);
-        this.blacklist = newBlacklist;
-        this.whitelist = newWhitelist;
-        this.blacklistPatterns = newBlacklistPatterns;
-        this.whitelistPatterns = newWhitelistPatterns;
-        LOGGER.info("Updated blacklist: {}", blacklist);
-        LOGGER.info("Updated blacklist wildcard count: {}", blacklistPatterns.size());
-        LOGGER.info("Updated whitelist: {}", whitelist);
-        LOGGER.info("Updated whitelist wildcard count: {}", whitelistPatterns.size());
-        LOGGER.info("Updated visual formatting controls flag: {}", visualFormattingControlsEnabled);
+        boolean newVisualFormattingControlsEnabled =
+                getBooleanProperty(properties, "visualFormattingControlsEnabled", false);
+
+        // Single atomic publish of the new immutable snapshot.
+        this.filterConfig = new FilterConfig(newBlacklist, newWhitelist,
+                newBlacklistPatterns, newWhitelistPatterns, newVisualFormattingControlsEnabled);
+
+        LOGGER.info("Updated blacklist: {}", newBlacklist);
+        LOGGER.info("Updated blacklist wildcard count: {}", newBlacklistPatterns.size());
+        LOGGER.info("Updated whitelist: {}", newWhitelist);
+        LOGGER.info("Updated whitelist wildcard count: {}", newWhitelistPatterns.size());
+        LOGGER.info("Updated visual formatting controls flag: {}", newVisualFormattingControlsEnabled);
     }
 
     public Map<String, Object> getUiConfig() {
         Map<String, Object> uiConfig = new LinkedHashMap<>();
-        uiConfig.put("visualFormattingControlsEnabled", visualFormattingControlsEnabled);
+        uiConfig.put("visualFormattingControlsEnabled", filterConfig.visualFormattingControlsEnabled);
         return uiConfig;
     }
 
@@ -334,9 +360,10 @@ public class OsgiConfigService {
         if (isSelfConfigurationPid(pid)) {
             return !isRootUser;
         }
-        if (!hasConfiguredEntries(whitelist, whitelistPatterns)) {
-            return !effectiveFactory && (matchesConfiguredFilename(suggestedFilename, blacklist, blacklistPatterns)
-                    || matchesConfiguredFilename(suggestedFilename + DISABLED_SUFFIX, blacklist, blacklistPatterns));
+        FilterConfig fc = this.filterConfig;
+        if (!hasConfiguredEntries(fc.whitelist, fc.whitelistPatterns)) {
+            return !effectiveFactory && (matchesConfiguredFilename(suggestedFilename, fc.blacklist, fc.blacklistPatterns)
+                    || matchesConfiguredFilename(suggestedFilename + DISABLED_SUFFIX, fc.blacklist, fc.blacklistPatterns));
         }
         if (effectiveFactory) {
             return !hasWhitelistedFactoryCandidate(pid);
@@ -1362,7 +1389,8 @@ public class OsgiConfigService {
 
     private void ensureFilenameAllowed(String filename, boolean isRootUser, String action) throws IOException {
         if (!isFilenameAllowed(filename, isRootUser)) {
-            String reason = hasConfiguredEntries(whitelist, whitelistPatterns)
+            FilterConfig fc = this.filterConfig;
+            String reason = hasConfiguredEntries(fc.whitelist, fc.whitelistPatterns)
                     ? "is not permitted by the active white list."
                     : "is blacklisted or reserved.";
             throw new IOException(action + " denied: " + filename + " " + reason);
@@ -1373,21 +1401,23 @@ public class OsgiConfigService {
         if (isSelfConfigurationFilename(filename)) {
             return isRootUser;
         }
-        if (hasConfiguredEntries(whitelist, whitelistPatterns)) {
-            return matchesConfiguredFilename(filename, whitelist, whitelistPatterns);
+        FilterConfig fc = this.filterConfig;
+        if (hasConfiguredEntries(fc.whitelist, fc.whitelistPatterns)) {
+            return matchesConfiguredFilename(filename, fc.whitelist, fc.whitelistPatterns);
         }
-        return !matchesConfiguredFilename(filename, blacklist, blacklistPatterns);
+        return !matchesConfiguredFilename(filename, fc.blacklist, fc.blacklistPatterns);
     }
 
     boolean hasWhitelistedFactoryCandidate(String factoryPid) {
-        if (!hasConfiguredEntries(whitelist, whitelistPatterns)) {
+        FilterConfig fc = this.filterConfig;
+        if (!hasConfiguredEntries(fc.whitelist, fc.whitelistPatterns)) {
             return true;
         }
         String sampleCandidate = factoryPid + "-placeholder" + DEFAULT_FACTORY_FILE_EXTENSION;
         String disabledSampleCandidate = sampleCandidate + DISABLED_SUFFIX;
-        return whitelist.stream().anyMatch(entry -> entry.startsWith(factoryPid + "-"))
-                || matchesConfiguredFilename(sampleCandidate, whitelist, whitelistPatterns)
-                || matchesConfiguredFilename(disabledSampleCandidate, whitelist, whitelistPatterns);
+        return fc.whitelist.stream().anyMatch(entry -> entry.startsWith(factoryPid + "-"))
+                || matchesConfiguredFilename(sampleCandidate, fc.whitelist, fc.whitelistPatterns)
+                || matchesConfiguredFilename(disabledSampleCandidate, fc.whitelist, fc.whitelistPatterns);
     }
 
     private boolean isSelfConfigurationPid(String pid) {
