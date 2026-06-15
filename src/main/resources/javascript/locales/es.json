@@ -21,7 +21,8 @@
         "toggleSuccess": "Estado cambiado para {{name}}",
         "deleteSuccess": "{{name}} eliminado",
         "createSuccess": "{{name}} creado",
-        "uploadSuccess": "{{name}} subido"
+        "uploadSuccess": "{{name}} subido",
+        "markAsDefaultSuccess": "{{name}} ahora está marcado como configuración predeterminada"
     },
     "modal": {
         "cancel": "Cancelar",
@@ -93,7 +94,8 @@
             "propertyExists": "La propiedad '{{name}}' ya existe.",
             "invalidExtension": "El nombre del archivo debe terminar en .cfg, .yml, .cfg.disabled o .yml.disabled",
             "invalidExtensionUpload": "Solo se admiten archivos .cfg y .yml.",
-            "duplicateKeys": "Se encontraron claves duplicadas: {{keys}}"
+            "duplicateKeys": "Se encontraron claves duplicadas: {{keys}}",
+            "markAsDefault": "Error al marcar el archivo como configuración predeterminada: {{error}}"
         },
         "conflict": {
             "title": "Archivo existente",
@@ -110,6 +112,11 @@
         },
         "diff": {
             "title": "Revisar cambios: {{name}}"
+        },
+        "markAsDefault": {
+            "title": "Marcar como configuración predeterminada",
+            "message": "¿Añadir la cabecera '# default configuration' a {{name}}? Jahia conservará entonces los cambios locales para esta configuración predeterminada proporcionada por el módulo.",
+            "confirm": "Marcar como predeterminado"
         }
     },
     "editor": {
@@ -132,7 +139,8 @@
             "modeVisual": "Modo Visual",
             "encrypt": "Cifrar",
             "decrypt": "Descifrar",
-            "toggleEmptyLines": "Alternar líneas vacías"
+            "toggleEmptyLines": "Alternar líneas vacías",
+            "toggleComments": "Alternar comentarios"
         },
         "placeholder": {
             "key": "Clave",
@@ -210,10 +218,32 @@
         "showSecret": "Mostrar valor secreto",
         "hideSecret": "Ocultar valor secreto",
         "toggleComments": "Alternar visibilidad de comentarios (excepto cabecera)",
-        "toggleEmptyLines": "Mostrar u ocultar líneas vacías (excepto la cabecera)"
+        "toggleEmptyLines": "Mostrar u ocultar líneas vacías (excepto la cabecera)",
+        "markAsDefault": "Añadir la cabecera '# default configuration' para que Jahia conserve los cambios locales de los valores predeterminados del módulo"
     },
     "sidebar": {
         "on": "On",
         "off": "Off"
+    },
+    "configState": {
+        "badge": {
+            "module": "Módulo",
+            "moduleDefault": "Predeterminado",
+            "user": "Usuario"
+        },
+        "badgeCompact": {
+            "module": "M",
+            "moduleDefault": "P",
+            "user": "U"
+        },
+        "tooltip": {
+            "module": "Configuración gestionada por el módulo. Los cambios locales pueden sobrescribirse al reiniciar o volver a desplegar.",
+            "moduleDefault": "Configuración predeterminada del módulo. Jahia conserva los cambios locales.",
+            "user": "Configuración local de la instancia."
+        },
+        "banner": {
+            "module": "Esta configuración gestionada por el módulo puede sobrescribirse al reiniciar o volver a desplegar. No se garantiza que los cambios locales persistan.",
+            "moduleDefault": "Esta configuración predeterminada del módulo es editable. Jahia conserva los cambios locales."
+        }
     }
 }

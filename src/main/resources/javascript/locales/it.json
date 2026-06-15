@@ -21,7 +21,8 @@
         "toggleSuccess": "Stato di {{name}} modificato",
         "deleteSuccess": "{{name}} eliminato",
         "createSuccess": "{{name}} creato",
-        "uploadSuccess": "{{name}} caricato"
+        "uploadSuccess": "{{name}} caricato",
+        "markAsDefaultSuccess": "{{name}} è ora contrassegnato come configurazione predefinita"
     },
     "modal": {
         "cancel": "Annulla",
@@ -93,7 +94,8 @@
             "propertyExists": "La proprietà '{{name}}' esiste già.",
             "invalidExtension": "Il nome del file deve terminare con .cfg, .yml, .cfg.disabled o .yml.disabled",
             "invalidExtensionUpload": "Sono supportati solo file .cfg e .yml.",
-            "duplicateKeys": "Chiavi duplicate trovate: {{keys}}"
+            "duplicateKeys": "Chiavi duplicate trovate: {{keys}}",
+            "markAsDefault": "Errore durante il contrassegno del file come configurazione predefinita: {{error}}"
         },
         "conflict": {
             "title": "File esistente",
@@ -110,6 +112,11 @@
         },
         "diff": {
             "title": "Revisione modifiche: {{name}}"
+        },
+        "markAsDefault": {
+            "title": "Contrassegna come configurazione predefinita",
+            "message": "Aggiungere l'intestazione '# default configuration' a {{name}}? Jahia conserverà quindi le modifiche locali per questa configurazione predefinita fornita dal modulo.",
+            "confirm": "Contrassegna come predefinito"
         }
     },
     "editor": {
@@ -211,10 +218,32 @@
         "showSecret": "Mostra il valore segreto",
         "hideSecret": "Nascondi il valore segreto",
         "toggleComments": "Attiva/disattiva visibilità commenti (eccetto intestazione)",
-        "toggleEmptyLines": "Mostra o nasconde le righe vuote (tranne l’intestazione)"
+        "toggleEmptyLines": "Mostra o nasconde le righe vuote (tranne l’intestazione)",
+        "markAsDefault": "Aggiungi l'intestazione '# default configuration' affinché Jahia conservi le modifiche locali per i valori predefiniti del modulo"
     },
     "sidebar": {
         "on": "On",
         "off": "Off"
+    },
+    "configState": {
+        "badge": {
+            "module": "Modulo",
+            "moduleDefault": "Predefinito",
+            "user": "Utente"
+        },
+        "badgeCompact": {
+            "module": "M",
+            "moduleDefault": "P",
+            "user": "U"
+        },
+        "tooltip": {
+            "module": "Configurazione gestita dal modulo. Le modifiche locali possono essere sovrascritte al riavvio o alla ridistribuzione.",
+            "moduleDefault": "Configurazione predefinita del modulo. Jahia conserva le modifiche locali.",
+            "user": "Configurazione locale dell'istanza."
+        },
+        "banner": {
+            "module": "Questa configurazione gestita dal modulo può essere sovrascritta al riavvio o alla ridistribuzione. La persistenza delle modifiche locali non è garantita.",
+            "moduleDefault": "Questa configurazione predefinita del modulo è modificabile. Jahia conserva le modifiche locali."
+        }
     }
 }

@@ -21,7 +21,8 @@
         "toggleSuccess": "Status alterado para {{name}}",
         "deleteSuccess": "{{name}} excluído",
         "createSuccess": "{{name}} criado",
-        "uploadSuccess": "{{name}} enviado"
+        "uploadSuccess": "{{name}} enviado",
+        "markAsDefaultSuccess": "{{name}} está agora marcado como configuração padrão"
     },
     "modal": {
         "cancel": "Cancelar",
@@ -93,7 +94,8 @@
             "propertyExists": "A propriedade '{{name}}' já existe.",
             "invalidExtension": "O nome do arquivo deve terminar com .cfg, .yml, .cfg.disabled ou .yml.disabled",
             "invalidExtensionUpload": "Apenas arquivos .cfg e .yml são suportados.",
-            "duplicateKeys": "Chaves duplicadas encontradas: {{keys}}"
+            "duplicateKeys": "Chaves duplicadas encontradas: {{keys}}",
+            "markAsDefault": "Erro ao marcar o ficheiro como configuração padrão: {{error}}"
         },
         "conflict": {
             "title": "Arquivo existente",
@@ -110,6 +112,11 @@
         },
         "diff": {
             "title": "Revisar alterações: {{name}}"
+        },
+        "markAsDefault": {
+            "title": "Marcar como configuração padrão",
+            "message": "Adicionar o cabeçalho '# default configuration' a {{name}}? O Jahia preservará então as alterações locais para esta configuração padrão fornecida pelo módulo.",
+            "confirm": "Marcar como padrão"
         }
     },
     "editor": {
@@ -211,10 +218,32 @@
         "showSecret": "Mostrar valor secreto",
         "hideSecret": "Ocultar valor secreto",
         "toggleComments": "Alternar visibilidade dos comentários (exceto cabeçalho)",
-        "toggleEmptyLines": "Mostrar ou ocultar linhas vazias (exceto o cabeçalho)"
+        "toggleEmptyLines": "Mostrar ou ocultar linhas vazias (exceto o cabeçalho)",
+        "markAsDefault": "Adicionar o cabeçalho '# default configuration' para que o Jahia preserve as alterações locais dos valores padrão do módulo"
     },
     "sidebar": {
         "on": "Ligado",
         "off": "Desligado"
+    },
+    "configState": {
+        "badge": {
+            "module": "Módulo",
+            "moduleDefault": "Padrão",
+            "user": "Utilizador"
+        },
+        "badgeCompact": {
+            "module": "M",
+            "moduleDefault": "P",
+            "user": "U"
+        },
+        "tooltip": {
+            "module": "Configuração gerida pelo módulo. As alterações locais podem ser substituídas ao reiniciar ou reimplementar.",
+            "moduleDefault": "Configuração padrão do módulo. O Jahia preserva as alterações locais.",
+            "user": "Configuração local da instância."
+        },
+        "banner": {
+            "module": "Esta configuração gerida pelo módulo pode ser substituída ao reiniciar ou reimplementar. A persistência das alterações locais não é garantida.",
+            "moduleDefault": "Esta configuração padrão do módulo é editável. O Jahia preserva as alterações locais."
+        }
     }
 }
