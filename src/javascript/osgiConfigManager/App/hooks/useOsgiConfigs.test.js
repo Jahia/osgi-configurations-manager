@@ -127,4 +127,45 @@ describe('useOsgiConfigs', () => {
             filename: 'test.cfg'
         }));
     });
+
+    it('handleSave shows a diff and persists only after confirmation when content changed', async () => {
+        osgiService.save.mockResolvedValue({});
+        osgiService.read.mockResolvedValue({ data: { rawContent: 'foo = bar', properties: [] } });
+
+        const { result } = renderHook(() => useOsgiConfigs());
+        act(() => {
+            result.current.setSelectedFile({ name: 'test.cfg' });
+        });
+        await act(async () => {
+            await Promise.resolve();
+            await Promise.resolve();
+        });
+
+        // Edit raw content so there is a real change to review
+        act(() => {
+            result.current.handleRawUpdate('foo = baz');
+        });
+
+        await act(async () => {
+            await result.current.handleSave();
+        });
+
+        // Not persisted yet: the diff modal is open for review
+        expect(osgiService.save).not.toHaveBeenCalled();
+        expect(result.current.diffConfig.isOpen).toBe(true);
+        expect(result.current.diffConfig.newContent).toBe('foo = baz');
+
+        // Confirming the diff persists the content
+        await act(async () => {
+            result.current.diffConfig.onConfirm();
+            await Promise.resolve();
+            await Promise.resolve();
+        });
+
+        expect(osgiService.save).toHaveBeenCalledWith(expect.objectContaining({
+            action: 'save',
+            filename: 'test.cfg',
+            rawContent: 'foo = baz'
+        }));
+    });
 });

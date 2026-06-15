@@ -314,77 +314,9 @@ export const useOsgiConfigs = () => {
         return obj;
     }, []);
 
-    const handleSave = useCallback(async (contentToSave?: string) => {
-        let finalContent = contentToSave;
-
-        // If contentToSave is provided (e.g. from diff modal), use it directly.
-        // Otherwise, calculate it from current state.
-        if (finalContent === undefined) {
-            if (isRawMode) {
-                finalContent = rawContent;
-            } else {
-                if ((selectedFile?.name.endsWith('.yml') || selectedFile?.name.endsWith('.yml.disabled')) && !isYamlValid) {
-                    setModalConfig({
-                        type: 'confirm',
-                        severity: 'warning',
-                        title: t('modal.error.title'),
-                        message: t('modal.error.invalidYaml'),
-                        cancelLabel: t('modal.ok'),
-                        confirmLabel: null
-                    });
-                    return;
-                }
-
-                // Visual Mode Save (CFG or Properties or YML)
-                let propsToSave = properties;
-
-                // 1. Check for duplicates (if Array)
-                if (Array.isArray(propsToSave)) {
-                    const seenKeys = new Set();
-                    const duplicateKeys = new Set();
-                    propsToSave.forEach(entry => {
-                        const type = entry.type?.value || entry.type;
-                        const key = entry.key?.value || entry.key;
-                        if (type === 'property' && key) {
-                            if (seenKeys.has(key)) {
-                                duplicateKeys.add(key);
-                            }
-                            seenKeys.add(key);
-                        }
-                    });
-
-                    if (duplicateKeys.size > 0) {
-                        setModalConfig({
-                            type: 'alert',
-                            title: t('modal.error.title'),
-                            message: t('modal.error.duplicateKeys', { keys: Array.from(duplicateKeys).join(', ') }) || `Duplicate keys found: ${Array.from(duplicateKeys).join(', ')}`
-                        });
-                        return;
-                    }
-                }
-
-                // 2. Encrypt Recursive (Decrypted-in-Memory Model)
-                // We must encrypt before generating the string content for saving
-                propsToSave = await encryptRecursive(JSON.parse(JSON.stringify(properties)));
-
-                // 3. Convert to String Format
-                if (Array.isArray(propsToSave)) {
-                    // For CFG Array
-                    const { toCfgFormat } = await import('../utils/configUtils');
-                    finalContent = toCfgFormat(propsToSave);
-                } else if (selectedFile?.name.endsWith('.yml') || selectedFile?.name.endsWith('.yml.disabled')) {
-                    // For YAML, we don't have a specific tree-to-yaml converter yet that handles our internal structure perfectly 
-                    // unless we rely on the rawContent text editor for YAML.
-                    finalContent = rawContent;
-                } else {
-                    // For standard properties tree
-                    const { prepareDataForSave, toCfgFormat } = await import('../utils/configUtils');
-                    const prepared = await prepareDataForSave(propsToSave);
-                    finalContent = toCfgFormat(prepared);
-                }
-            }
-        }
-
+    // Persist already-computed content to disk and refresh state. Called after the user confirms
+    // the diff (or directly when there is nothing to review).
+    const persistContent = useCallback(async (finalContent: string) => {
         if (!selectedFile) return;
 
         try {
@@ -448,7 +380,95 @@ export const useOsgiConfigs = () => {
         } catch (e: any) {
             toastError(e.message);
         }
-    }, [isRawMode, rawContent, selectedFile, isYamlValid, properties, t, success, toastError, resetProperties, encryptRecursive, fetchFiles, fetchFileContent]);
+    }, [isRawMode, selectedFile, properties, t, success, toastError, resetProperties, fetchFiles, fetchFileContent]);
+
+    // Compute the content that would be written, running the same validation gates as before.
+    // Returns null when validation fails (a modal is shown) so the caller aborts.
+    const computeFinalContent = useCallback(async (): Promise<string | null> => {
+        if (isRawMode) {
+            return rawContent;
+        }
+
+        if ((selectedFile?.name.endsWith('.yml') || selectedFile?.name.endsWith('.yml.disabled')) && !isYamlValid) {
+            setModalConfig({
+                type: 'confirm',
+                severity: 'warning',
+                title: t('modal.error.title'),
+                message: t('modal.error.invalidYaml'),
+                cancelLabel: t('modal.ok'),
+                confirmLabel: null
+            });
+            return null;
+        }
+
+        // Check for duplicates (if Array)
+        if (Array.isArray(properties)) {
+            const seenKeys = new Set();
+            const duplicateKeys = new Set();
+            properties.forEach((entry: any) => {
+                const type = entry.type?.value || entry.type;
+                const key = entry.key?.value || entry.key;
+                if (type === 'property' && key) {
+                    if (seenKeys.has(key)) {
+                        duplicateKeys.add(key);
+                    }
+                    seenKeys.add(key);
+                }
+            });
+
+            if (duplicateKeys.size > 0) {
+                setModalConfig({
+                    type: 'alert',
+                    title: t('modal.error.title'),
+                    message: t('modal.error.duplicateKeys', { keys: Array.from(duplicateKeys).join(', ') }) || `Duplicate keys found: ${Array.from(duplicateKeys).join(', ')}`
+                });
+                return null;
+            }
+        }
+
+        // Encrypt before serializing (decrypted-in-memory model)
+        const propsToSave = await encryptRecursive(JSON.parse(JSON.stringify(properties)));
+
+        if (Array.isArray(propsToSave)) {
+            const { toCfgFormat } = await import('../utils/configUtils');
+            return toCfgFormat(propsToSave);
+        }
+        if (selectedFile?.name.endsWith('.yml') || selectedFile?.name.endsWith('.yml.disabled')) {
+            // YAML is edited as raw text; rely on the raw editor content.
+            return rawContent;
+        }
+        const { prepareDataForSave, toCfgFormat } = await import('../utils/configUtils');
+        const prepared = await prepareDataForSave(propsToSave);
+        return toCfgFormat(prepared);
+    }, [isRawMode, rawContent, selectedFile, isYamlValid, properties, t, encryptRecursive]);
+
+    const handleSave = useCallback(async () => {
+        if (!selectedFile) return;
+
+        const finalContent = await computeFinalContent();
+        if (finalContent === null) {
+            return; // validation failed; a modal was shown
+        }
+
+        const original = originalRawContent;
+        if (finalContent === original) {
+            // Nothing changed — persist directly rather than showing an empty diff.
+            await persistContent(finalContent);
+            return;
+        }
+
+        // Review-before-save: show the diff of on-disk vs new content; persist only on confirm.
+        setDiffConfig({
+            isOpen: true,
+            originalContent: original,
+            newContent: finalContent,
+            filename: selectedFile.name,
+            onConfirm: () => {
+                setDiffConfig(prev => ({ ...prev, isOpen: false }));
+                void persistContent(finalContent);
+            }
+        });
+    }, [selectedFile, computeFinalContent, originalRawContent, persistContent]);
 
     const handleToggleComments = useCallback(async () => {
         if (!visualFormattingControlsEnabled) {
