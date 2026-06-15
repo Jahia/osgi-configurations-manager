@@ -12,97 +12,199 @@ import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.security.spec.InvalidKeySpecException;
 import java.util.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class CryptoEngine {
+/**
+ * Reversible value encryption for {@code ENC(...)} configuration properties.
+ *
+ * <p>The encryption key is resolved from the {@value #KEY_PROPERTY} system property (or the
+ * {@value #KEY_ENV} environment variable). When neither is set the engine falls back to a built-in
+ * default key and logs a warning &mdash; in that mode the protection is obfuscation only, so a real
+ * secret must be configured in production.
+ *
+ * <p>New values are written in a versioned {@code v2} payload that embeds a random per-value salt
+ * and the PBKDF2 iteration count, so iteration count and salt can evolve without breaking existing
+ * data. Legacy payloads (produced before this hardening) are still decryptable through a dedicated
+ * fallback, so upgrading does not invalidate already-stored secrets.
+ */
+public final class CryptoEngine {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(CryptoEngine.class);
-    private static final byte[] salt = "12345678".getBytes();
-    private static final String password = "hardcodedpassword";
+
+    static final String KEY_PROPERTY = "org.jahia.modules.osgiconfigmanager.encryption.key";
+    static final String KEY_ENV = "OSGI_CONFIG_MANAGER_ENCRYPTION_KEY";
+    static final String ITERATIONS_PROPERTY = "org.jahia.modules.osgiconfigmanager.encryption.iterations";
+
+    private static final String VERSION_V2 = "v2";
+    private static final String PAYLOAD_SEPARATOR = ":";
+    private static final String KEY_DERIVATION_ALGORITHM = "PBKDF2WithHmacSHA512";
+    private static final String CIPHER_TRANSFORMATION = "AES/GCM/NoPadding";
+    private static final String SECRET_KEY_ALGORITHM = "AES";
+    private static final int GCM_TAG_BITS = 128;
+    private static final int IV_LENGTH = 12; // GCM recommended IV length
+    private static final int V2_SALT_LENGTH = 16;
+    private static final int V2_KEY_BITS = 256;
+    private static final int V2_DEFAULT_ITERATIONS = 210_000; // OWASP 2023 floor for PBKDF2-HMAC-SHA512
+
+    // Legacy parameters retained ONLY to decrypt values produced before the hardening.
+    private static final byte[] LEGACY_SALT = "12345678".getBytes(StandardCharsets.UTF_8);
+    private static final char[] LEGACY_PASSWORD = "hardcodedpassword".toCharArray();
+    private static final int LEGACY_ITERATIONS = 10;
+    private static final int LEGACY_KEY_BITS = 128;
+
+    private static final SecureRandom RANDOM = new SecureRandom();
+    private static volatile boolean defaultKeyWarningEmitted = false;
+
+    private CryptoEngine() {
+        // Utility class
+    }
 
     public static String encryptString(String string) {
-        int iterationCount = 10; // should be more eg 40000
-        int keyLength = 128;
-        try {
-            SecretKeySpec key = createSecretKey(password.toCharArray(),
-                    salt, iterationCount, keyLength);
-            return encrypt(string, key);
-        } catch (NoSuchAlgorithmException e) {
-            LOGGER.error("NoSuchAlgorithmException", e);
-        } catch (InvalidKeySpecException e) {
-            LOGGER.error("InvalidKeySpecException", e);
-        } catch (GeneralSecurityException e) {
-            LOGGER.error("GeneralSecurityException", e);
+        if (string == null) {
+            return null;
         }
-        return string;
+        try {
+            byte[] salt = new byte[V2_SALT_LENGTH];
+            RANDOM.nextBytes(salt);
+            int iterations = configuredIterations();
+            SecretKeySpec key = deriveKey(resolvePassword(), salt, iterations, V2_KEY_BITS);
+
+            byte[] iv = new byte[IV_LENGTH];
+            RANDOM.nextBytes(iv);
+            Cipher cipher = Cipher.getInstance(CIPHER_TRANSFORMATION);
+            cipher.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(GCM_TAG_BITS, iv));
+            byte[] cipherText = cipher.doFinal(string.getBytes(StandardCharsets.UTF_8));
+
+            return String.join(PAYLOAD_SEPARATOR,
+                    VERSION_V2,
+                    base64Encode(salt),
+                    Integer.toString(iterations),
+                    base64Encode(iv),
+                    base64Encode(cipherText));
+        } catch (GeneralSecurityException e) {
+            LOGGER.error("Encryption failed", e);
+            return string;
+        }
     }
 
     public static String decryptString(String string) {
-        int iterationCount = 10; // should be more eg 40000
-        int keyLength = 128;
-        try {
-            SecretKeySpec key = createSecretKey(password.toCharArray(),
-                    salt, iterationCount, keyLength);
-            return decrypt(string, key);
-        } catch (NoSuchAlgorithmException e) {
-            LOGGER.error("NoSuchAlgorithmException", e);
-        } catch (InvalidKeySpecException e) {
-            LOGGER.error("InvalidKeySpecException", e);
-        } catch (GeneralSecurityException e) {
-            LOGGER.error("GeneralSecurityException", e);
+        if (string == null) {
+            return null;
         }
-        return string;
+        try {
+            String[] parts = string.split(PAYLOAD_SEPARATOR);
+            if (parts.length == 5 && VERSION_V2.equals(parts[0])) {
+                return decryptV2(parts);
+            }
+            if (parts.length == 2) {
+                return decryptLegacy(parts);
+            }
+            throw new GeneralSecurityException("Unrecognized encrypted payload format");
+        } catch (GeneralSecurityException | IllegalArgumentException e) {
+            // Not a (valid) ciphertext we can decrypt: fall back to returning the input unchanged,
+            // matching the historical behaviour relied upon by callers.
+            LOGGER.error("Decryption failed", e);
+            return string;
+        }
     }
 
-    private static SecretKeySpec createSecretKey(char[] password, byte[] salt, int iterationCount, int keyLength)
-            throws NoSuchAlgorithmException, InvalidKeySpecException {
-        SecretKeyFactory keyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512");
-        PBEKeySpec keySpec = new PBEKeySpec(password, salt, iterationCount, keyLength);
-        SecretKey keyTmp = keyFactory.generateSecret(keySpec);
-        return new SecretKeySpec(keyTmp.getEncoded(), "AES");
+    private static String decryptV2(String[] parts) throws GeneralSecurityException {
+        byte[] salt = base64Decode(parts[1]);
+        int iterations = parsePositiveInt(parts[2]);
+        byte[] iv = base64Decode(parts[3]);
+        byte[] cipherText = base64Decode(parts[4]);
+        SecretKeySpec key = deriveKey(resolvePassword(), salt, iterations, V2_KEY_BITS);
+        return doDecrypt(key, iv, cipherText);
     }
 
-    private static String encrypt(String property, SecretKeySpec key)
+    @SuppressWarnings("java:S5542")
+    private static String decryptLegacy(String[] parts) throws GeneralSecurityException {
+        byte[] iv = base64Decode(parts[0]);
+        byte[] cipherText = base64Decode(parts[1]);
+        SecretKeySpec key = deriveKey(LEGACY_PASSWORD, LEGACY_SALT, LEGACY_ITERATIONS, LEGACY_KEY_BITS);
+        return doDecrypt(key, iv, cipherText);
+    }
+
+    @SuppressWarnings("java:S5542")
+    private static String doDecrypt(SecretKeySpec key, byte[] iv, byte[] cipherText) throws GeneralSecurityException {
+        if (iv.length != IV_LENGTH) {
+            throw new GeneralSecurityException("Unsupported IV length for AES/GCM payload");
+        }
+        Cipher cipher = Cipher.getInstance(CIPHER_TRANSFORMATION);
+        cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(GCM_TAG_BITS, iv));
+        return new String(cipher.doFinal(cipherText), StandardCharsets.UTF_8);
+    }
+
+    private static SecretKeySpec deriveKey(char[] password, byte[] salt, int iterationCount, int keyBits)
             throws GeneralSecurityException {
-        Cipher pbeCipher = Cipher.getInstance("AES/GCM/NoPadding");
-        byte[] iv = new byte[12]; // GCM recommended IV length is 12 bytes
-        new SecureRandom().nextBytes(iv);
-        GCMParameterSpec parameterSpec = new GCMParameterSpec(128, iv); // 128-bit authentication tag
-        pbeCipher.init(Cipher.ENCRYPT_MODE, key, parameterSpec);
-        byte[] cryptoText = pbeCipher.doFinal(property.getBytes(StandardCharsets.UTF_8));
-        return base64Encode(iv) + ":" + base64Encode(cryptoText);
+        SecretKeyFactory keyFactory = SecretKeyFactory.getInstance(KEY_DERIVATION_ALGORITHM);
+        PBEKeySpec keySpec = new PBEKeySpec(password, salt, iterationCount, keyBits);
+        try {
+            SecretKey derived = keyFactory.generateSecret(keySpec);
+            return new SecretKeySpec(derived.getEncoded(), SECRET_KEY_ALGORITHM);
+        } finally {
+            keySpec.clearPassword();
+        }
+    }
+
+    private static char[] resolvePassword() {
+        String configured = System.getProperty(KEY_PROPERTY);
+        if (configured == null || configured.isEmpty()) {
+            configured = System.getenv(KEY_ENV);
+        }
+        if (configured != null && !configured.isEmpty()) {
+            return configured.toCharArray();
+        }
+        warnDefaultKeyOnce();
+        return LEGACY_PASSWORD.clone();
+    }
+
+    private static int configuredIterations() {
+        String configured = System.getProperty(ITERATIONS_PROPERTY);
+        if (configured != null && !configured.trim().isEmpty()) {
+            try {
+                int parsed = Integer.parseInt(configured.trim());
+                if (parsed > 0) {
+                    return parsed;
+                }
+                LOGGER.warn("Ignoring non-positive {} value '{}'", ITERATIONS_PROPERTY, configured);
+            } catch (NumberFormatException e) {
+                LOGGER.warn("Ignoring invalid {} value '{}'", ITERATIONS_PROPERTY, configured);
+            }
+        }
+        return V2_DEFAULT_ITERATIONS;
+    }
+
+    private static int parsePositiveInt(String value) throws GeneralSecurityException {
+        try {
+            int parsed = Integer.parseInt(value);
+            if (parsed <= 0) {
+                throw new GeneralSecurityException("Non-positive iteration count in payload");
+            }
+            return parsed;
+        } catch (NumberFormatException e) {
+            throw new GeneralSecurityException("Invalid iteration count in payload", e);
+        }
+    }
+
+    private static void warnDefaultKeyOnce() {
+        if (!defaultKeyWarningEmitted) {
+            defaultKeyWarningEmitted = true;
+            LOGGER.warn("OSGi Configurations Manager is using the built-in default encryption key. "
+                    + "Encrypted values are NOT confidential in this mode. Set the '{}' system property "
+                    + "(or the {} environment variable) to a strong secret to protect them.",
+                    KEY_PROPERTY, KEY_ENV);
+        }
     }
 
     private static String base64Encode(byte[] bytes) {
         return Base64.getEncoder().encodeToString(bytes);
     }
 
-    @SuppressWarnings("java:S5542")
-    private static String decrypt(String string, SecretKeySpec key) throws GeneralSecurityException {
-        String[] parts = string.split(":", 2);
-        if (parts.length != 2) {
-            throw new GeneralSecurityException("Invalid encrypted payload format");
-        }
-
-        String ivString = parts[0];
-        String propertyString = parts[1];
-        byte[] iv = base64Decode(ivString);
-        byte[] property = base64Decode(propertyString);
-
-        if (iv.length != 12) {
-            throw new GeneralSecurityException("Unsupported IV length for AES/GCM payload");
-        }
-
-        Cipher pbeCipher = Cipher.getInstance("AES/GCM/NoPadding");
-        pbeCipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(128, iv));
-        return new String(pbeCipher.doFinal(property), StandardCharsets.UTF_8);
-    }
-
-    private static byte[] base64Decode(String property) {
-        return Base64.getDecoder().decode(property);
+    private static byte[] base64Decode(String value) {
+        return Base64.getDecoder().decode(value);
     }
 }

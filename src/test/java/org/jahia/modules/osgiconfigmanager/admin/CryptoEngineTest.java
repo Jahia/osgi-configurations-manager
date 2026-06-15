@@ -3,17 +3,26 @@ package org.jahia.modules.osgiconfigmanager.admin;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import javax.crypto.Cipher;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
+import java.util.Base64;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Characterization tests for the encryption layer.
+ * Characterization + hardening tests for the encryption layer.
  *
- * <p>These intentionally assert the encrypt/decrypt <em>contract</em> (symmetry, IV randomness,
- * graceful fallback) rather than any concrete ciphertext, so they survive a future hardening of
- * the key derivation (random salt / higher iteration count / externalized key).
+ * <p>These assert the encrypt/decrypt <em>contract</em> (symmetry, IV randomness, graceful
+ * fallback, backward compatibility with legacy payloads, configurable key) rather than any
+ * concrete ciphertext, so they remain valid as the key derivation evolves.
  */
 class CryptoEngineTest {
 
@@ -29,34 +38,61 @@ class CryptoEngineTest {
     }
 
     @Test
-    @DisplayName("encryptString uses a random IV so the same input yields different ciphertext")
+    @DisplayName("encryptString uses a random salt/IV so the same input yields different ciphertext")
     void encryptString_sameInputTwice_producesDifferentCipherButSamePlaintext() {
         String plaintext = "repeatable-input";
 
         String cipherA = CryptoEngine.encryptString(plaintext);
         String cipherB = CryptoEngine.encryptString(plaintext);
 
-        assertNotEquals(cipherA, cipherB, "Random IV should make ciphertext non-deterministic");
+        assertNotEquals(cipherA, cipherB, "Random salt/IV should make ciphertext non-deterministic");
         assertEquals(plaintext, CryptoEngine.decryptString(cipherA));
         assertEquals(plaintext, CryptoEngine.decryptString(cipherB));
     }
 
     @Test
-    @DisplayName("encrypted payload carries the iv:ciphertext separator")
-    void encryptString_output_containsIvSeparator() {
+    @DisplayName("new ciphertext uses the versioned v2 payload format")
+    void encryptString_output_usesV2Format() {
         String cipher = CryptoEngine.encryptString("anything");
 
-        assertTrue(cipher.contains(":"), "Expected base64(iv):base64(ciphertext) format");
+        String[] parts = cipher.split(":");
+        assertEquals(5, parts.length, "Expected v2:salt:iterations:iv:ciphertext");
+        assertEquals("v2", parts[0]);
     }
 
     @Test
-    @DisplayName("decryptString returns the input unchanged when the payload has no iv separator")
-    void decryptString_malformedPayloadWithoutSeparator_returnsInput() {
-        // decrypt() throws GeneralSecurityException for a payload lacking the ':' separator,
-        // which decryptString swallows and falls back to returning the original string.
+    @DisplayName("decryptString returns the input unchanged when the payload is not recognised")
+    void decryptString_unrecognisedPayload_returnsInput() {
         String notEncrypted = "plaintextWithoutSeparator";
 
         assertEquals(notEncrypted, CryptoEngine.decryptString(notEncrypted));
+    }
+
+    @Test
+    @DisplayName("legacy (pre-hardening) payloads remain decryptable")
+    void decryptString_legacyPayload_stillDecrypts() throws Exception {
+        String plaintext = "value-stored-before-upgrade";
+
+        String legacyCipher = legacyEncrypt(plaintext);
+
+        assertEquals(plaintext, CryptoEngine.decryptString(legacyCipher));
+    }
+
+    @Test
+    @DisplayName("a configured key round-trips and a different key cannot recover the plaintext")
+    void configuredKey_roundTripsAndIsolatesPlaintext() {
+        String plaintext = "topsecret";
+        String cipherWithCustomKey;
+        try {
+            System.setProperty(CryptoEngine.KEY_PROPERTY, "a-strong-operator-key");
+            cipherWithCustomKey = CryptoEngine.encryptString(plaintext);
+            assertEquals(plaintext, CryptoEngine.decryptString(cipherWithCustomKey));
+        } finally {
+            System.clearProperty(CryptoEngine.KEY_PROPERTY);
+        }
+
+        // With the custom key gone, the value must NOT decrypt back to the plaintext.
+        assertNotEquals(plaintext, CryptoEngine.decryptString(cipherWithCustomKey));
     }
 
     @Test
@@ -87,5 +123,25 @@ class CryptoEngineTest {
 
         assertNull(service.encrypt(null));
         assertNull(service.decrypt(null));
+    }
+
+    /**
+     * Reproduces the pre-hardening payload format ({@code base64(iv):base64(ciphertext)} derived
+     * with the legacy password/salt/iteration parameters) so the fallback path can be verified.
+     */
+    private static String legacyEncrypt(String plaintext) throws Exception {
+        SecretKeyFactory keyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512");
+        PBEKeySpec keySpec = new PBEKeySpec("hardcodedpassword".toCharArray(),
+                "12345678".getBytes(StandardCharsets.UTF_8), 10, 128);
+        SecretKeySpec key = new SecretKeySpec(keyFactory.generateSecret(keySpec).getEncoded(), "AES");
+
+        byte[] iv = new byte[12];
+        new SecureRandom().nextBytes(iv);
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        cipher.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, iv));
+        byte[] cipherText = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
+
+        Base64.Encoder encoder = Base64.getEncoder();
+        return encoder.encodeToString(iv) + ":" + encoder.encodeToString(cipherText);
     }
 }
