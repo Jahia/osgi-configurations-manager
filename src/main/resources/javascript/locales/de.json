@@ -14,7 +14,8 @@
         "searchPlaceholder": "Konfigurationen filtern...",
         "searchDeep": "Im Inhalt suchen",
         "searchDeepTooltip": "Aktivieren, um innerhalb des Dateiinhalts zu suchen",
-        "unsaved": "Ungespeicherte Änderungen"
+        "unsaved": "Ungespeicherte Änderungen",
+        "fileListLabel": "Konfigurationsdateien"
     },
     "notification": {
         "saveSuccess": "Konfiguration erfolgreich gespeichert",

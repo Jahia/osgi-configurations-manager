@@ -130,6 +130,8 @@ export const StatusBanner = ({tone = 'info', message, dataCy}) => {
     return (
         <div
             data-cy={dataCy}
+            role={tone === 'error' ? 'alert' : 'status'}
+            aria-live={tone === 'error' ? 'assertive' : 'polite'}
             style={{
                 //marginBottom: '20px',
                 padding: '10px 12px',

@@ -14,7 +14,8 @@
         "searchPlaceholder": "Filter configs...",
         "searchDeep": "Search in content",
         "searchDeepTooltip": "Enable to search within the file content",
-        "unsaved": "Unsaved Changes"
+        "unsaved": "Unsaved Changes",
+        "fileListLabel": "Configuration files"
     },
     "notification": {
         "saveSuccess": "Configuration saved successfully",

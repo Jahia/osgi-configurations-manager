@@ -228,7 +228,7 @@ const AppContent = () => {
                         />
 
                         {/* RIGHT PANE: Editor */}
-                        <Paper style={{ ...PANEL_STYLE, flex: '1 1 0%', overflow: 'hidden', minWidth: 0, marginTop: 0 }}>
+                        <Paper role="main" style={{ ...PANEL_STYLE, flex: '1 1 0%', overflow: 'hidden', minWidth: 0, marginTop: 0 }}>
                             {!selectedFile ? (
                                 <div style={EMPTY_STATE_STYLE}>
                                     <Typography variant="heading">{t('app.selectConfig')}</Typography>

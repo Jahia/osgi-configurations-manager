@@ -14,7 +14,8 @@
         "searchPlaceholder": "Filtrar configuraciones...",
         "searchDeep": "Buscar en contenido",
         "searchDeepTooltip": "Habilitar para buscar dentro de los archivos",
-        "unsaved": "Cambios no guardados"
+        "unsaved": "Cambios no guardados",
+        "fileListLabel": "Archivos de configuración"
     },
     "notification": {
         "saveSuccess": "Configuración guardada con éxito",

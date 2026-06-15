@@ -14,7 +14,8 @@
         "searchPlaceholder": "Filtrer les configs...",
         "searchDeep": "Rechercher dans le contenu",
         "searchDeepTooltip": "Activer pour rechercher à l'intérieur des fichiers",
-        "unsaved": "Modifications non enregistrées"
+        "unsaved": "Modifications non enregistrées",
+        "fileListLabel": "Fichiers de configuration"
     },
     "notification": {
         "saveSuccess": "Configuration enregistrée avec succès",

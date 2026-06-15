@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Button, Typography, Paper, Close } from '@jahia/moonstone';
 import { diffLines, Change } from 'diff';
 import { useTranslation } from 'react-i18next';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 
 interface DiffModalProps {
     isOpen: boolean;
@@ -21,6 +22,7 @@ export const DiffModal: React.FC<DiffModalProps> = ({
     filename
 }) => {
     const { t } = useTranslation('osgi-configurations-manager');
+    const containerRef = useDialogA11y(isOpen, onClose);
 
     const changes = useMemo(() => {
         if (!originalContent && !newContent) return [];
@@ -30,7 +32,7 @@ export const DiffModal: React.FC<DiffModalProps> = ({
     if (!isOpen) return null;
 
     return (
-        <div style={{
+        <div ref={containerRef} style={{
             position: 'fixed',
             top: 0,
             left: 0,
@@ -45,6 +47,10 @@ export const DiffModal: React.FC<DiffModalProps> = ({
             transition: 'all 0.2s ease'
         }} onClick={onClose}>
             <Paper
+                role="dialog"
+                aria-modal="true"
+                aria-label={t('modal.diff.title', { name: filename })}
+                className="osgi-diff-modal-panel"
                 style={{
                     width: '900px',
                     maxWidth: '90%',
@@ -72,12 +78,13 @@ export const DiffModal: React.FC<DiffModalProps> = ({
                     <Typography variant="heading" weight="bold" style={{ fontSize: '18px', color: '#111' }}>
                         {t('modal.diff.title', { name: filename }) || `Changes: ${filename}`}
                     </Typography>
-                    <div style={{ cursor: 'pointer', color: '#888', transition: 'color 0.2s' }}
+                    <Button
+                        variant="ghost"
+                        size="small"
+                        icon={<Close />}
                         onClick={onClose}
-                        onMouseOver={e => e.currentTarget.style.color = '#333'}
-                        onMouseOut={e => e.currentTarget.style.color = '#888'}>
-                        <Close />
-                    </div>
+                        aria-label={t('modal.cancel')}
+                    />
                 </div>
 
                 {/* Body */}
@@ -135,6 +142,9 @@ export const DiffModal: React.FC<DiffModalProps> = ({
                 @keyframes modalSlideIn {
                     from { transform: translateY(-20px); opacity: 0; }
                     to { transform: translateY(0); opacity: 1; }
+                }
+                @media (prefers-reduced-motion: reduce) {
+                    .osgi-diff-modal-panel { animation: none !important; }
                 }
             `}</style>
         </div>

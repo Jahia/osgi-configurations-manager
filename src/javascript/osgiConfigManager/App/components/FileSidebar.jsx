@@ -94,13 +94,14 @@ export const FileSidebar = ({
     };
 
     return (
-        <Paper style={{ ...PANEL_STYLE, width: '350px', height: '100%' }}>
+        <Paper role="navigation" aria-label={t('app.fileListLabel')} style={{ ...PANEL_STYLE, width: '350px', height: '100%' }}>
             {/* Search & Filter Section */}
             <div style={SEARCH_SECTION_STYLE}>
                 <div data-cy="file-search-input">
                     <SearchInput
                         value={searchTerm}
                         placeholder={t('app.searchPlaceholder')}
+                        aria-label={t('app.searchPlaceholder')}
                         onChange={e => setSearchTerm(e.target.value)}
                         onClear={() => setSearchTerm('')}
                     />
@@ -116,6 +117,7 @@ export const FileSidebar = ({
                         <div data-cy="deep-search-toggle" style={{ display: 'flex', alignItems: 'center' }}>
                             <Switch
                                 data-cy="deep-search-toggle-control"
+                                aria-label={t('app.searchDeep')}
                                 checked={searchInContent}
                                 onChange={() => setSearchInContent(!searchInContent)}
                             />
