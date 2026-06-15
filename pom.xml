@@ -109,6 +109,17 @@
         </resources>
         <plugins>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <version>2.5.3-jahia1</version>
+                <configuration>
+                    <checkModificationExcludes>
+                        <checkModificationExclude>src/main/resources/javascript/apps/**</checkModificationExclude>
+                        <checkModificationExclude>AGENTS.md</checkModificationExclude>
+                    </checkModificationExcludes>
+                </configuration>
+            </plugin>
+            <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
                     <release>11</release>
