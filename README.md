@@ -146,11 +146,30 @@ public class MyService {
 > [!NOTE]
 > Ensure your module has access to the `org.jahia.modules.osgiconfigmanager.admin` package to use `CryptoEngine`.
 
+### Configuring the encryption key
+
+The encryption key is **not** hardcoded. It is resolved, in order, from:
+
+1. the `org.jahia.modules.osgiconfigmanager.encryption.key` JVM system property, or
+2. the `OSGI_CONFIG_MANAGER_ENCRYPTION_KEY` environment variable.
+
+If neither is set, the engine falls back to a built-in default key and logs a warning at startup. **In that mode the protection is obfuscation only** — anyone with the module source can decrypt the values. Always configure a strong, secret key in production, e.g. in `karaf/etc/custom.system.properties`:
+
+```properties
+org.jahia.modules.osgiconfigmanager.encryption.key = <a-long-random-secret>
+# Optional: PBKDF2 iteration count for newly encrypted values (default 210000)
+org.jahia.modules.osgiconfigmanager.encryption.iterations = 210000
+```
+
+New values use AES-256/GCM with a random per-value salt and are written in a versioned `v2:` payload. Values encrypted before this hardening still decrypt transparently. If you change the key, previously encrypted values can no longer be decrypted and must be re-entered.
+
 ## Installation
 
-1.  Build the module:
+The module compiles to Java 11 bytecode (`<release>11</release>`) but builds with JDK 17 (required by the build toolchain and the SonarQube scanner). Use a JDK 17.
+
+1.  Build the module (set `JAVA_HOME` to a JDK 17 — macOS shown; on Linux use your distribution's path, e.g. `/usr/lib/jvm/java-17-openjdk`):
     ```bash
-    export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+    export JAVA_HOME=$(/usr/libexec/java_home -v 17)   # macOS
     mvn clean install
     ```
 2.  Run the Cypress end-to-end tests from the `tests` directory when needed:
@@ -165,10 +184,9 @@ public class MyService {
     ```
 3.  Optionally run the same Maven + Sonar validation used during development:
     ```bash
-    export JAVA_HOME=$(/usr/libexec/java_home -v 17)
     mvn clean install sonar:sonar
     ```
-4.  Deploy the generated JAR file (`target/osgi-configurations-manager-1.0.3-SNAPSHOT.jar`) to your Jahia instance.
+4.  Deploy the generated JAR file (`target/osgi-configurations-manager-<version>-SNAPSHOT.jar`, e.g. `osgi-configurations-manager-1.0.5-SNAPSHOT.jar`) to your Jahia instance.
 
 ## Usage
 
@@ -239,4 +257,4 @@ This project includes code from [Monaco Editor](https://github.com/microsoft/mon
 
 ## Author
 
-Created by **Dominique Gigon**. All code generated using vibe coding, don't blame me but the LLM 😉
+Created and maintained by **Dominique Gigon** (Jahia).
