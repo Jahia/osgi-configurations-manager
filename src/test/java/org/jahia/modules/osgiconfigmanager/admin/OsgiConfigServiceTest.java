@@ -75,4 +75,26 @@ class OsgiConfigServiceTest {
         assertTrue(service.hasWhitelistedFactoryCandidate("org.jahia.factory.service"));
         assertFalse(service.hasWhitelistedFactoryCandidate("org.apache.factory.service"));
     }
+
+    @Test
+    void selfConfigurationIsOnlyVisibleToRootUser() {
+        OsgiConfigService service = new OsgiConfigService();
+
+        assertTrue(service.isFilenameAllowed("org.jahia.modules.osgiconfigmanager.cfg", true));
+        assertTrue(service.isFilenameAllowed("org.jahia.modules.osgiconfigmanager.cfg.disabled", true));
+        assertFalse(service.isFilenameAllowed("org.jahia.modules.osgiconfigmanager.cfg", false));
+        assertFalse(service.isFilenameAllowed("org.jahia.modules.osgiconfigmanager.cfg.disabled", false));
+    }
+
+    @Test
+    void selfConfigurationStaysRootOnlyEvenWhenWhitelisted() {
+        OsgiConfigService service = new OsgiConfigService();
+
+        Map<String, Object> properties = new HashMap<>();
+        properties.put("allowedFiles", "org.jahia.modules.osgiconfigmanager.cfg");
+        service.updateConfig(properties);
+
+        assertTrue(service.isFilenameAllowed("org.jahia.modules.osgiconfigmanager.cfg", true));
+        assertFalse(service.isFilenameAllowed("org.jahia.modules.osgiconfigmanager.cfg", false));
+    }
 }
