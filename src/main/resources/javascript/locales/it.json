@@ -194,7 +194,8 @@
             }
         },
         "empty": "vuoto",
-        "emptyLine": "Riga vuota"
+        "emptyLine": "Riga vuota",
+        "reorderHandle": "Riordina questa voce — usa Freccia su o Freccia giù per spostarla"
     },
     "tooltip": {
         "downloadFile": "Scarica file corrente (Dati grezzi)",

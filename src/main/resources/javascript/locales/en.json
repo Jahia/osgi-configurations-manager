@@ -194,7 +194,8 @@
             }
         },
         "empty": "empty",
-        "emptyLine": "Empty Line"
+        "emptyLine": "Empty Line",
+        "reorderHandle": "Reorder this entry — press Arrow Up or Arrow Down to move it"
     },
     "configState": {
         "badge": {

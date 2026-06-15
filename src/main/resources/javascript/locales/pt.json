@@ -194,7 +194,8 @@
             }
         },
         "empty": "vazio",
-        "emptyLine": "Linha Vazia"
+        "emptyLine": "Linha Vazia",
+        "reorderHandle": "Reordenar esta entrada — utilize Seta para cima ou Seta para baixo para a mover"
     },
     "tooltip": {
         "downloadFile": "Baixar arquivo atual (Dados brutos)",

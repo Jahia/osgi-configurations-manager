@@ -129,17 +129,22 @@ export const FileSidebar = ({
 
             {/* File List */}
             <div
-                style={{ flex: 1, overflowY: 'auto', outline: 'none' }}
+                style={{ flex: 1, overflowY: 'auto' }}
                 tabIndex={0}
+                role="listbox"
+                aria-label={t('app.fileListLabel')}
+                aria-activedescendant={selectedFile ? 'file-row-' + encodeURIComponent(selectedFile.name) : undefined}
                 onKeyDown={handleKeyDown}
             >
-                <Table style={{ width: '100%', tableLayout: 'fixed', overflow: 'hidden' }}>
-                    <TableBody>
+                <Table role="presentation" style={{ width: '100%', tableLayout: 'fixed', overflow: 'hidden' }}>
+                    <TableBody role="presentation">
                         {processedFiles.map(f => (
                             <TableRow
                                 key={f.path}
                                 id={'file-row-' + encodeURIComponent(f.name)}
                                 data-cy={`file-row-${encodeURIComponent(f.name)}`}
+                                role="option"
+                                aria-selected={selectedFile?.name === f.name}
                                 isHighlighted={selectedFile?.name === f.name}
                                 onClick={() => handleFileClick(f)}
                                 style={{ cursor: 'pointer' }}

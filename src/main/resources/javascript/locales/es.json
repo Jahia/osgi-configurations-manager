@@ -194,7 +194,8 @@
             }
         },
         "empty": "vacío",
-        "emptyLine": "Línea vacía"
+        "emptyLine": "Línea vacía",
+        "reorderHandle": "Reordenar esta entrada — usa Flecha arriba o Flecha abajo para moverla"
     },
     "tooltip": {
         "downloadFile": "Descargar archivo actual (Datos sin procesar)",

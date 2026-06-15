@@ -509,7 +509,25 @@ export const CfgEditor = ({
                                     onClick={() => handleRowClick(index)}
                                 >
                                     <TableBodyCell style={{ ...cfgRowIconCellStyle, ...CFG_COLUMN_WIDTHS.drag, cursor: 'grab' }}>
-                                        <HandleDrag style={{ color: 'var(--color-gray_dark60)' }} />
+                                        <button
+                                            type="button"
+                                            data-cy={`cfg-reorder-${index}`}
+                                            aria-label={t('editor.reorderHandle')}
+                                            title={t('editor.reorderHandle')}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'ArrowUp' && index > 0) {
+                                                    e.preventDefault();
+                                                    handleReorder(index, index - 1);
+                                                } else if (e.key === 'ArrowDown' && index < entries.length - 1) {
+                                                    e.preventDefault();
+                                                    handleReorder(index, index + 1);
+                                                }
+                                            }}
+                                            style={{ background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'grab', display: 'flex', alignItems: 'center', color: 'var(--color-gray_dark60)' }}
+                                        >
+                                            <HandleDrag />
+                                        </button>
                                     </TableBodyCell>
 
                                     <TableBodyCell style={{ ...cfgRowIconCellStyle, ...CFG_COLUMN_WIDTHS.type }}>
