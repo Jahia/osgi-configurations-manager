@@ -23,6 +23,13 @@ yarn-error.log
 dist/
 build/
 
+# Generated webpack bundles (rebuilt by frontend-maven-plugin on every build,
+# deleted by maven-clean-plugin, and excluded from release modification checks)
+src/main/resources/javascript/apps/
+
+# CodeGraph index (local semantic graph, not source)
+.codegraph/
+
 # Local / accidental commits
 .agent/
 __mocks__/
