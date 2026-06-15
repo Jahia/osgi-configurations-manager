@@ -74,11 +74,15 @@ public class OsgiConfigAction extends Action {
                     result.put("metatypes", configService.listAvailableMetatypeConfigurations(req.getLocale(), isRootUser));
                 } else if ("getPreference".equals(req.getParameter(PARAM_ACTION))) {
                     String key = req.getParameter("key");
-                    String userPath = renderContext.getUser().getLocalPath();
-                    if (session.nodeExists(userPath)) {
-                        org.jahia.services.content.JCRNodeWrapper userNode = session.getNode(userPath);
-                        if (userNode.hasProperty(key)) {
-                            result.put("value", userNode.getProperty(key).getString());
+                    if (PreferenceKeys.isAllowed(key)) {
+                        LOGGER.info("[AUDIT] User: {} | Action: getPreference | Key: {}",
+                                renderContext.getUser().getName(), key);
+                        String userPath = renderContext.getUser().getLocalPath();
+                        if (session.nodeExists(userPath)) {
+                            org.jahia.services.content.JCRNodeWrapper userNode = session.getNode(userPath);
+                            if (userNode.hasProperty(key)) {
+                                result.put("value", userNode.getProperty(key).getString());
+                            }
                         }
                     }
                 } else {
@@ -136,6 +140,10 @@ public class OsgiConfigAction extends Action {
                         || "create".equals(actionType) || "createFromMetatype".equals(actionType)) {
                     LOGGER.info("[AUDIT] User: {} | Action: {} | File: {}", renderContext.getUser().getName(),
                             actionType, filename);
+                } else if ("encrypt".equals(actionType) || "decrypt".equals(actionType)
+                        || "setPreference".equals(actionType)) {
+                    // Audit sensitive actions, but never log the secret value being processed.
+                    LOGGER.info("[AUDIT] User: {} | Action: {}", renderContext.getUser().getName(), actionType);
                 } else {
                     LOGGER.info("Received action: {} for filename: {}", actionType, filename);
                 }
@@ -180,6 +188,13 @@ public class OsgiConfigAction extends Action {
                 } else if ("setPreference".equals(actionType)) {
                     String key = (String) payload.get("key");
                     String value = (String) payload.get("value");
+                    if (!PreferenceKeys.isAllowed(key)) {
+                        Map<String, String> error = new HashMap<>();
+                        error.put("error", "Unsupported preference key");
+                        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                        mapper.writeValue(response.getWriter(), error);
+                        return null;
+                    }
                     String userPath = renderContext.getUser().getLocalPath();
                     if (session.nodeExists(userPath)) {
                         org.jahia.services.content.JCRNodeWrapper userNode = session.getNode(userPath);
