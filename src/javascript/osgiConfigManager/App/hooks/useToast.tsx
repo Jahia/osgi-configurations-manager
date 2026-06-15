@@ -1,5 +1,6 @@
 import React, { useState, useCallback, createContext, useContext, ReactNode, useRef, useEffect } from 'react';
-import { Paper, Typography, Check, Warning, Information } from '@jahia/moonstone';
+import { Paper, Typography, Check, Warning, Information, Button, Close } from '@jahia/moonstone';
+import { useTranslation } from 'react-i18next';
 
 interface ToastMessage {
     message: string;
@@ -17,8 +18,17 @@ interface ToastContextType {
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
 export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+    const { t } = useTranslation('osgi-configurations-manager');
     const [toast, setToast] = useState<ToastMessage | null>(null);
     const timeoutRef = useRef<number | null>(null);
+
+    const dismiss = useCallback(() => {
+        if (timeoutRef.current) {
+            window.clearTimeout(timeoutRef.current);
+            timeoutRef.current = null;
+        }
+        setToast(null);
+    }, []);
 
     const notify = useCallback((message: string, type: 'success' | 'warning' | 'error' | 'info' = 'info', duration = 6000) => {
         if (timeoutRef.current) {
@@ -76,6 +86,9 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             {toast && (
                 <Paper
                     data-cy="toast-message"
+                    role={toast.type === 'error' ? 'alert' : 'status'}
+                    aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
+                    aria-atomic="true"
                     style={{
                     position: 'fixed',
                     bottom: '20px',
@@ -94,6 +107,14 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 >
                     {toastMeta?.icon}
                     <Typography style={{ flex: 1 }}>{toast.message}</Typography>
+                    <Button
+                        variant="ghost"
+                        size="small"
+                        icon={<Close />}
+                        onClick={dismiss}
+                        aria-label={t('notification.dismiss')}
+                        data-cy="toast-dismiss"
+                    />
                 </Paper>
             )}
         </ToastContext.Provider>

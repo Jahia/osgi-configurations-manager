@@ -627,6 +627,7 @@ export const useOsgiConfigs = () => {
     const handleDeleteFile = useCallback(async (f: OsgiFile) => {
         setModalConfig({
             type: 'confirm',
+            severity: 'warning',
             title: t('modal.deleteFile.title'),
             message: t('modal.deleteFile.message', { name: f.name }),
             onConfirm: async () => {

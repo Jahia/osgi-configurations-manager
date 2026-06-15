@@ -22,7 +22,8 @@
         "deleteSuccess": "{{name}} eliminado",
         "createSuccess": "{{name}} creado",
         "uploadSuccess": "{{name}} subido",
-        "markAsDefaultSuccess": "{{name}} ahora está marcado como configuración predeterminada"
+        "markAsDefaultSuccess": "{{name}} ahora está marcado como configuración predeterminada",
+        "dismiss": "Cerrar la notificación"
     },
     "modal": {
         "cancel": "Cancelar",

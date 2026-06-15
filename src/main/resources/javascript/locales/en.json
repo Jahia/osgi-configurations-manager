@@ -22,7 +22,8 @@
         "deleteSuccess": "Deleted {{name}}",
         "createSuccess": "Created {{name}}",
         "markAsDefaultSuccess": "{{name}} is now marked as default configuration",
-        "uploadSuccess": "Uploaded {{name}}"
+        "uploadSuccess": "Uploaded {{name}}",
+        "dismiss": "Dismiss notification"
     },
     "modal": {
         "cancel": "Cancel",

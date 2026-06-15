@@ -22,7 +22,8 @@
         "deleteSuccess": "{{name}} gelöscht",
         "createSuccess": "{{name}} erstellt",
         "uploadSuccess": "{{name}} hochgeladen",
-        "markAsDefaultSuccess": "{{name}} ist jetzt als Standardkonfiguration markiert"
+        "markAsDefaultSuccess": "{{name}} ist jetzt als Standardkonfiguration markiert",
+        "dismiss": "Benachrichtigung schließen"
     },
     "modal": {
         "cancel": "Abbrechen",
