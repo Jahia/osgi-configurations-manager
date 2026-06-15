@@ -170,11 +170,13 @@ export const osgiService = {
         }));
     },
 
-    decrypt: async (value: string): Promise<OsgiServiceResponse> => {
+    decrypt: async (value: string, filename: string): Promise<OsgiServiceResponse> => {
+        // filename is required: the server authorizes the file and verifies the ciphertext
+        // belongs to it, so decrypt cannot be used as a generic decryption oracle.
         return handleResponse(await fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'decrypt', value })
+            body: JSON.stringify({ action: 'decrypt', value, filename })
         }));
     },
 

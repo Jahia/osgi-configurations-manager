@@ -26,7 +26,6 @@ describe('osgiService request contract', () => {
         ['markAsDefault', () => osgiService.markAsDefault('conf.cfg'), '{"action":"markAsDefault","filename":"conf.cfg"}'],
         ['create', () => osgiService.create('conf.cfg'), '{"action":"create","filename":"conf.cfg"}'],
         ['encrypt', () => osgiService.encrypt('sec'), '{"action":"encrypt","value":"sec"}'],
-        ['decrypt', () => osgiService.decrypt('sec'), '{"action":"decrypt","value":"sec"}'],
         ['setPreference', () => osgiService.setPreference('k', 'v'), '{"action":"setPreference","key":"k","value":"v"}']
     ])('%s issues a POST with the expected JSON body', async (_name, invoke, expectedBody) => {
         await invoke();
@@ -36,6 +35,14 @@ describe('osgiService request contract', () => {
         expect(options.method).toBe('POST');
         expect(options.headers).toEqual({ 'Content-Type': 'application/json' });
         expect(options.body).toBe(expectedBody);
+    });
+
+    it('decrypt posts the value together with its file (file-bound, not an oracle)', async () => {
+        await osgiService.decrypt('ENC(sec)', 'conf.cfg');
+
+        const [, options] = lastCall();
+        expect(options.method).toBe('POST');
+        expect(options.body).toBe('{"action":"decrypt","value":"ENC(sec)","filename":"conf.cfg"}');
     });
 
     it('createFromMetatype posts pid and instanceIdentifier', async () => {

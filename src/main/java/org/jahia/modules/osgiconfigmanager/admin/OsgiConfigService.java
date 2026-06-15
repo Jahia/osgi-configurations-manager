@@ -1488,4 +1488,30 @@ public class OsgiConfigService {
         }
         return value;
     }
+
+    /**
+     * Decrypts an {@code ENC(...)} value only after authorizing the supplied configuration file and
+     * confirming the ciphertext actually occurs in it. This binds decryption to authorized file
+     * content so the action cannot be used as a generic decryption oracle for arbitrary ciphertext.
+     */
+    public String decryptForFile(String filename, String value, boolean isRootUser) throws IOException {
+        if (value == null) {
+            return null;
+        }
+
+        String safeFilename = validateFilename(filename);
+        ensureFilenameAllowed(safeFilename, isRootUser, "Access");
+
+        Path filePath = resolveConfigPath(safeFilename);
+        if (!Files.exists(filePath)) {
+            throw new IOException("File not found: " + safeFilename);
+        }
+
+        String rawContent = Files.readString(filePath, StandardCharsets.UTF_8);
+        if (!rawContent.contains(value)) {
+            throw new IOException("Encrypted value does not belong to " + safeFilename);
+        }
+
+        return decrypt(value);
+    }
 }

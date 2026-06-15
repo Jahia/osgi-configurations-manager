@@ -184,7 +184,7 @@ public class OsgiConfigAction extends Action {
                     result.put("encryptedValue", configService.encrypt(value));
                 } else if ("decrypt".equals(actionType)) {
                     String value = (String) payload.get("value");
-                    result.put("decryptedValue", configService.decrypt(value));
+                    result.put("decryptedValue", configService.decryptForFile(filename, value, isRootUser));
                 } else if ("setPreference".equals(actionType)) {
                     String key = (String) payload.get("key");
                     String value = (String) payload.get("value");

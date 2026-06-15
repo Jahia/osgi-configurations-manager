@@ -279,6 +279,44 @@ class OsgiConfigServiceFilesystemTest {
         }
     }
 
+    @Nested
+    @DisplayName("file-bound decryption")
+    class FileBoundDecryption {
+
+        @Test
+        @DisplayName("decryptForFile returns plaintext when the ciphertext is in the authorized file")
+        void decryptForFile_valueInAuthorizedFile_returnsPlaintext() throws IOException {
+            String enc = service.encrypt("a-secret");
+            writeConfig("secrets.cfg", "password = " + enc + "\n");
+
+            assertEquals("a-secret", service.decryptForFile("secrets.cfg", enc, true));
+        }
+
+        @Test
+        @DisplayName("decryptForFile refuses ciphertext that does not occur in the file (no oracle)")
+        void decryptForFile_valueNotInFile_throws() throws IOException {
+            String enc = service.encrypt("a-secret");
+            writeConfig("other.cfg", "key = value\n");
+
+            IOException ex = assertThrows(IOException.class, () -> service.decryptForFile("other.cfg", enc, true));
+            assertTrue(ex.getMessage().contains("does not belong"), "Unexpected message: " + ex.getMessage());
+        }
+
+        @Test
+        @DisplayName("decryptForFile refuses a file blocked by the blacklist")
+        void decryptForFile_blacklistedFile_throwsAccessDenied() throws IOException {
+            Map<String, Object> filter = new LinkedHashMap<>();
+            filter.put("filteredFiles", "blocked.cfg");
+            service.updateConfig(filter);
+
+            String enc = service.encrypt("a-secret");
+            writeConfig("blocked.cfg", "password = " + enc + "\n");
+
+            IOException ex = assertThrows(IOException.class, () -> service.decryptForFile("blocked.cfg", enc, true));
+            assertTrue(ex.getMessage().contains("denied"), "Unexpected message: " + ex.getMessage());
+        }
+    }
+
     @Test
     @DisplayName("saveFile rejects rawContent larger than the size cap")
     void saveFile_oversizedRawContent_throws() {

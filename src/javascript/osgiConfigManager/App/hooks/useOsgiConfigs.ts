@@ -173,7 +173,7 @@ export const useOsgiConfigs = () => {
                     } else if (obj && typeof obj === 'object') {
                         if (obj.isLeaf && obj.encrypted && typeof obj.value === 'string' && obj.value.startsWith('ENC(')) {
                             try {
-                                const decData = await osgiService.decrypt(obj.value);
+                                const decData = await osgiService.decrypt(obj.value, filename);
                                 obj.value = decData.decryptedValue || obj.value;
                                 // Keep encrypted=true flag, but value is now cleartext
                             } catch (e: any) {
@@ -408,7 +408,7 @@ export const useOsgiConfigs = () => {
                         } else if (obj && typeof obj === 'object') {
                             if (obj.isLeaf && obj.encrypted && typeof obj.value === 'string' && obj.value.startsWith('ENC(')) {
                                 try {
-                                    const decData = await osgiService.decrypt(obj.value);
+                                    const decData = await osgiService.decrypt(obj.value, selectedFile?.name ?? '');
                                     obj.value = decData.decryptedValue || obj.value;
                                 } catch (e: any) {
                                     // ignore
@@ -504,7 +504,7 @@ export const useOsgiConfigs = () => {
                 } else if (obj && typeof obj === 'object') {
                     if (obj.isLeaf && obj.encrypted && typeof obj.value === 'string' && obj.value.startsWith('ENC(')) {
                         try {
-                            const decData = await osgiService.decrypt(obj.value);
+                            const decData = await osgiService.decrypt(obj.value, selectedFile?.name ?? '');
                             obj.value = decData.decryptedValue || obj.value;
                         } catch (e: any) {
                             // ignore
