@@ -904,9 +904,10 @@ public class OsgiConfigService {
         ensureFilenameAllowed(safeFilename, isRootUser, "Delete");
 
         Path filePath = resolveConfigPath(safeFilename);
-        if (Files.exists(filePath)) {
-            Files.delete(filePath);
-        }
+        Files.deleteIfExists(filePath);
+        // Also remove the sibling auto-backup so deleting a configuration does not leave its
+        // (potentially secret-bearing) content behind in an unmanaged .bak file.
+        Files.deleteIfExists(filePath.resolveSibling(filePath.getFileName().toString() + ".bak"));
     }
 
     public void createFile(String filename) throws IOException {

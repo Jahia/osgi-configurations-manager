@@ -177,6 +177,21 @@ class OsgiConfigServiceFilesystemTest {
         }
 
         @Test
+        @DisplayName("deleteFile also removes the sibling .bak backup")
+        void deleteFile_alsoRemovesBackup() throws IOException {
+            service.createFile("backed.cfg", true);
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("rawContent", "key = value\n");
+            service.saveFile("backed.cfg", payload, true); // creates backed.cfg.bak from the empty original
+            assertTrue(Files.exists(etcDir.resolve("backed.cfg.bak")), "precondition: backup exists");
+
+            service.deleteFile("backed.cfg", true);
+
+            assertFalse(Files.exists(etcDir.resolve("backed.cfg")));
+            assertFalse(Files.exists(etcDir.resolve("backed.cfg.bak")), "backup must be removed on delete");
+        }
+
+        @Test
         @DisplayName("markAsDefault prepends the default-configuration comment and flips state to MODULE_DEFAULT")
         void markAsDefault_userFile_prependsCommentAndBecomesModuleDefault() throws IOException {
             writeConfig("promote.cfg", "key = value\n");
