@@ -247,5 +247,9 @@
     "sidebar": {
         "on": "On",
         "off": "Off"
+    },
+    "fileStatus": {
+        "enabled": "Enabled",
+        "disabled": "Disabled"
     }
 }

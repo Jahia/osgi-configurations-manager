@@ -663,6 +663,7 @@ export const CfgEditor = ({
                                             <TableBodyCell style={{ ...cfgRowIconCellStyle, ...CFG_COLUMN_WIDTHS.security }} title={t('editor.header.security')}>
                                                 <Checkbox
                                                     data-cy={`cfg-encrypted-${index}`}
+                                                    aria-label={`${t('editor.header.security')}${key ? ': ' + key : ''}`}
                                                     checked={isEncrypted || false}
                                                     onChange={() => {
                                                         // Sync toggle: Just flip the flag
@@ -686,6 +687,7 @@ export const CfgEditor = ({
                                                 handleDeleteProperty([index]);
                                             }}
                                             title={t('tooltip.deleteProperty')}
+                                            aria-label={`${t('tooltip.deleteProperty')}${key ? ': ' + key : ''}`}
                                         />
                                     </TableBodyCell>
                                 </TableRow>

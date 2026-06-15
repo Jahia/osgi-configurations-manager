@@ -123,6 +123,7 @@ const LeafRow = ({ level, rowLabel, node, keyString, currentPath, editingValueKe
             </TableBodyCell>
             <TableBodyCell style={{ flex: '0 0 80px', justifyContent: 'center' }}>
                 <Checkbox
+                    aria-label={`${t('editor.header.security')}: ${currentPath[currentPath.length - 1]}`}
                     checked={node.encrypted}
                     onChange={() => handlePropUpdate(currentPath, 'encrypted', !node.encrypted)}
                 />
@@ -135,6 +136,7 @@ const LeafRow = ({ level, rowLabel, node, keyString, currentPath, editingValueKe
                     size="small"
                     onClick={() => handleDeleteProperty(currentPath)}
                     title={t('tooltip.deleteProperty')}
+                    aria-label={`${t('tooltip.deleteProperty')}: ${currentPath[currentPath.length - 1]}`}
                 />
             </TableBodyCell>
         </TableRow >

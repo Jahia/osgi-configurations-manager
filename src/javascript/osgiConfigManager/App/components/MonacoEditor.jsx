@@ -123,7 +123,9 @@ if (!window.MonacoEnvironment) {
 
 // Configure YAML support once
 configureMonacoYaml(monaco, {
-    enableSchemaRequest: true,
+    // Do not fetch remote JSON schemas referenced in YAML ($schema URLs): that would let an
+    // opened config file drive outbound requests to attacker-controlled URLs.
+    enableSchemaRequest: false,
     hover: true,
     completion: true,
     validate: true,
@@ -728,7 +730,9 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                 glyphMargin: true,
                 folding: true,
                 fixedOverflowWidgets: true, // Allow popups to escape container clipping (e.g. z-index issues with toolbar)
-                automaticLayout: false // We use ResizeObserver
+                automaticLayout: false, // We use ResizeObserver
+                accessibilitySupport: 'on', // Always expose the editor to assistive technology
+                ariaLabel: filename || 'configuration'
             });
 
             // Explicitly handle resizing

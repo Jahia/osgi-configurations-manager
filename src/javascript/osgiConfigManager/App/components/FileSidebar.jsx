@@ -157,7 +157,12 @@ export const FileSidebar = ({
                                             height: '48px'
                                         }}
                                     >
-                                        <div data-cy={`sidebar-file-status-${encodeURIComponent(f.name)}`} style={getFileStatusIndicatorStyle(f.enabled)} />
+                                        <div
+                                            data-cy={`sidebar-file-status-${encodeURIComponent(f.name)}`}
+                                            role="img"
+                                            aria-label={f.enabled ? t('fileStatus.enabled') : t('fileStatus.disabled')}
+                                            style={getFileStatusIndicatorStyle(f.enabled)}
+                                        />
                                     </div>
                                 </TableBodyCell>
                                 <TableBodyCell>

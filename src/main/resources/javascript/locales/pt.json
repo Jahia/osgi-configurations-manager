@@ -247,5 +247,9 @@
             "module": "Esta configuração gerida pelo módulo pode ser substituída ao reiniciar ou reimplementar. A persistência das alterações locais não é garantida.",
             "moduleDefault": "Esta configuração padrão do módulo é editável. O Jahia preserva as alterações locais."
         }
+    },
+    "fileStatus": {
+        "enabled": "Ativado",
+        "disabled": "Desativado"
     }
 }

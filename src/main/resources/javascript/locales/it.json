@@ -247,5 +247,9 @@
             "module": "Questa configurazione gestita dal modulo può essere sovrascritta al riavvio o alla ridistribuzione. La persistenza delle modifiche locali non è garantita.",
             "moduleDefault": "Questa configurazione predefinita del modulo è modificabile. Jahia conserva le modifiche locali."
         }
+    },
+    "fileStatus": {
+        "enabled": "Attivato",
+        "disabled": "Disattivato"
     }
 }

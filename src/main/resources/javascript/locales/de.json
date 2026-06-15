@@ -247,5 +247,9 @@
             "module": "Diese vom Modul verwaltete Konfiguration kann beim Neustart oder erneuten Deployment überschrieben werden. Das Fortbestehen lokaler Änderungen ist nicht garantiert.",
             "moduleDefault": "Diese Modul-Standardkonfiguration ist bearbeitbar. Jahia bewahrt lokale Änderungen."
         }
+    },
+    "fileStatus": {
+        "enabled": "Aktiviert",
+        "disabled": "Deaktiviert"
     }
 }
