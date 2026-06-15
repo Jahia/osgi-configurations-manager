@@ -128,8 +128,9 @@ export const DiffModal: React.FC<DiffModalProps> = ({
                     gap: '14px',
                     background: '#fafafa'
                 }}>
-                    <Button label={t('modal.cancel')} variant="ghost" onClick={onClose} />
+                    <Button data-cy="diff-modal-cancel" label={t('modal.cancel')} variant="ghost" onClick={onClose} />
                     <Button
+                        data-cy="diff-modal-confirm"
                         label={t('app.save')}
                         color="accent"
                         onClick={onConfirm}

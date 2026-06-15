@@ -43,6 +43,7 @@ describe('OSGi Configurations Manager - Config lifecycle', () => {
         cy.get('[data-cy="cfg-value-0"]').type('sample value');
 
         cy.get('[data-cy="save-config-button"] button').click();
+        cy.confirmDiffSave();
         cy.assertToastContains('Configuration saved successfully');
 
         cy.readOsgiFile(createdFile)

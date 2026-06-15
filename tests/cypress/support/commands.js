@@ -168,13 +168,26 @@ const OSGI_ADMIN_PATH = '/jahia/administration/osgi-configurations-manager';
  * Keeping it in one place makes the spec easier to read and update.
  */
 Cypress.Commands.add('osgiRequest', (options = {}) => {
-    const {url, ...requestOptions} = options;
+    const {url, headers, ...requestOptions} = options;
 
     return cy.request({
         url: url || OSGI_ACTION_PATH,
         failOnStatusCode: false,
-        ...requestOptions
+        ...requestOptions,
+        // The action requires this custom header on state-changing requests (CSRF defense),
+        // mirroring what the real UI sends. Callers can still override it.
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            ...(headers || {})
+        }
     });
+});
+
+/**
+ * Confirm the review-before-save diff modal that appears after a UI Save when content changed.
+ */
+Cypress.Commands.add('confirmDiffSave', () => {
+    cy.get('[data-cy="diff-modal-confirm"]').should('be.visible').click();
 });
 
 /**
@@ -206,11 +219,12 @@ Cypress.Commands.add('upsertOsgiFile', (filename, rawContent = '') => {
             filename
         }
     }).then(response => {
-        if (![200, 500].includes(response.status)) {
+        if (![200, 400, 500].includes(response.status)) {
             throw new Error(`Unexpected status while creating ${filename}: ${response.status}`);
         }
 
-        if (response.status === 500 && !String(response.body?.error || '').includes('File already exists')) {
+        // "File already exists" is now reported as 400 (was 500); treat either as a benign re-create.
+        if ([400, 500].includes(response.status) && !String(response.body?.error || '').includes('File already exists')) {
             throw new Error(`Unable to create ${filename}: ${response.body?.error || response.status}`);
         }
 

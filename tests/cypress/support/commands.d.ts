@@ -19,6 +19,7 @@ declare namespace Cypress {
         ensureRawCfgMode(): Chainable<void>;
         openCreateConfigDialog(): Chainable<void>;
         confirmModal(): Chainable<void>;
+        confirmDiffSave(): Chainable<void>;
         cancelModal(): Chainable<void>;
         createManualOsgiFile(filename: string): Chainable<void>;
         assertToastContains(message: string): Chainable<void>;
