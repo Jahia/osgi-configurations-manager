@@ -100,9 +100,20 @@ const LeafRow = ({ level, rowLabel, node, keyString, currentPath, editingValueKe
                     )
                 ) : (
                     <div
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`${t('editor.header.value')}: ${rowLabel}`}
+                        title={t('editor.editValueHint')}
                         onMouseEnter={(e) => handleMouseEnter(e, node.value || '')}
                         onMouseLeave={onHideOverlay}
                         onDoubleClick={() => { onHideOverlay(); setEditingValueKey(keyString); }}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                onHideOverlay();
+                                setEditingValueKey(keyString);
+                            }
+                        }}
                         style={{
                             minHeight: '20px',
                             cursor: 'text',
@@ -117,7 +128,7 @@ const LeafRow = ({ level, rowLabel, node, keyString, currentPath, editingValueKe
                             textOverflow: 'ellipsis'
                         }}
                     >
-                        {node.encrypted ? '*****' : (node.value || <span style={{ color: '#ccc', fontStyle: 'italic' }}>{t('editor.empty')}</span>)}
+                        {node.encrypted ? '*****' : (node.value || <span style={{ color: 'var(--color-gray_dark40)', fontStyle: 'italic' }}>{t('editor.empty')}</span>)}
                     </div>
                 )}
             </TableBodyCell>

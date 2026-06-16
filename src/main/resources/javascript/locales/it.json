@@ -15,7 +15,8 @@
         "searchDeep": "Cerca nel contenuto",
         "searchDeepTooltip": "Abilita per cercare all'interno dei file",
         "unsaved": "Modifiche non salvate",
-        "fileListLabel": "File di configurazione"
+        "fileListLabel": "File di configurazione",
+        "editorRegionLabel": "Editor di configurazione"
     },
     "notification": {
         "saveSuccess": "Configurazione salvata con successo",
@@ -198,7 +199,9 @@
         },
         "empty": "vuoto",
         "emptyLine": "Riga vuota",
-        "reorderHandle": "Riordina questa voce — usa Freccia su o Freccia giù per spostarla"
+        "reorderHandle": "Riordina questa voce — usa Freccia su o Freccia giù per spostarla",
+        "editValueHint": "Fai doppio clic o premi Invio per modificare",
+        "cfgTableLabel": "Proprietà di configurazione"
     },
     "tooltip": {
         "downloadFile": "Scarica file corrente (Dati grezzi)",

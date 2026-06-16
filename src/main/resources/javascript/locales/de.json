@@ -15,7 +15,8 @@
         "searchDeep": "Im Inhalt suchen",
         "searchDeepTooltip": "Aktivieren, um innerhalb des Dateiinhalts zu suchen",
         "unsaved": "Ungespeicherte Änderungen",
-        "fileListLabel": "Konfigurationsdateien"
+        "fileListLabel": "Konfigurationsdateien",
+        "editorRegionLabel": "Konfigurationseditor"
     },
     "notification": {
         "saveSuccess": "Konfiguration erfolgreich gespeichert",
@@ -198,7 +199,9 @@
         },
         "empty": "leer",
         "emptyLine": "Leerzeile",
-        "reorderHandle": "Eintrag neu anordnen – mit Pfeil-hoch oder Pfeil-runter verschieben"
+        "reorderHandle": "Eintrag neu anordnen – mit Pfeil-hoch oder Pfeil-runter verschieben",
+        "editValueHint": "Zum Bearbeiten doppelklicken oder Eingabetaste drücken",
+        "cfgTableLabel": "Konfigurationseigenschaften"
     },
     "tooltip": {
         "downloadFile": "Aktuelle Datei herunterladen (Rohdaten)",

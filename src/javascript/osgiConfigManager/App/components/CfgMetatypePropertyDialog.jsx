@@ -69,6 +69,7 @@ export const CfgMetatypePropertyDialog = ({
     return createPortal(
         <div
             ref={containerRef}
+            tabIndex={-1}
             data-cy="cfg-metatype-property-dialog"
             onClick={onClose}
             style={{

@@ -9,6 +9,7 @@ import {
     APP_LAYOUT_STYLE,
     EMPTY_STATE_STYLE,
     InlineLoader,
+    LiveRegion,
     PANEL_STYLE,
     StatusBanner
 } from './components/AppChrome';
@@ -89,6 +90,13 @@ const AppContent = () => {
         selectedFile.name.endsWith('.yml.disabled')
     );
     const canMarkAsDefault = Boolean(isConfigFile && selectedConfigState === 'USER');
+
+    // Single source of polite status text for the always-mounted live region (SC 4.1.3).
+    const liveStatusMessage = (!error && selectedFile && selectedConfigState === 'MODULE')
+        ? t('configState.banner.module')
+        : (!error && selectedFile && selectedConfigState === 'MODULE_DEFAULT')
+            ? t('configState.banner.moduleDefault')
+            : '';
 
     const handleDownloadSelectedFile = React.useCallback(file => {
         if (!file?.name) {
@@ -227,8 +235,9 @@ const AppContent = () => {
                             setSearchInContent={setSearchInContent}
                         />
 
-                        {/* RIGHT PANE: Editor */}
-                        <Paper role="main" style={{ ...PANEL_STYLE, flex: '1 1 0%', overflow: 'hidden', minWidth: 0, marginTop: 0 }}>
+                        {/* RIGHT PANE: Editor. role="region" (not "main"): the host jahia-ui shell
+                            already provides the single top-level <main> landmark. */}
+                        <Paper role="region" aria-label={t('app.editorRegionLabel')} style={{ ...PANEL_STYLE, flex: '1 1 0%', overflow: 'hidden', minWidth: 0, marginTop: 0 }}>
                             {!selectedFile ? (
                                 <div style={EMPTY_STATE_STYLE}>
                                     <Typography variant="heading">{t('app.selectConfig')}</Typography>
@@ -341,6 +350,9 @@ const AppContent = () => {
                     </div>
                 }
             />
+            {/* Always-mounted live regions so the first announcement is never dropped. */}
+            <LiveRegion assertive message={error || ''} />
+            <LiveRegion message={liveStatusMessage} />
             <ModalDialog
                 config={modalConfig}
                 onClose={() => setModalConfig(null)}

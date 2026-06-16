@@ -15,7 +15,8 @@
         "searchDeep": "Rechercher dans le contenu",
         "searchDeepTooltip": "Activer pour rechercher à l'intérieur des fichiers",
         "unsaved": "Modifications non enregistrées",
-        "fileListLabel": "Fichiers de configuration"
+        "fileListLabel": "Fichiers de configuration",
+        "editorRegionLabel": "Éditeur de configuration"
     },
     "notification": {
         "saveSuccess": "Configuration enregistrée avec succès",
@@ -198,7 +199,9 @@
         },
         "empty": "vide",
         "emptyLine": "Ligne vide",
-        "reorderHandle": "Réorganiser cette entrée — utilisez Flèche haut ou Flèche bas pour la déplacer"
+        "reorderHandle": "Réorganiser cette entrée — utilisez Flèche haut ou Flèche bas pour la déplacer",
+        "editValueHint": "Double-cliquez ou appuyez sur Entrée pour modifier",
+        "cfgTableLabel": "Propriétés de configuration"
     },
     "configState": {
         "badge": {

@@ -82,11 +82,42 @@ export const FLOATING_TOOLTIP_STYLE = {
 };
 
 export const getFileStatusIndicatorStyle = enabled => ({
-    width: '3px',
+    // 4px (was 3px) plus darker tokens improve the non-text contrast of this graphical status cue.
+    // The status is never colour-only: it is also exposed via aria-label and a line-through filename.
+    width: '4px',
     height: '100%',
-    backgroundColor: enabled ? 'var(--color-success)' : 'var(--color-gray40)',
+    backgroundColor: enabled ? 'var(--color-success_dark)' : 'var(--color-gray_dark40)',
     flexShrink: 0
 });
+
+// Visually-hidden style for screen-reader-only content (e.g. always-mounted live regions).
+export const SR_ONLY_STYLE = {
+    position: 'absolute',
+    width: '1px',
+    height: '1px',
+    padding: 0,
+    margin: '-1px',
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap',
+    border: 0
+};
+
+/**
+ * Always-mounted ARIA live region. Keeping the region in the DOM at all times (and only changing
+ * its text) makes announcements reliable; mounting a region together with its content often drops
+ * the first announcement (SC 4.1.3).
+ */
+export const LiveRegion = ({message, assertive = false}) => (
+    <div
+        aria-live={assertive ? 'assertive' : 'polite'}
+        aria-atomic="true"
+        role={assertive ? 'alert' : 'status'}
+        style={SR_ONLY_STYLE}
+    >
+        {message || ''}
+    </div>
+);
 
 const BANNER_VARIANTS = {
     error: {
@@ -129,11 +160,11 @@ export const StatusBanner = ({tone = 'info', message, dataCy}) => {
     const variant = BANNER_VARIANTS[tone] || BANNER_VARIANTS.info;
     const icon = tone === 'info' ? <Information size="small" style={{color: variant.iconColor, flexShrink: 0}}/> : <Warning size="small" style={{color: variant.iconColor, flexShrink: 0}}/>;
 
+    // Presentational only: announcements are owned by the always-mounted LiveRegion (see index.jsx)
+    // so the first message is not dropped (SC 4.1.3).
     return (
         <div
             data-cy={dataCy}
-            role={tone === 'error' ? 'alert' : 'status'}
-            aria-live={tone === 'error' ? 'assertive' : 'polite'}
             style={{
                 //marginBottom: '20px',
                 padding: '10px 12px',
@@ -202,12 +233,18 @@ export const OverflowPreviewText = ({
             data-cy={dataCy}
             onMouseEnter={showPreviewIfNeeded}
             onMouseLeave={hidePreview}
+            onFocus={showPreviewIfNeeded}
+            onBlur={hidePreview}
             style={{position: 'relative', minWidth: 0, ...wrapperStyle}}
         >
             <Typography
                 {...typographyProps}
                 isNowrap
                 ref={textRef}
+                // Native title exposes the full value to pointer + keyboard/AT users without adding
+                // extra tab stops, and (being UA-provided) is exempt from the custom-tooltip rules
+                // of SC 1.4.13 — the visual floating preview remains a hover/focus enhancement.
+                title={typeof text === 'string' ? text : undefined}
                 style={{
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',

@@ -42,6 +42,11 @@ export const useDialogA11y = (isOpen: boolean, onClose: () => void): RefObject<H
         if (focusables.length > 0) {
             focusables[0].focus();
         } else if (containerRef.current) {
+            // Ensure the container can actually receive programmatic focus when it holds no
+            // focusable children, so focus does not silently stay outside the dialog.
+            if (!containerRef.current.hasAttribute('tabindex')) {
+                containerRef.current.setAttribute('tabindex', '-1');
+            }
             containerRef.current.focus();
         }
 

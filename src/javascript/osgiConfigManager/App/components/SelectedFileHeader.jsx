@@ -31,7 +31,7 @@ export const SelectedFileHeader = ({
                     <OverflowPreviewText
                         text={selectedFile.name}
                         showPreview={false}
-                        typographyProps={{variant: 'heading'}}
+                        typographyProps={{variant: 'heading', component: 'h2'}}
                         textStyle={{display: 'block'}}
                     />
                 </div>

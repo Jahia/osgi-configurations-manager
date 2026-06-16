@@ -15,7 +15,8 @@
         "searchDeep": "Search in content",
         "searchDeepTooltip": "Enable to search within the file content",
         "unsaved": "Unsaved Changes",
-        "fileListLabel": "Configuration files"
+        "fileListLabel": "Configuration files",
+        "editorRegionLabel": "Configuration editor"
     },
     "notification": {
         "saveSuccess": "Configuration saved successfully",
@@ -198,7 +199,9 @@
         },
         "empty": "empty",
         "emptyLine": "Empty Line",
-        "reorderHandle": "Reorder this entry — press Arrow Up or Arrow Down to move it"
+        "reorderHandle": "Reorder this entry — press Arrow Up or Arrow Down to move it",
+        "editValueHint": "Double-click or press Enter to edit",
+        "cfgTableLabel": "Configuration properties"
     },
     "configState": {
         "badge": {

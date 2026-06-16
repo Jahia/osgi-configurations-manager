@@ -32,7 +32,7 @@ export const DiffModal: React.FC<DiffModalProps> = ({
     if (!isOpen) return null;
 
     return (
-        <div ref={containerRef} style={{
+        <div ref={containerRef} tabIndex={-1} style={{
             position: 'fixed',
             top: 0,
             left: 0,
@@ -43,8 +43,7 @@ export const DiffModal: React.FC<DiffModalProps> = ({
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 100000,
-            backdropFilter: 'blur(4px)',
-            transition: 'all 0.2s ease'
+            backdropFilter: 'blur(4px)'
         }} onClick={onClose}>
             <Paper
                 role="dialog"
@@ -103,8 +102,9 @@ export const DiffModal: React.FC<DiffModalProps> = ({
                     }}>
                         {changes.map((part: Change, index: number) => {
                             const style: React.CSSProperties = {
+                                // Darker text on the tinted backgrounds to meet the AAA (>=7:1) threshold.
                                 backgroundColor: part.added ? '#e6ffec' : part.removed ? '#ffebe9' : 'transparent',
-                                color: part.added ? '#1e7e34' : part.removed ? '#cb2431' : '#333',
+                                color: part.added ? '#0b5e1f' : part.removed ? '#9a0c1b' : '#1c1c1c',
                                 display: 'block',
                                 textDecoration: 'none'
                             };
@@ -134,7 +134,7 @@ export const DiffModal: React.FC<DiffModalProps> = ({
                         label={t('app.save')}
                         color="accent"
                         onClick={onConfirm}
-                        style={{ backgroundColor: '#00a0e3', color: '#fff', fontWeight: '600' }}
+                        style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-light)', fontWeight: '600' }}
                     />
                 </div>
             </Paper>

@@ -463,7 +463,7 @@ export const CfgEditor = ({
                 document.body
             )}
 
-            <div style={{ flex: 1, overflow: 'auto' }} onScroll={() => setOverlay(null)}>
+            <div style={{ flex: 1, overflow: 'auto' }} onScroll={() => setOverlay(null)} role="group" aria-label={t('editor.cfgTableLabel')}>
                 <Table style={{ width: '100%' }}>
                     <CfgEditorHeader t={t} />
                     <TableBody>
@@ -556,6 +556,7 @@ export const CfgEditor = ({
                                                     }}>#</Typography>
                                                     <AutoResizeTextArea
                                                         inputRef={el => setInputRef(index, 'value', el)}
+                                                        aria-label={t('editor.button.addComment')}
                                                         value={commentValue}
                                                         onChange={e => onUpdate(index, 'value', '# ' + e.target.value)}
                                                         onFocus={() => handleInputFocus(index)}
@@ -589,6 +590,7 @@ export const CfgEditor = ({
                                                     <AutoResizeTextArea
                                                         inputRef={el => setInputRef(index, 'key', el)}
                                                         data-cy={`cfg-key-${index}`}
+                                                        aria-label={`${t('editor.header.property')}${key ? ': ' + key : ''}`}
                                                         value={key}
                                                         onChange={e => onUpdate(index, 'key', e.target.value)}
                                                         onFocus={() => handleInputFocus(index)}
@@ -643,6 +645,7 @@ export const CfgEditor = ({
                                                                 // Actually Input forwards ref. We can use ref={el => ...}
                                                                 ref={el => setInputRef(index, 'value', el)}
                                                                 data-cy={`cfg-value-${index}`}
+                                                                aria-label={`${t('editor.header.value')}${key ? ': ' + key : ''}`}
                                                                 value={value}
                                                                 onChange={e => onUpdate(index, 'value', e.target.value)}
                                                                 onFocus={() => handleInputFocus(index)}
@@ -655,6 +658,7 @@ export const CfgEditor = ({
                                                         <AutoResizeTextArea
                                                             inputRef={el => setInputRef(index, 'value', el)}
                                                             data-cy={`cfg-value-${index}`}
+                                                            aria-label={`${t('editor.header.value')}${key ? ': ' + key : ''}`}
                                                             value={value}
                                                             onChange={e => onUpdate(index, 'value', e.target.value)}
                                                             onFocus={() => handleInputFocus(index)}

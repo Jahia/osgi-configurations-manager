@@ -90,9 +90,9 @@ const EXISTING_INSTANCE_STYLE = {
 const CreateOptionCard = ({dataCy, isSelected, onClick, title, subtitle, meta, description}) => (
     <div
         data-cy={dataCy}
-        role="button"
+        role="option"
         tabIndex={0}
-        aria-pressed={isSelected}
+        aria-selected={isSelected}
         aria-label={title}
         style={getSelectableCardStyle(isSelected)}
         onClick={onClick}
@@ -379,7 +379,7 @@ export const ModalDialog = ({config, onClose}) => {
                                             {t('modal.create.templateLabel')}
                                         </Typography>
 
-                                        <div style={LIST_STYLE}>
+                                        <div style={LIST_STYLE} role="listbox" aria-label={t('modal.create.templateLabel')}>
                                             {availableMetatypes.length === 0 && (
                                                 <div style={EMPTY_LIST_ITEM_STYLE}>
                                                     <Typography variant="caption" color="textSecondary">
@@ -419,7 +419,7 @@ export const ModalDialog = ({config, onClose}) => {
                                             {t('modal.create.factoryLabel')}
                                         </Typography>
 
-                                        <div style={FACTORY_LIST_STYLE}>
+                                        <div style={FACTORY_LIST_STYLE} role="listbox" aria-label={t('modal.create.factoryLabel')}>
                                             {availableFactoryMetatypes.length === 0 && (
                                                 <div style={EMPTY_LIST_ITEM_STYLE}>
                                                     <Typography variant="caption" color="textSecondary">

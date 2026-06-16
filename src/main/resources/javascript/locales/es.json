@@ -15,7 +15,8 @@
         "searchDeep": "Buscar en contenido",
         "searchDeepTooltip": "Habilitar para buscar dentro de los archivos",
         "unsaved": "Cambios no guardados",
-        "fileListLabel": "Archivos de configuración"
+        "fileListLabel": "Archivos de configuración",
+        "editorRegionLabel": "Editor de configuración"
     },
     "notification": {
         "saveSuccess": "Configuración guardada con éxito",
@@ -198,7 +199,9 @@
         },
         "empty": "vacío",
         "emptyLine": "Línea vacía",
-        "reorderHandle": "Reordenar esta entrada — usa Flecha arriba o Flecha abajo para moverla"
+        "reorderHandle": "Reordenar esta entrada — usa Flecha arriba o Flecha abajo para moverla",
+        "editValueHint": "Haz doble clic o pulsa Enter para editar",
+        "cfgTableLabel": "Propiedades de configuración"
     },
     "tooltip": {
         "downloadFile": "Descargar archivo actual (Datos sin procesar)",
