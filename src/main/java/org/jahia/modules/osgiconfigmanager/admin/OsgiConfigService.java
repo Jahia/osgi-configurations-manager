@@ -163,7 +163,9 @@ public class OsgiConfigService {
 
     public List<Map<String, Object>> listFiles(boolean isRootUser) {
         if (karafEtcDir == null) {
-            LOGGER.error("karafEtcDir is null. System property 'karaf.etc' was: {}", System.getProperty("karaf.etc"));
+            // karafEtcDir is only null when 'karaf.etc' was unset/empty at construction, so there is
+            // no dynamic value worth computing for the log argument (avoids S2629).
+            LOGGER.error("karafEtcDir is null: the 'karaf.etc' system property was not set or was empty.");
             return Collections.emptyList();
         }
         if (!karafEtcDir.exists()) {
