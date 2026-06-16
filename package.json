@@ -6,7 +6,10 @@
         "build:production": "webpack --mode=production --stats verbose",
         "dev": "webpack --watch",
         "webpack": "webpack",
-        "test": "jest"
+        "test": "jest",
+        "test:coverage": "jest --coverage",
+        "lint": "eslint \"src/javascript/**/*.{ts,tsx,js,jsx}\"",
+        "lint:fix": "eslint --fix \"src/javascript/**/*.{ts,tsx,js,jsx}\""
     },
     "main": "index.js",
     "license": "MIT",
@@ -39,6 +42,11 @@
         "@babel/preset-env": "^7.6.2",
         "@babel/preset-react": "^7.0.0",
         "@jahia/webpack-config": "^1.0.0",
+        "@typescript-eslint/eslint-plugin": "^7.18.0",
+        "@typescript-eslint/parser": "^7.18.0",
+        "eslint": "^8.57.0",
+        "eslint-plugin-react": "^7.37.5",
+        "eslint-plugin-react-hooks": "^4.6.2",
         "@testing-library/jest-dom": "^6.9.1",
         "@testing-library/react": "^12.1.5",
         "@testing-library/react-hooks": "^8.0.1",

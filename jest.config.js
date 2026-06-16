@@ -12,4 +12,21 @@ module.exports = {
     setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
     testPathIgnorePatterns: ['/node_modules/', '/target/'],
     modulePathIgnorePatterns: ['<rootDir>/target/', '<rootDir>/src/main/resources/javascript/apps/'],
+    // Coverage is collected from the application sources only (see `yarn test:coverage`).
+    collectCoverageFrom: [
+        'src/javascript/**/*.{ts,tsx,js,jsx}',
+        '!src/javascript/**/*.test.{ts,tsx,js,jsx}',
+        '!src/javascript/**/*.d.ts',
+    ],
+    coveragePathIgnorePatterns: ['/node_modules/', '/target/'],
+    // Ratchet floor: enforced by `yarn test:coverage`. Raise toward 80% as the heavy view
+    // components (Editor/CfgEditor/Monaco) gain tests; logic modules already sit well above this.
+    coverageThreshold: {
+        global: {
+            statements: 30,
+            branches: 18,
+            functions: 25,
+            lines: 28,
+        },
+    },
 };
