@@ -33,7 +33,10 @@ export const FileSidebar = ({
 
     const getFilenameColor = React.useCallback((filename, isSelected) => {
         if (isSelected) {
-            return 'inherit';
+            // Pin to a high-contrast color instead of inheriting the highlighted row's color, which
+            // was non-deterministic and failed WCAG AA. --color-dark on the #def4fd selection
+            // background is ~15:1.
+            return CHROME_TOKENS.strongTextColor;
         }
 
         if (filename.endsWith('.yml') || filename.endsWith('.yml.disabled')) {

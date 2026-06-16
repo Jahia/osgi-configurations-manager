@@ -6,7 +6,9 @@ export const CHROME_TOKENS = {
     panelPadding: '16px',
     panelGap: '16px',
     sectionGap: '10px',
-    subtleTextColor: 'var(--color-gray_dark60)',
+    // Full-opacity gray_dark (#293136 ~= 10.8:1 on white). gray_dark60 (~4.0:1) failed the WCAG AA
+    // 4.5:1 floor for caption-size secondary text (file path, loaders); this stays a Moonstone token.
+    subtleTextColor: 'var(--color-gray_dark)',
     strongTextColor: 'var(--color-dark)',
     panelBorderColor: 'var(--color-gray_light40)',
     subtleSurfaceColor: 'var(--color-gray_light_plain20)',
