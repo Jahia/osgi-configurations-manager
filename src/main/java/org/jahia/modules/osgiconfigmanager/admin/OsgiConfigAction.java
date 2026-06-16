@@ -8,7 +8,6 @@ import org.jahia.services.content.JCRSessionWrapper;
 import org.jahia.services.render.RenderContext;
 import org.jahia.services.render.Resource;
 import org.jahia.services.render.URLResolver;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -175,37 +174,15 @@ public class OsgiConfigAction extends Action {
 
     private void listFiles(HttpServletRequest req, boolean isRootUser, Map<String, Object> result) {
         result.put("uiConfig", configService.getUiConfig());
-        List<Map<String, Object>> allFiles = configService.listFiles(isRootUser);
         String search = req.getParameter(PARAM_SEARCH);
 
         if (search != null && !search.isEmpty()) {
-            result.put("files", searchFiles(allFiles, search, req.getLocale(), isRootUser));
+            // Deep search (name + raw content) is owned by the service, which caps results and
+            // reads raw bytes only — see OsgiConfigService#searchFiles.
+            result.put("files", configService.searchFiles(search, isRootUser));
         } else {
-            result.put("files", allFiles);
+            result.put("files", configService.listFiles(isRootUser));
         }
-    }
-
-    private List<Map<String, Object>> searchFiles(List<Map<String, Object>> allFiles, String search,
-            Locale locale, boolean isRootUser) {
-        String lowerSearch = search.toLowerCase(Locale.ROOT);
-        List<Map<String, Object>> filtered = new ArrayList<>();
-
-        for (Map<String, Object> file : allFiles) {
-            String name = (String) file.get("name");
-            try {
-                Map<String, Object> content = configService.readFile(name, locale, isRootUser);
-                String raw = (String) content.get(PARAM_RAW_CONTENT);
-                boolean nameMatch = name.toLowerCase(Locale.ROOT).contains(lowerSearch);
-                boolean contentMatch = raw != null && raw.toLowerCase(Locale.ROOT).contains(lowerSearch);
-                if (nameMatch || contentMatch) {
-                    filtered.add(file);
-                }
-            } catch (Exception e) {
-                LOGGER.warn("Deep Search: Failed to read file {} during search", name, e);
-            }
-        }
-
-        return filtered;
     }
 
     private void readPreference(HttpServletRequest req, RenderContext renderContext, JCRSessionWrapper session,

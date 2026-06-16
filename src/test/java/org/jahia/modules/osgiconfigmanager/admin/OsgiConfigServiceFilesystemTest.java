@@ -337,4 +337,50 @@ class OsgiConfigServiceFilesystemTest {
         assertTrue(ex.getMessage().contains("maximum allowed size"), "Unexpected message: " + ex.getMessage());
         assertFalse(Files.exists(etcDir.resolve("too-big.cfg")), "Oversized content must not be written");
     }
+
+    @Nested
+    @DisplayName("deep search")
+    class DeepSearch {
+
+        @Test
+        @DisplayName("matches on filename")
+        void searchFiles_nameMatch_returnsFile() throws IOException {
+            writeConfig("alpha.cfg", "x = 1\n");
+            writeConfig("beta.cfg", "y = 2\n");
+
+            List<Map<String, Object>> results = service.searchFiles("alpha", true);
+
+            assertEquals(1, results.size());
+            assertEquals("alpha.cfg", results.get(0).get("name"));
+        }
+
+        @Test
+        @DisplayName("matches on raw content when the name does not match")
+        void searchFiles_contentMatch_returnsFile() throws IOException {
+            writeConfig("alpha.cfg", "secret.token = hunter2\n");
+            writeConfig("beta.cfg", "y = 2\n");
+
+            List<Map<String, Object>> results = service.searchFiles("hunter2", true);
+
+            assertEquals(1, results.size());
+            assertEquals("alpha.cfg", results.get(0).get("name"));
+        }
+
+        @Test
+        @DisplayName("returns the full listing for an empty query")
+        void searchFiles_emptyQuery_returnsAll() throws IOException {
+            writeConfig("alpha.cfg", "x = 1\n");
+            writeConfig("beta.cfg", "y = 2\n");
+
+            assertEquals(2, service.searchFiles("", true).size());
+        }
+
+        @Test
+        @DisplayName("returns nothing when neither name nor content matches")
+        void searchFiles_noMatch_returnsEmpty() throws IOException {
+            writeConfig("alpha.cfg", "x = 1\n");
+
+            assertTrue(service.searchFiles("zzz-not-present", true).isEmpty());
+        }
+    }
 }

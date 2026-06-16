@@ -66,6 +66,7 @@ public class OsgiConfigService {
     private static final String INVALID_FILENAME_MESSAGE = "Invalid configuration filename: ";
     private static final String ACTION_CREATE = "Create";
     static final int MAX_RAW_CONTENT_BYTES = 5 * 1024 * 1024; // 5 MiB guard against disk-exhaustion writes
+    static final int MAX_SEARCH_RESULTS = 500; // cap deep-search results so a broad query cannot run unbounded
     private File karafEtcDir;
     // Filtering state is published atomically as a single immutable snapshot so request threads
     // never observe a half-applied configuration update. FilterConfig is deeply immutable, so a
@@ -255,6 +256,57 @@ public class OsgiConfigService {
                     return map;
                 })
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Deep search: returns the listed files whose name or raw content contains {@code search}.
+     *
+     * <p>Reads raw bytes only (no Metatype enrichment), skips files larger than
+     * {@link #MAX_RAW_CONTENT_BYTES}, and stops once {@link #MAX_SEARCH_RESULTS} matches are found,
+     * so a broad query cannot trigger unbounded work. An empty query returns the full listing.
+     */
+    public List<Map<String, Object>> searchFiles(String search, boolean isRootUser) {
+        List<Map<String, Object>> allFiles = listFiles(isRootUser);
+        if (search == null || search.isEmpty()) {
+            return allFiles;
+        }
+
+        String lowerSearch = search.toLowerCase(Locale.ROOT);
+        List<Map<String, Object>> filtered = new ArrayList<>();
+        for (Map<String, Object> file : allFiles) {
+            if (filtered.size() >= MAX_SEARCH_RESULTS) {
+                LOGGER.info("Deep search result cap ({}) reached; results truncated", MAX_SEARCH_RESULTS);
+                break;
+            }
+            if (matchesSearch((String) file.get("name"), lowerSearch, isRootUser)) {
+                filtered.add(file);
+            }
+        }
+        return filtered;
+    }
+
+    private boolean matchesSearch(String name, String lowerSearch, boolean isRootUser) {
+        if (name == null) {
+            return false;
+        }
+        if (name.toLowerCase(Locale.ROOT).contains(lowerSearch)) {
+            return true;
+        }
+        try {
+            String safeFilename = validateFilename(name);
+            if (!isFilenameAllowed(safeFilename, isRootUser)) {
+                return false;
+            }
+            Path filePath = resolveConfigPath(safeFilename);
+            if (!Files.exists(filePath) || Files.size(filePath) > MAX_RAW_CONTENT_BYTES) {
+                return false;
+            }
+            String raw = Files.readString(filePath, StandardCharsets.UTF_8);
+            return raw.toLowerCase(Locale.ROOT).contains(lowerSearch);
+        } catch (IOException e) {
+            LOGGER.warn("Deep search: failed to read {} during search", name, e);
+            return false;
+        }
     }
 
     public List<Map<String, Object>> listAvailableMetatypeConfigurations(Locale locale) {
