@@ -26,6 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -260,6 +261,45 @@ class OsgiConfigActionTest {
         String body = responseBody.toString();
         assertTrue(body.contains("An internal error occurred"));
         assertTrue(!body.contains("/internal/path"), "Internal detail must not leak to the client");
+    }
+
+    @Test
+    @DisplayName("maps ConfigNotFoundException to 404")
+    void doExecute_notFound_returns404() throws Exception {
+        doThrow(new ConfigNotFoundException("File not found: x.cfg"))
+                .when(configService).deleteFile(eq("x.cfg"), anyBoolean());
+        stubPost("{\"action\":\"delete\",\"filename\":\"x.cfg\"}");
+
+        execute();
+
+        verify(response).setStatus(HttpServletResponse.SC_NOT_FOUND);
+        assertTrue(responseBody.toString().contains("File not found"));
+    }
+
+    @Test
+    @DisplayName("maps ConfigConflictException to 409")
+    void doExecute_conflict_returns409() throws Exception {
+        doThrow(new ConfigConflictException("File already exists: x.cfg"))
+                .when(configService).createFile(eq("x.cfg"), anyBoolean());
+        stubPost("{\"action\":\"create\",\"filename\":\"x.cfg\"}");
+
+        execute();
+
+        verify(response).setStatus(HttpServletResponse.SC_CONFLICT);
+        assertTrue(responseBody.toString().contains("already exists"));
+    }
+
+    @Test
+    @DisplayName("maps ConfigAccessDeniedException to 403")
+    void doExecute_accessDenied_returns403() throws Exception {
+        doThrow(new ConfigAccessDeniedException("Save denied: x.cfg is blacklisted or reserved."))
+                .when(configService).saveFile(eq("x.cfg"), any(), anyBoolean());
+        stubPost("{\"action\":\"save\",\"filename\":\"x.cfg\",\"rawContent\":\"a=1\"}");
+
+        execute();
+
+        verify(response).setStatus(HttpServletResponse.SC_FORBIDDEN);
+        assertTrue(responseBody.toString().contains("denied"));
     }
 
     @Test

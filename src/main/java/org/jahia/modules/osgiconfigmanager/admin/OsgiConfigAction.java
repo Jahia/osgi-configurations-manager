@@ -124,9 +124,21 @@ public class OsgiConfigAction extends Action {
             writeJson(response, result);
             return null;
 
+        } catch (ConfigNotFoundException e) {
+            LOGGER.warn("Configuration not found: {}", e.getMessage());
+            writeError(response, HttpServletResponse.SC_NOT_FOUND, e.getMessage());
+            return null;
+        } catch (ConfigConflictException e) {
+            LOGGER.warn("Configuration conflict: {}", e.getMessage());
+            writeError(response, HttpServletResponse.SC_CONFLICT, e.getMessage());
+            return null;
+        } catch (ConfigAccessDeniedException e) {
+            LOGGER.warn("Configuration access denied: {}", e.getMessage());
+            writeError(response, HttpServletResponse.SC_FORBIDDEN, e.getMessage());
+            return null;
         } catch (IOException e) {
-            // Domain/validation errors (bad filename, already exists, access denied, ...) carry a
-            // safe, user-facing message. Surface it as a 400 and log server-side.
+            // Remaining domain/validation errors (bad filename, invalid content, oversized body, ...)
+            // carry a safe, user-facing message. Surface as a 400 and log server-side.
             LOGGER.warn("Configuration operation rejected: {}", e.getMessage());
             writeError(response, HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
             return null;

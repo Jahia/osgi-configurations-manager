@@ -444,7 +444,7 @@ public class OsgiConfigService {
 
         Path filePath = resolveConfigPath(safeFilename);
         if (!Files.exists(filePath)) {
-            throw new IOException("File not found: " + safeFilename);
+            throw new ConfigNotFoundException("File not found: " + safeFilename);
         }
         ensureFileWithinSizeLimit(filePath, safeFilename);
 
@@ -923,7 +923,7 @@ public class OsgiConfigService {
 
         Path filePath = resolveConfigPath(safeFilename);
         if (!Files.exists(filePath)) {
-            throw new IOException("File not found: " + safeFilename);
+            throw new ConfigNotFoundException("File not found: " + safeFilename);
         }
 
         String newName;
@@ -935,7 +935,7 @@ public class OsgiConfigService {
 
         Path newFilePath = resolveConfigPath(newName);
         if (Files.exists(newFilePath)) {
-            throw new IOException("Target file already exists: " + newName);
+            throw new ConfigConflictException("Target file already exists: " + newName);
         }
 
         Files.move(filePath, newFilePath);
@@ -969,7 +969,7 @@ public class OsgiConfigService {
 
         Path filePath = resolveConfigPath(safeFilename);
         if (Files.exists(filePath)) {
-            throw new IOException("File already exists: " + safeFilename);
+            throw new ConfigConflictException("File already exists: " +safeFilename);
         }
         Files.createFile(filePath);
     }
@@ -984,7 +984,7 @@ public class OsgiConfigService {
 
         Path filePath = resolveConfigPath(safeFilename);
         if (!Files.exists(filePath)) {
-            throw new IOException("File not found: " + safeFilename);
+            throw new ConfigNotFoundException("File not found: " + safeFilename);
         }
 
         String configState = detectConfigState(filePath);
@@ -1155,7 +1155,7 @@ public class OsgiConfigService {
         ensurePidAllowed(factoryPid, isRootUser);
         ensureFilenameAllowed(filename, isRootUser, ACTION_CREATE);
         if (hasExistingFactoryInstanceFile(factoryPid, identifier)) {
-            throw new IOException("File already exists: " + filename);
+            throw new ConfigConflictException("File already exists: " +filename);
         }
     }
 
@@ -1167,7 +1167,7 @@ public class OsgiConfigService {
 
         Path filePath = resolveConfigPath(filename);
         if (Files.exists(filePath)) {
-            throw new IOException("File already exists: " + filename);
+            throw new ConfigConflictException("File already exists: " +filename);
         }
 
         Files.write(filePath, content.getBytes(StandardCharsets.UTF_8));
@@ -1405,7 +1405,7 @@ public class OsgiConfigService {
 
     private void ensurePidAllowed(String pid, boolean isRootUser) throws IOException {
         if (isSelfConfigurationPid(pid) && !isRootUser) {
-            throw new IOException("Access denied: " + pid + " is reserved for the root user.");
+            throw new ConfigAccessDeniedException("Access denied: " + pid + " is reserved for the root user.");
         }
     }
 
@@ -1415,7 +1415,7 @@ public class OsgiConfigService {
             String reason = hasConfiguredEntries(fc.whitelist, fc.whitelistPatterns)
                     ? "is not permitted by the active white list."
                     : "is blacklisted or reserved.";
-            throw new IOException(action + " denied: " + filename + " " + reason);
+            throw new ConfigAccessDeniedException(action + " denied: " + filename + " " + reason);
         }
     }
 
@@ -1576,7 +1576,7 @@ public class OsgiConfigService {
 
         Path filePath = resolveConfigPath(safeFilename);
         if (!Files.exists(filePath)) {
-            throw new IOException("File not found: " + safeFilename);
+            throw new ConfigNotFoundException("File not found: " + safeFilename);
         }
         ensureFileWithinSizeLimit(filePath, safeFilename);
 
