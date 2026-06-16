@@ -801,7 +801,13 @@ public class OsgiConfigService {
         String safeFilename = validateFilename(filename);
         ensureFilenameAllowed(safeFilename, isRootUser, "Save");
 
-        if (content != null && content.get(KEY_RAW_CONTENT) instanceof String) {
+        // Reject malformed payloads up front with a clear validation error instead of letting a
+        // later content.containsKey(...) throw a NullPointerException (which would surface as a 500).
+        if (content == null) {
+            throw new IOException("Configuration content is required.");
+        }
+
+        if (content.get(KEY_RAW_CONTENT) instanceof String) {
             validateRawContentSize((String) content.get(KEY_RAW_CONTENT));
         }
 
@@ -1327,7 +1333,16 @@ public class OsgiConfigService {
                     + "secret before encrypting values, or opt into the insecure default key with '"
                     + CryptoEngine.ALLOW_DEFAULT_KEY_PROPERTY + "=true' for non-production use.");
         }
-        return "ENC(" + CryptoEngine.encryptString(value) + ")";
+        String cipherText;
+        try {
+            cipherText = CryptoEngine.encryptString(value);
+        } catch (RuntimeException e) {
+            // Fail closed: a crypto-operation failure must never be persisted as ENC(plaintext).
+            // Surface as an IOException so the action layer rejects the request (400) instead of
+            // emitting a value that looks encrypted but is not.
+            throw new IOException("Encryption failed; refusing to store a plaintext value as ciphertext.", e);
+        }
+        return "ENC(" + cipherText + ")";
     }
 
     public String decrypt(String value) {

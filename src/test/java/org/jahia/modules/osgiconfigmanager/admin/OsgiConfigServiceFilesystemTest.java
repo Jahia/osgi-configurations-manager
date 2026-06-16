@@ -338,6 +338,16 @@ class OsgiConfigServiceFilesystemTest {
         assertFalse(Files.exists(etcDir.resolve("too-big.cfg")), "Oversized content must not be written");
     }
 
+    @Test
+    @DisplayName("saveFile rejects null content with a validation error instead of a NullPointerException")
+    void saveFile_nullContent_throwsIOException() {
+        // A malformed payload (null content map) must surface as a clear IOException (mapped to 400),
+        // not a NullPointerException from the later content.containsKey(...) call (which would be a 500).
+        IOException ex = assertThrows(IOException.class, () -> service.saveFile("malformed.cfg", null, true));
+        assertTrue(ex.getMessage().contains("content is required"), "Unexpected message: " + ex.getMessage());
+        assertFalse(Files.exists(etcDir.resolve("malformed.cfg")), "Malformed payload must not create a file");
+    }
+
     @Nested
     @DisplayName("deep search")
     class DeepSearch {

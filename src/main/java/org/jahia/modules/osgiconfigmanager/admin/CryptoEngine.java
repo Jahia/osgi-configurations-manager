@@ -92,8 +92,11 @@ public final class CryptoEngine {
                     base64Encode(iv),
                     base64Encode(cipherText));
         } catch (GeneralSecurityException e) {
+            // Fail closed: never hand the plaintext back to callers. Returning the input here would
+            // let OsgiConfigService.encrypt() wrap it as ENC(plaintext), making an unencrypted secret
+            // indistinguishable from valid ciphertext. Signal the failure instead.
             LOGGER.error("Encryption failed", e);
-            return string;
+            throw new IllegalStateException("Encryption failed", e);
         }
     }
 

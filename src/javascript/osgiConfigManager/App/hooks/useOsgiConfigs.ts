@@ -476,7 +476,12 @@ export const useOsgiConfigs = () => {
             let encryptFailed = false;
             const propsToEnc = await encryptTree(JSON.parse(JSON.stringify(properties)), () => { encryptFailed = true; });
             if (encryptFailed) {
+                // Fail closed: encryptTree leaves any leaf it could not encrypt as plaintext. Abort the
+                // switch so that plaintext stays only in the in-memory visual state and is never
+                // serialized into rawContent (and from there persisted to disk). The user remains in
+                // visual mode with their secrets intact.
                 toastError(t('notification.encryptError'));
+                return;
             }
 
             // 2. Convert to String

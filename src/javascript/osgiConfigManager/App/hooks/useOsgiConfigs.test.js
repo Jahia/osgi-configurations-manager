@@ -188,6 +188,41 @@ describe('useOsgiConfigs', () => {
         expect(osgiService.encrypt).toHaveBeenCalled();
     });
 
+    it('fails closed: aborts the switch to raw mode (no plaintext in rawContent) when encryption fails', async () => {
+        osgiService.getAll.mockResolvedValue({ files: [] });
+        osgiService.read.mockResolvedValue({
+            data: { rawContent: 'password = ENC(cipher)', properties: [] }
+        });
+        osgiService.decrypt.mockResolvedValue({ decryptedValue: 's3cret' });
+        // Encryption is unavailable / fails for the encrypted leaf.
+        osgiService.encrypt.mockRejectedValue(new Error('crypto unavailable'));
+
+        const { result } = renderHook(() => useOsgiConfigs());
+        await act(async () => {
+            result.current.selectFile({ name: 'creds.cfg' });
+            await flushMicrotasks();
+        });
+        expect(result.current.isRawMode).toBe(true);
+
+        // Switch to visual → decrypts to plaintext 's3cret' in memory.
+        await act(async () => {
+            await result.current.handleToggleRawMode();
+            await flushMicrotasks();
+        });
+        expect(result.current.isRawMode).toBe(false);
+
+        // Attempt to switch back to raw → encryption fails, so the switch must be aborted.
+        await act(async () => {
+            await result.current.handleToggleRawMode();
+            await flushMicrotasks();
+        });
+
+        // Still in visual mode, and the on-disk/raw view never received the plaintext secret.
+        expect(result.current.isRawMode).toBe(false);
+        expect(result.current.rawContent).toBe('password = ENC(cipher)');
+        expect(result.current.rawContent).not.toContain('s3cret');
+    });
+
     it('handleSave shows a diff and persists only after confirmation when content changed', async () => {
         osgiService.save.mockResolvedValue({});
         osgiService.read.mockResolvedValue({ data: { rawContent: 'foo = bar', properties: [] } });
