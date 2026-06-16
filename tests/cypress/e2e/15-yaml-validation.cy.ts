@@ -19,10 +19,12 @@ describe('OSGi Configurations Manager - YAML validation gate', () => {
         cy.openOsgiFile(yamlFile);
         cy.get('[data-cy="raw-editor-toolbar"]', {timeout: 30000}).should('be.visible');
 
-        // Act: replace the content with broken YAML (an unclosed flow sequence).
+        // Act: replace the content with broken YAML. A bare scalar following a mapping entry is a
+        // parse error ("a document separator is expected"). We deliberately avoid brackets/quotes
+        // because Monaco auto-closes those pairs, which would silently produce VALID YAML.
         cy.get('.monaco-editor textarea', {timeout: 30000}).click({force: true});
         cy.get('.monaco-editor textarea').type('{selectall}{del}', {force: true});
-        cy.get('.monaco-editor textarea').type('foo: [unclosed', {force: true});
+        cy.get('.monaco-editor textarea').type('foo: bar\nbaz', {force: true});
 
         // Assert: the editor reports invalid YAML, so Save stays disabled despite pending changes.
         cy.get('[data-cy="save-config-button"] button', {timeout: 30000}).should('be.disabled');

@@ -30,8 +30,13 @@ describe('OSGi Configurations Manager - Download', () => {
             .should('not.be.disabled')
             .click();
 
-        // Assert: a Blob was created from the file content for download.
+        // Assert: a non-empty text Blob was created from the file content for download. We check
+        // Blob-like properties rather than `instanceOf Blob` because the app builds the Blob in the
+        // application iframe's realm, whose Blob constructor differs from the spec runner's.
         cy.get('@createObjectURL').should('have.been.calledOnce');
-        cy.get('@createObjectURL').its('firstCall.args.0').should('be.instanceOf', Blob);
+        cy.get('@createObjectURL').its('firstCall.args.0').then(arg => {
+            expect(arg).to.have.property('size').and.to.be.greaterThan(0);
+            expect(arg).to.have.property('type', 'text/plain');
+        });
     });
 });

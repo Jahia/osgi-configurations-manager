@@ -26,12 +26,10 @@ describe('OSGi Configurations Manager - Deep content search', () => {
         cy.filterOsgiFiles(contentMarker);
         cy.get(fileRow).should('not.exist');
 
-        // Act: enable content search, then search the same marker again.
+        // Act: enable content search, then search the same marker again. The control carries the
+        // data-cy directly (Moonstone Switch), so click it rather than a descendant.
         cy.get('[data-cy="file-search-input"] input').clear();
-        cy.get('[data-cy="deep-search-toggle-control"]')
-            .find('input, button, [role="switch"]')
-            .first()
-            .click({force: true});
+        cy.get('[data-cy="deep-search-toggle-control"]').click({force: true});
         cy.filterOsgiFiles(contentMarker);
 
         // Assert (content search): the file is now found by what is inside it.
