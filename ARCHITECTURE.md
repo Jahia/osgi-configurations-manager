@@ -40,7 +40,10 @@ A Jahia 8.2 system module that manages the OSGi configuration files (`.cfg`, `.y
   detection from the file header, OSGi Metatype/factory-PID introspection, and `.cfg`/`.yml`
   parsing & serialization.
 - **`CryptoEngine`** — reversible `ENC(...)` value encryption. Key is resolved from configuration
-  (system property / env var) with a legacy fallback for backward compatibility.
+  (system property / env var) with a legacy fallback for decrypting older payloads. When no key is
+  configured the service **fails closed**: it refuses to produce new `ENC(...)` values (unless the
+  insecure built-in default is explicitly opted into via
+  `org.jahia.modules.osgiconfigmanager.encryption.allowDefaultKey=true`). See [SECURITY.md](SECURITY.md).
 
 ## Frontend (`src/javascript/osgiConfigManager/App`)
 
@@ -51,6 +54,21 @@ A Jahia 8.2 system module that manages the OSGi configuration files (`.cfg`, `.y
   are reconciled on mode switch and on save; `configUtils.ts` is the codec.
 - **`osgiService.ts`** is the only HTTP boundary — a single typed client; every mutating call sends
   the `X-Requested-With` CSRF header and the `decrypt` call is bound to its file.
+- **Crypto tree walk** (`utils/cryptoTree.ts`) — `decryptTree` (in place) / `encryptTree`
+  (immutable) are the single implementation of the encrypt/decrypt recursion used on load, save and
+  every mode switch.
+
+## Gotchas (data-loss-risk paths)
+
+- **Visual ↔ raw reserialization.** Switching to the visual editor and back regenerates `rawContent`
+  from the property tree via `configUtils.toCfgFormat`. This can rewrite hand-authored comments,
+  key ordering and spacing even when nothing was "edited". The hook detects a non-equivalent
+  regeneration on a clean file and warns (`notification.reserializeWarning`), but raw text is the
+  source of truth for byte-exact content — prefer raw mode when formatting must be preserved.
+- **Decrypt-in-memory model.** The property tree holds *decrypted plaintext* while `rawContent`
+  keeps the `ENC(...)` ciphertext. `encryptTree` must run before serializing on save / mode switch;
+  if encryption fails (e.g. no key configured), the save is aborted rather than persisting a secret
+  as plaintext. Keep these two representations reconciled when changing the editor flow.
 
 ## Build & tests
 

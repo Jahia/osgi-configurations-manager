@@ -37,8 +37,10 @@ This module manages arbitrary `.cfg` / `.yml` files in Karaf's `etc/` directory,
 - Values encrypted in the UI are stored as `ENC(...)`. Encryption uses AES-256/GCM with a
   PBKDF2-derived key. **Configure a strong key** via the
   `org.jahia.modules.osgiconfigmanager.encryption.key` system property or the
-  `OSGI_CONFIG_MANAGER_ENCRYPTION_KEY` environment variable — see the README. Without it, a built-in
-  default key is used (obfuscation only) and a warning is logged at startup.
+  `OSGI_CONFIG_MANAGER_ENCRYPTION_KEY` environment variable — see the README. Without a configured
+  key the service **fails closed**: it refuses to produce new `ENC(...)` values (existing values
+  still decrypt). The insecure built-in default key (obfuscation only) can be opted into for
+  non-production use via `org.jahia.modules.osgiconfigmanager.encryption.allowDefaultKey=true`.
 - The `decrypt` endpoint is bound to a file: it authorizes the named file and verifies the ciphertext
   actually occurs in it before decrypting, so it cannot be used as a generic decryption oracle.
 

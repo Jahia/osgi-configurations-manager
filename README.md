@@ -148,12 +148,17 @@ public class MyService {
 
 ### Configuring the encryption key
 
+> [!IMPORTANT]
+> **Configure the encryption key before encrypting your first value.** With no key configured the
+> manager **fails closed** and refuses to encrypt, so you cannot accidentally persist a secret that
+> is, in practice, public. Set the key first, then encrypt.
+
 The encryption key is **not** hardcoded. It is resolved, in order, from:
 
 1. the `org.jahia.modules.osgiconfigmanager.encryption.key` JVM system property, or
 2. the `OSGI_CONFIG_MANAGER_ENCRYPTION_KEY` environment variable.
 
-If neither is set, the engine falls back to a built-in default key and logs a warning at startup. **In that mode the protection is obfuscation only** — anyone with the module source can decrypt the values. Always configure a strong, secret key in production, e.g. in `karaf/etc/custom.system.properties`:
+If neither is set, the engine **refuses to produce new `ENC(...)` values** (the encrypt action returns an error and the UI surfaces it); decryption of existing values still works. Configure a strong, secret key in production, e.g. in `karaf/etc/custom.system.properties`:
 
 ```properties
 org.jahia.modules.osgiconfigmanager.encryption.key = <a-long-random-secret>
@@ -161,7 +166,13 @@ org.jahia.modules.osgiconfigmanager.encryption.key = <a-long-random-secret>
 org.jahia.modules.osgiconfigmanager.encryption.iterations = 210000
 ```
 
-New values use AES-256/GCM with a random per-value salt and are written in a versioned `v2:` payload. Values encrypted before this hardening still decrypt transparently. If you change the key, previously encrypted values can no longer be decrypted and must be re-entered.
+For local development or tests only, you can opt into the insecure built-in default key (obfuscation only — anyone with the module source can decrypt the values):
+
+```properties
+org.jahia.modules.osgiconfigmanager.encryption.allowDefaultKey = true
+```
+
+New values use AES-256/GCM with a random per-value salt and are written in a versioned `v2:` payload. Values encrypted before this hardening still decrypt transparently (a one-time WARN is logged to prompt migration). If you change the key, previously encrypted values can no longer be decrypted and must be re-entered.
 
 ## Installation
 
@@ -172,7 +183,14 @@ The module compiles to Java 11 bytecode (`<release>11</release>`) but builds wit
     export JAVA_HOME=$(/usr/libexec/java_home -v 17)   # macOS
     mvn clean install
     ```
-2.  Run the Cypress end-to-end tests from the `tests` directory when needed:
+2.  Run the frontend unit tests (Jest) — these run on the host Node and do **not** require a Jahia instance:
+    ```bash
+    yarn test                 # run the Jest unit suite
+    yarn test:coverage        # run with coverage (enforces the threshold ratchet)
+    yarn lint                 # ESLint over src/javascript (run yarn install first)
+    ```
+    Java unit tests (JUnit 5 + Mockito) run as part of `mvn clean install`; JaCoCo writes a coverage report to `target/site/jacoco` and enforces a coverage floor at the `verify` phase.
+3.  Run the Cypress end-to-end tests from the `tests` directory when needed:
     ```bash
     cd tests
     ./run-e2e-docker.sh
@@ -182,11 +200,11 @@ The module compiles to Java 11 bytecode (`<release>11</release>`) but builds wit
     cd tests
     ./run-e2e-local.sh
     ```
-3.  Optionally run the same Maven + Sonar validation used during development:
+4.  Optionally run the same Maven + Sonar validation used during development:
     ```bash
     mvn clean install sonar:sonar
     ```
-4.  Deploy the generated JAR file (`target/osgi-configurations-manager-<version>-SNAPSHOT.jar`, e.g. `osgi-configurations-manager-1.0.5-SNAPSHOT.jar`) to your Jahia instance.
+5.  Deploy the generated JAR file (`target/osgi-configurations-manager-<version>-SNAPSHOT.jar`, e.g. `osgi-configurations-manager-1.0.5-SNAPSHOT.jar`) to your Jahia instance.
 
 ## Usage
 

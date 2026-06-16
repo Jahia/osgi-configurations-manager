@@ -5,7 +5,7 @@ Ce document sert de fil conducteur pour la refonte progressive de l'UI afin de l
 Contraintes à garder en tête pendant tout le chantier :
 
 - s'appuyer sur les maquettes du dossier `FigmaScreenshots`
-- vérifier les composants/props/variables dans `/Users/dgigon/Tickets/CUSTOMERS/SOURCES_JAHIA/moonstone` quand nécessaire
+- vérifier les composants/props/variables dans votre copie locale des sources Moonstone (ou la doc Moonstone publiée) quand nécessaire
 - éviter la duplication de code pour rester compatible avec `mvn clean install sonar:sonar`
 - conserver ou stabiliser les sélecteurs `data-cy` utiles pendant la refonte
 - avancer par petits lots validables manuellement et via Cypress
