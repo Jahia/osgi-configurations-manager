@@ -70,7 +70,7 @@
              Tracked as a ratchet: the large uncovered surface is OSGi MetaType introspection, which
              needs a live container (integration test), not unit tests. Raise this toward 0.80 as the
              service/action logic gains coverage. -->
-        <jacoco.line.coverage.min>0.38</jacoco.line.coverage.min>
+        <jacoco.line.coverage.min>0.42</jacoco.line.coverage.min>
     </properties>
 
     <repositories>

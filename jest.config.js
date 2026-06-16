@@ -23,10 +23,10 @@ module.exports = {
     // components (Editor/CfgEditor/Monaco) gain tests; logic modules already sit well above this.
     coverageThreshold: {
         global: {
-            statements: 30,
-            branches: 18,
-            functions: 25,
-            lines: 28,
+            statements: 33,
+            branches: 20,
+            functions: 27,
+            lines: 31,
         },
     },
 };

@@ -7,7 +7,8 @@ jest.mock('../api/osgiService');
 jest.mock('./useToast', () => ({
     useToast: () => ({
         success: jest.fn(),
-        error: jest.fn()
+        error: jest.fn(),
+        warning: jest.fn()
     })
 }));
 jest.mock('react-i18next', () => ({
@@ -126,6 +127,65 @@ describe('useOsgiConfigs', () => {
             action: 'save',
             filename: 'test.cfg'
         }));
+    });
+
+    const flushMicrotasks = async (times = 20) => {
+        for (let i = 0; i < times; i++) {
+            // eslint-disable-next-line no-await-in-loop
+            await Promise.resolve();
+        }
+    };
+
+    it('decrypts ENC(...) values on load while keeping raw content encrypted', async () => {
+        osgiService.getAll.mockResolvedValue({ files: [] });
+        osgiService.read.mockResolvedValue({
+            data: { rawContent: 'password = ENC(cipher)', properties: [] }
+        });
+        osgiService.decrypt.mockResolvedValue({ decryptedValue: 's3cret' });
+
+        const { result } = renderHook(() => useOsgiConfigs());
+        // selectFile (not the bare setter) triggers fetchFileContent.
+        await act(async () => {
+            result.current.selectFile({ name: 'creds.cfg' });
+            await flushMicrotasks();
+        });
+
+        // The on-disk/raw view stays encrypted (decrypt-in-memory model)...
+        expect(result.current.rawContent).toBe('password = ENC(cipher)');
+        // ...and the file-bound decrypt was invoked with the selected filename.
+        expect(osgiService.decrypt).toHaveBeenCalledWith('ENC(cipher)', 'creds.cfg');
+    });
+
+    it('toggles between raw and visual modes, encrypting on the way back to raw', async () => {
+        osgiService.getAll.mockResolvedValue({ files: [] });
+        osgiService.read.mockResolvedValue({
+            data: { rawContent: 'password = ENC(cipher)', properties: [] }
+        });
+        osgiService.decrypt.mockResolvedValue({ decryptedValue: 's3cret' });
+        osgiService.encrypt.mockResolvedValue({ encryptedValue: 'ENC(cipher)' });
+
+        const { result } = renderHook(() => useOsgiConfigs());
+        await act(async () => {
+            result.current.selectFile({ name: 'creds.cfg' });
+            await flushMicrotasks();
+        });
+
+        expect(result.current.isRawMode).toBe(true);
+
+        // Switch to visual mode → decrypts the tree in memory.
+        await act(async () => {
+            await result.current.handleToggleRawMode();
+            await flushMicrotasks();
+        });
+        expect(result.current.isRawMode).toBe(false);
+
+        // Switch back to raw → re-encrypts before serializing.
+        await act(async () => {
+            await result.current.handleToggleRawMode();
+            await flushMicrotasks();
+        });
+        expect(result.current.isRawMode).toBe(true);
+        expect(osgiService.encrypt).toHaveBeenCalled();
     });
 
     it('handleSave shows a diff and persists only after confirmation when content changed', async () => {
