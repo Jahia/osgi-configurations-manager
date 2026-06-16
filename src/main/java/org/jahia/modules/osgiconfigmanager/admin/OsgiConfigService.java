@@ -34,7 +34,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.function.Consumer;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -45,7 +44,7 @@ import java.util.stream.Collectors;
 public class OsgiConfigService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OsgiConfigService.class);
-    private static final Set<String> SUPPORTED_CONFIG_EXTENSIONS = Set.of(".cfg", ".cfg.disabled", ".yml", ".yml.disabled");
+    static final Set<String> SUPPORTED_CONFIG_EXTENSIONS = Set.of(".cfg", ".cfg.disabled", ".yml", ".yml.disabled");
     private static final String DEFAULT_FACTORY_FILE_EXTENSION = ".cfg";
     private static final String FACTORY_IDENTIFIER_PATTERN = "^[A-Za-z0-9._-]+$";
     private static final String KEY_CREATED = "created";
@@ -58,7 +57,7 @@ public class OsgiConfigService {
     private static final String CONFIG_STATE_MODULE = "MODULE";
     private static final String CONFIG_STATE_MODULE_DEFAULT = "MODULE_DEFAULT";
     private static final String CONFIG_STATE_USER = "USER";
-    private static final String DISABLED_SUFFIX = ".disabled";
+    static final String DISABLED_SUFFIX = ".disabled";
     private static final String DEFAULT_CONFIGURATION_COMMENT = "# default configuration, can be edited";
     private static final String DEFAULT_CONFIGURATION_PREFIX = "# default configuration";
     private static final String DO_NOT_EDIT_PREFIX = "# do not edit";
@@ -68,18 +67,14 @@ public class OsgiConfigService {
     static final int MAX_RAW_CONTENT_BYTES = 5 * 1024 * 1024; // 5 MiB guard against disk-exhaustion writes
     static final int MAX_SEARCH_RESULTS = 500; // cap deep-search results so a broad query cannot run unbounded
     private File karafEtcDir;
-    // Filtering state is published atomically as a single immutable snapshot so request threads
-    // never observe a half-applied configuration update. FilterConfig is deeply immutable, so a
-    // volatile reference is sufficient for safe publication (S3077 does not apply).
-    @SuppressWarnings("java:S3077")
-    private volatile FilterConfig filterConfig = FilterConfig.EMPTY;
+    // Allow/deny filename filtering is delegated to ConfigFileFilter, which publishes its rules as
+    // an atomic immutable snapshot so request threads never observe a half-applied update.
+    private final ConfigFileFilter fileFilter = new ConfigFileFilter(SELF_CONFIG_PID);
     // Single service reference swapped by DS bind/unbind; volatile gives the required visibility.
     @SuppressWarnings("java:S3077")
     private volatile MetaTypeService metaTypeService;
 
     static final String SELF_CONFIG_PID = "org.jahia.modules.osgiconfigmanager";
-    private static final String SELF_CONFIG = SELF_CONFIG_PID + ".cfg";
-    private static final String SELF_CONFIG_DISABLED = SELF_CONFIG + DISABLED_SUFFIX;
 
     @org.osgi.service.metatype.annotations.ObjectClassDefinition(
             name = "OSGi Configurations Manager",
@@ -123,32 +118,6 @@ public class OsgiConfigService {
         }
     }
 
-    /**
-     * Immutable snapshot of the file-filtering configuration, published atomically via a single
-     * volatile reference so concurrent requests never see a partially-updated state.
-     */
-    private static final class FilterConfig {
-        private static final FilterConfig EMPTY = new FilterConfig(
-                Collections.emptySet(), Collections.emptySet(),
-                Collections.emptyList(), Collections.emptyList(), false);
-
-        private final Set<String> blacklist;
-        private final Set<String> whitelist;
-        private final List<Pattern> blacklistPatterns;
-        private final List<Pattern> whitelistPatterns;
-        private final boolean visualFormattingControlsEnabled;
-
-        private FilterConfig(Set<String> blacklist, Set<String> whitelist,
-                             List<Pattern> blacklistPatterns, List<Pattern> whitelistPatterns,
-                             boolean visualFormattingControlsEnabled) {
-            this.blacklist = blacklist;
-            this.whitelist = whitelist;
-            this.blacklistPatterns = blacklistPatterns;
-            this.whitelistPatterns = whitelistPatterns;
-            this.visualFormattingControlsEnabled = visualFormattingControlsEnabled;
-        }
-    }
-
     public OsgiConfigService() {
         String etcPath = System.getProperty("karaf.etc");
         if (etcPath != null && !etcPath.isEmpty()) {
@@ -172,38 +141,20 @@ public class OsgiConfigService {
     @org.osgi.service.component.annotations.Activate
     @org.osgi.service.component.annotations.Modified
     public void updateConfig(Map<String, Object> properties) {
-        Set<String> newBlacklist = new HashSet<>();
-        Set<String> newWhitelist = new HashSet<>();
-        List<Pattern> newBlacklistPatterns = new ArrayList<>();
-        List<Pattern> newWhitelistPatterns = new ArrayList<>();
-
-        if (properties != null && properties.containsKey("filteredFiles")) {
-            String filteredFiles = (String) properties.get("filteredFiles");
-            addConfiguredFilenames(newBlacklist, newBlacklistPatterns, filteredFiles);
-        }
-        if (properties != null && properties.containsKey("allowedFiles")) {
-            String allowedFiles = (String) properties.get("allowedFiles");
-            addConfiguredFilenames(newWhitelist, newWhitelistPatterns, allowedFiles);
-        }
-        boolean newVisualFormattingControlsEnabled =
-                getBooleanProperty(properties, "visualFormattingControlsEnabled", false);
-
-        // Single atomic publish of the new immutable snapshot.
-        this.filterConfig = new FilterConfig(newBlacklist, newWhitelist,
-                newBlacklistPatterns, newWhitelistPatterns, newVisualFormattingControlsEnabled);
+        fileFilter.update(properties);
 
         // Guard the multi-argument logging so the eager .size() calls are skipped when INFO is off
         // (S2629: do not evaluate logging arguments unconditionally).
         if (LOGGER.isInfoEnabled()) {
             LOGGER.info("Updated blacklist: {} (wildcards: {}), whitelist: {} (wildcards: {}), visual formatting controls: {}",
-                    newBlacklist, newBlacklistPatterns.size(), newWhitelist, newWhitelistPatterns.size(),
-                    newVisualFormattingControlsEnabled);
+                    fileFilter.blacklist(), fileFilter.blacklistWildcardCount(), fileFilter.whitelist(),
+                    fileFilter.whitelistWildcardCount(), fileFilter.isVisualFormattingControlsEnabled());
         }
     }
 
     public Map<String, Object> getUiConfig() {
         Map<String, Object> uiConfig = new LinkedHashMap<>();
-        uiConfig.put("visualFormattingControlsEnabled", filterConfig.visualFormattingControlsEnabled);
+        uiConfig.put("visualFormattingControlsEnabled", fileFilter.isVisualFormattingControlsEnabled());
         // Surface the encryption-key state so the UI can warn when values cannot be securely encrypted.
         boolean usingDefaultKey = CryptoEngine.isUsingDefaultKey();
         uiConfig.put("usingDefaultEncryptionKey", usingDefaultKey);
@@ -425,15 +376,13 @@ public class OsgiConfigService {
         if (isSelfConfigurationPid(pid)) {
             return !isRootUser;
         }
-        FilterConfig fc = this.filterConfig;
-        if (!hasConfiguredEntries(fc.whitelist, fc.whitelistPatterns)) {
-            return !effectiveFactory && (matchesConfiguredFilename(suggestedFilename, fc.blacklist, fc.blacklistPatterns)
-                    || matchesConfiguredFilename(suggestedFilename + DISABLED_SUFFIX, fc.blacklist, fc.blacklistPatterns));
+        if (!fileFilter.hasActiveWhitelist()) {
+            return !effectiveFactory && fileFilter.isBlacklisted(suggestedFilename);
         }
         if (effectiveFactory) {
-            return !hasWhitelistedFactoryCandidate(pid);
+            return !fileFilter.hasWhitelistedFactoryCandidate(pid);
         }
-        return !isFilenameAllowed(suggestedFilename, isRootUser);
+        return !fileFilter.isFilenameAllowed(suggestedFilename, isRootUser);
     }
 
     private Set<String> getManagedServiceFactoryPids(BundleContext bundleContext) {
@@ -1375,84 +1324,9 @@ public class OsgiConfigService {
         }
     }
 
-    private boolean isSupportedConfigFilename(String filename) {
+    static boolean isSupportedConfigFilename(String filename) {
         String lowercaseName = filename.toLowerCase(Locale.ROOT);
         return SUPPORTED_CONFIG_EXTENSIONS.stream().anyMatch(lowercaseName::endsWith);
-    }
-
-    private void addConfiguredFilenames(Set<String> target, List<Pattern> patterns, String csv) {
-        if (csv == null || csv.trim().isEmpty()) {
-            return;
-        }
-
-        for (String entry : csv.split(",")) {
-            addConfigNameAndVariant(target, patterns, entry.trim());
-        }
-    }
-
-    private boolean getBooleanProperty(Map<String, Object> properties, String key, boolean defaultValue) {
-        if (properties == null || !properties.containsKey(key)) {
-            return defaultValue;
-        }
-
-        Object value = properties.get(key);
-        if (value instanceof Boolean) {
-            return (Boolean) value;
-        }
-
-        if (value instanceof String) {
-            return Boolean.parseBoolean((String) value);
-        }
-
-        return defaultValue;
-    }
-
-    private void addConfigNameAndVariant(Set<String> target, List<Pattern> patterns, String filename) {
-        if (filename == null || filename.isEmpty()) {
-            return;
-        }
-
-        if (filename.contains("*")) {
-            patterns.add(buildWildcardPattern(filename));
-            if (filename.endsWith(DISABLED_SUFFIX)) {
-                patterns.add(buildWildcardPattern(filename.substring(0, filename.length() - DISABLED_SUFFIX.length())));
-            } else {
-                patterns.add(buildWildcardPattern(filename + DISABLED_SUFFIX));
-            }
-            return;
-        }
-
-        target.add(filename);
-        if (filename.endsWith(DISABLED_SUFFIX)) {
-            target.add(filename.substring(0, filename.length() - DISABLED_SUFFIX.length()));
-        } else if (isSupportedConfigFilename(filename) && !filename.endsWith(DISABLED_SUFFIX)) {
-            target.add(filename + DISABLED_SUFFIX);
-        }
-    }
-
-    private Pattern buildWildcardPattern(String wildcard) {
-        StringBuilder regex = new StringBuilder("^");
-        for (char c : wildcard.toCharArray()) {
-            if (c == '*') {
-                regex.append(".*");
-            } else {
-                regex.append(Pattern.quote(String.valueOf(c)));
-            }
-        }
-        regex.append('$');
-        return Pattern.compile(regex.toString());
-    }
-
-    private boolean matchesConfiguredFilename(String filename, Set<String> exactMatches, List<Pattern> wildcardPatterns) {
-        if (exactMatches.contains(filename)) {
-            return true;
-        }
-
-        return wildcardPatterns.stream().anyMatch(pattern -> pattern.matcher(filename).matches());
-    }
-
-    private boolean hasConfiguredEntries(Set<String> exactMatches, List<Pattern> wildcardPatterns) {
-        return !exactMatches.isEmpty() || !wildcardPatterns.isEmpty();
     }
 
     private void ensurePidAllowed(String pid, boolean isRootUser) throws IOException {
@@ -1462,9 +1336,8 @@ public class OsgiConfigService {
     }
 
     private void ensureFilenameAllowed(String filename, boolean isRootUser, String action) throws IOException {
-        if (!isFilenameAllowed(filename, isRootUser)) {
-            FilterConfig fc = this.filterConfig;
-            String reason = hasConfiguredEntries(fc.whitelist, fc.whitelistPatterns)
+        if (!fileFilter.isFilenameAllowed(filename, isRootUser)) {
+            String reason = fileFilter.hasActiveWhitelist()
                     ? "is not permitted by the active white list."
                     : "is blacklisted or reserved.";
             throw new ConfigAccessDeniedException(action + " denied: " + filename + " " + reason);
@@ -1472,34 +1345,15 @@ public class OsgiConfigService {
     }
 
     boolean isFilenameAllowed(String filename, boolean isRootUser) {
-        if (isSelfConfigurationFilename(filename)) {
-            return isRootUser;
-        }
-        FilterConfig fc = this.filterConfig;
-        if (hasConfiguredEntries(fc.whitelist, fc.whitelistPatterns)) {
-            return matchesConfiguredFilename(filename, fc.whitelist, fc.whitelistPatterns);
-        }
-        return !matchesConfiguredFilename(filename, fc.blacklist, fc.blacklistPatterns);
+        return fileFilter.isFilenameAllowed(filename, isRootUser);
     }
 
     boolean hasWhitelistedFactoryCandidate(String factoryPid) {
-        FilterConfig fc = this.filterConfig;
-        if (!hasConfiguredEntries(fc.whitelist, fc.whitelistPatterns)) {
-            return true;
-        }
-        String sampleCandidate = factoryPid + "-placeholder" + DEFAULT_FACTORY_FILE_EXTENSION;
-        String disabledSampleCandidate = sampleCandidate + DISABLED_SUFFIX;
-        return fc.whitelist.stream().anyMatch(entry -> entry.startsWith(factoryPid + "-"))
-                || matchesConfiguredFilename(sampleCandidate, fc.whitelist, fc.whitelistPatterns)
-                || matchesConfiguredFilename(disabledSampleCandidate, fc.whitelist, fc.whitelistPatterns);
+        return fileFilter.hasWhitelistedFactoryCandidate(factoryPid);
     }
 
     private boolean isSelfConfigurationPid(String pid) {
         return SELF_CONFIG_PID.equals(pid);
-    }
-
-    private boolean isSelfConfigurationFilename(String filename) {
-        return SELF_CONFIG.equals(filename) || SELF_CONFIG_DISABLED.equals(filename);
     }
 
     @SuppressWarnings("unchecked")
