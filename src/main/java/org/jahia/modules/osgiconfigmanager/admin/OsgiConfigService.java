@@ -53,6 +53,8 @@ public class OsgiConfigService {
     private static final String KEY_FILENAME = "filename";
     private static final String KEY_PROPERTIES = "properties";
     private static final String KEY_RAW_CONTENT = "rawContent";
+    private static final String ENTRY_VALUE = "value";
+    private static final String ENTRY_TYPE_COMMENT = "comment";
     private static final String CONFIG_STATE_MODULE = "MODULE";
     private static final String CONFIG_STATE_MODULE_DEFAULT = "MODULE_DEFAULT";
     private static final String CONFIG_STATE_USER = "USER";
@@ -66,8 +68,12 @@ public class OsgiConfigService {
     static final int MAX_RAW_CONTENT_BYTES = 5 * 1024 * 1024; // 5 MiB guard against disk-exhaustion writes
     private File karafEtcDir;
     // Filtering state is published atomically as a single immutable snapshot so request threads
-    // never observe a half-applied configuration update.
+    // never observe a half-applied configuration update. FilterConfig is deeply immutable, so a
+    // volatile reference is sufficient for safe publication (S3077 does not apply).
+    @SuppressWarnings("java:S3077")
     private volatile FilterConfig filterConfig = FilterConfig.EMPTY;
+    // Single service reference swapped by DS bind/unbind; volatile gives the required visibility.
+    @SuppressWarnings("java:S3077")
     private volatile MetaTypeService metaTypeService;
 
     static final String SELF_CONFIG_PID = "org.jahia.modules.osgiconfigmanager";
@@ -485,8 +491,8 @@ public class OsgiConfigService {
         }
 
         if (trimmed.startsWith("#")) {
-            entry.put("type", "comment");
-            entry.put("value", line);
+            entry.put("type", ENTRY_TYPE_COMMENT);
+            entry.put(ENTRY_VALUE, line);
             return entry;
         }
 
@@ -494,12 +500,12 @@ public class OsgiConfigService {
         if (separatorIndex != -1) {
             entry.put("type", "property");
             entry.put("key", line.substring(0, separatorIndex).trim());
-            entry.put("value", line.substring(separatorIndex + 1).trim());
+            entry.put(ENTRY_VALUE, line.substring(separatorIndex + 1).trim());
             return entry;
         }
 
-        entry.put("type", "comment");
-        entry.put("value", line);
+        entry.put("type", ENTRY_TYPE_COMMENT);
+        entry.put(ENTRY_VALUE, line);
         return entry;
     }
 
@@ -791,7 +797,7 @@ public class OsgiConfigService {
         if (optionValues != null) {
             for (int i = 0; i < optionValues.length; i++) {
                 Map<String, String> option = new LinkedHashMap<>();
-                option.put("value", optionValues[i]);
+                option.put(ENTRY_VALUE, optionValues[i]);
                 option.put("label", optionLabels != null && optionLabels.length > i ? optionLabels[i] : optionValues[i]);
                 options.add(option);
             }
@@ -1473,13 +1479,13 @@ public class OsgiConfigService {
         try (BufferedWriter bufferedWriter = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8)) {
             for (Map<String, Object> entry : entries) {
                 String entryType = (String) entry.get("type");
-                if ("comment".equals(entryType)) {
-                    bufferedWriter.write((String) entry.get("value"));
+                if (ENTRY_TYPE_COMMENT.equals(entryType)) {
+                    bufferedWriter.write((String) entry.get(ENTRY_VALUE));
                     bufferedWriter.newLine();
                 } else if ("empty".equals(entryType)) {
                     bufferedWriter.newLine();
                 } else if ("property".equals(entryType)) {
-                    bufferedWriter.write(entry.get("key") + " = " + entry.get("value"));
+                    bufferedWriter.write(entry.get("key") + " = " + entry.get(ENTRY_VALUE));
                     bufferedWriter.newLine();
                 }
             }

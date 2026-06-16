@@ -20,6 +20,7 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import javax.jcr.RepositoryException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.BufferedReader;
@@ -136,7 +137,7 @@ public class OsgiConfigAction extends Action {
     // ------------------------------------------------------------------ GET
 
     private Map<String, Object> handleGet(HttpServletRequest req, RenderContext renderContext,
-            JCRSessionWrapper session, boolean isRootUser) throws Exception {
+            JCRSessionWrapper session, boolean isRootUser) throws IOException, RepositoryException {
         Map<String, Object> result = new LinkedHashMap<>();
         String filename = req.getParameter(PARAM_FILENAME);
         String actionParam = req.getParameter(PARAM_ACTION);
@@ -191,7 +192,7 @@ public class OsgiConfigAction extends Action {
     }
 
     private void readPreference(HttpServletRequest req, RenderContext renderContext, JCRSessionWrapper session,
-            Map<String, Object> result) throws Exception {
+            Map<String, Object> result) throws RepositoryException {
         String key = req.getParameter(PARAM_KEY);
         if (!PreferenceKeys.isAllowed(key)) {
             return;
@@ -210,7 +211,7 @@ public class OsgiConfigAction extends Action {
     // ----------------------------------------------------------------- POST
 
     private Map<String, Object> handlePost(HttpServletRequest req, RenderContext renderContext,
-            JCRSessionWrapper session, boolean isRootUser, HttpServletResponse response) throws Exception {
+            JCRSessionWrapper session, boolean isRootUser, HttpServletResponse response) throws IOException, RepositoryException {
         Map<String, Object> payload = parseBody(req);
         String actionType = (String) payload.get(PARAM_ACTION);
         String filename = (String) payload.get(PARAM_FILENAME);
@@ -289,7 +290,7 @@ public class OsgiConfigAction extends Action {
      *         respond with a 400; {@code true} otherwise.
      */
     private boolean writePreference(Map<String, Object> payload, RenderContext renderContext,
-            JCRSessionWrapper session, Map<String, Object> result) throws Exception {
+            JCRSessionWrapper session, Map<String, Object> result) throws RepositoryException {
         String key = (String) payload.get(PARAM_KEY);
         if (!PreferenceKeys.isAllowed(key)) {
             return false;

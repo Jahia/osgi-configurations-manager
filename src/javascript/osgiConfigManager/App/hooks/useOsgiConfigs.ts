@@ -177,7 +177,7 @@ export const useOsgiConfigs = () => {
                                 obj.value = decData.decryptedValue || obj.value;
                                 // Keep encrypted=true flag, but value is now cleartext
                             } catch (e: any) {
-                                console.error("Decryption failed for", obj.value, e);
+                                console.error("Decryption failed for an encrypted property", e);
                             }
                         } else {
                             await Promise.all(Object.entries(obj)
@@ -299,7 +299,7 @@ export const useOsgiConfigs = () => {
                         const encData = await osgiService.encrypt(nextObj.value);
                         nextObj.value = encData.encryptedValue || nextObj.value;
                     } catch (e: any) {
-                        console.error("Encryption failed for", nextObj.value, e);
+                        console.error("Encryption failed for a property", e);
                     }
                 }
             } else {

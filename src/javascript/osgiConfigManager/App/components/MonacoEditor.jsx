@@ -1227,7 +1227,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
         );
 
         try {
-            const result = await osgiService.decrypt(textToDecrypt);
+            const result = await osgiService.decrypt(textToDecrypt, filename);
             if (result && result.decryptedValue) {
                 editor.executeEdits('source', [{
                     range: range,
