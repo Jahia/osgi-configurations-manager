@@ -16,17 +16,10 @@ import org.osgi.service.metatype.MetaTypeService;
 import org.osgi.service.metatype.ObjectClassDefinition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.yaml.snakeyaml.DumperOptions;
-import org.yaml.snakeyaml.LoaderOptions;
-import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.constructor.SafeConstructor;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
@@ -53,7 +46,6 @@ public class OsgiConfigService {
     private static final String KEY_PROPERTIES = "properties";
     private static final String KEY_RAW_CONTENT = "rawContent";
     private static final String ENTRY_VALUE = "value";
-    private static final String ENTRY_TYPE_COMMENT = "comment";
     private static final String CONFIG_STATE_MODULE = "MODULE";
     private static final String CONFIG_STATE_MODULE_DEFAULT = "MODULE_DEFAULT";
     private static final String CONFIG_STATE_USER = "USER";
@@ -460,9 +452,9 @@ public class OsgiConfigService {
         enrichWithMetatype(result, safeFilename, type, locale);
 
         if ("cfg".equals(type)) {
-            result.put(KEY_PROPERTIES, readCfgProperties(filePath));
+            result.put(KEY_PROPERTIES, ConfigFileCodec.readCfgProperties(filePath));
         } else if ("yml".equals(type)) {
-            result.put(KEY_PROPERTIES, readYamlProperties(filePath));
+            result.put(KEY_PROPERTIES, ConfigFileCodec.readYamlProperties(filePath));
         }
         return result;
     }
@@ -482,70 +474,6 @@ public class OsgiConfigService {
         Map<String, Object> metaTypeDefinition = getMetaTypeDefinition(pid, locale);
         if (metaTypeDefinition != null) {
             result.put("metatype", metaTypeDefinition);
-        }
-    }
-
-    private List<Map<String, String>> readCfgProperties(Path filePath) throws IOException {
-        List<Map<String, String>> entries = new ArrayList<>();
-        try (BufferedReader bufferedReader = Files.newBufferedReader(filePath, StandardCharsets.UTF_8)) {
-            String line;
-            while ((line = bufferedReader.readLine()) != null) {
-                entries.add(parseCfgLine(line));
-            }
-        }
-        return entries;
-    }
-
-    private Map<String, String> parseCfgLine(String line) {
-        Map<String, String> entry = new HashMap<>();
-        String trimmed = line.trim();
-        if (trimmed.isEmpty()) {
-            entry.put("type", "empty");
-            return entry;
-        }
-
-        if (trimmed.startsWith("#")) {
-            entry.put("type", ENTRY_TYPE_COMMENT);
-            entry.put(ENTRY_VALUE, line);
-            return entry;
-        }
-
-        int separatorIndex = findCfgSeparatorIndex(line);
-        if (separatorIndex != -1) {
-            entry.put("type", "property");
-            entry.put("key", line.substring(0, separatorIndex).trim());
-            entry.put(ENTRY_VALUE, line.substring(separatorIndex + 1).trim());
-            return entry;
-        }
-
-        entry.put("type", ENTRY_TYPE_COMMENT);
-        entry.put(ENTRY_VALUE, line);
-        return entry;
-    }
-
-    private int findCfgSeparatorIndex(String line) {
-        int eqIndex = line.indexOf('=');
-        int colIndex = line.indexOf(':');
-        if (eqIndex != -1 && colIndex != -1) {
-            return Math.min(eqIndex, colIndex);
-        }
-        if (eqIndex != -1) {
-            return eqIndex;
-        }
-        return colIndex;
-    }
-
-    private Object readYamlProperties(Path filePath) throws IOException {
-        LoaderOptions loaderOptions = new LoaderOptions();
-        Yaml yaml = new Yaml(new SafeConstructor(loaderOptions) {
-            @Override
-            protected Map<Object, Object> createDefaultMap(int initSize) {
-                return new LinkedHashMap<>(initSize);
-            }
-        });
-
-        try (InputStream in = Files.newInputStream(filePath)) {
-            return yaml.load(in);
         }
     }
 
@@ -863,7 +791,6 @@ public class OsgiConfigService {
         }
     }
 
-    @SuppressWarnings("unchecked")
     public void saveFile(String filename, Map<String, Object> content) throws IOException {
         saveFile(filename, content, true);
     }
@@ -894,23 +821,18 @@ public class OsgiConfigService {
         // disk.
         // This allows the frontend to handle encryption, formatting, and comments.
         if (content.containsKey(KEY_RAW_CONTENT)) {
-            writeRawContent(filePath, (String) content.get(KEY_RAW_CONTENT));
+            ConfigFileCodec.writeRawContent(filePath, (String) content.get(KEY_RAW_CONTENT));
             return;
         }
 
         String type = getFileType(safeFilename);
 
         if ("cfg".equals(type)) {
-            saveCfgContent(filePath, content.get(KEY_PROPERTIES));
+            ConfigFileCodec.saveCfgContent(filePath, content.get(KEY_PROPERTIES));
         } else if ("yml".equals(type)) {
             // YML fallback if no rawContent sent (unlikely given frontend logic, but good
             // for completeness)
-            DumperOptions options = new DumperOptions();
-            options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-            Yaml yaml = new Yaml(options);
-            try (Writer writer = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8)) {
-                yaml.dump(content.get(KEY_PROPERTIES), writer);
-            }
+            ConfigFileCodec.saveYaml(filePath, content.get(KEY_PROPERTIES));
         }
     }
 
@@ -1356,26 +1278,6 @@ public class OsgiConfigService {
         return SELF_CONFIG_PID.equals(pid);
     }
 
-    @SuppressWarnings("unchecked")
-    private void saveCfgContent(Path filePath, Object propertiesObj) throws IOException {
-        if (propertiesObj == null) {
-            LOGGER.warn("No properties or rawContent provided for .cfg save. Writing empty file.");
-            writeEmptyFile(filePath);
-            return;
-        }
-
-        if (propertiesObj instanceof Map) {
-            saveLegacyCfgProperties(filePath, (Map<String, String>) propertiesObj);
-            return;
-        }
-
-        saveCfgEntries(filePath, (List<Map<String, Object>>) propertiesObj);
-    }
-
-    private void writeRawContent(Path filePath, String raw) throws IOException {
-        Files.write(filePath, (raw == null ? "" : raw).getBytes(StandardCharsets.UTF_8));
-    }
-
     private void validateRawContentSize(String rawContent) throws IOException {
         int byteLength = rawContent.getBytes(StandardCharsets.UTF_8).length;
         if (byteLength > MAX_RAW_CONTENT_BYTES) {
@@ -1392,37 +1294,6 @@ public class OsgiConfigService {
         if (Files.size(filePath) > MAX_RAW_CONTENT_BYTES) {
             throw new IOException("Configuration file " + filename + " exceeds the maximum allowed size of "
                     + MAX_RAW_CONTENT_BYTES + " bytes");
-        }
-    }
-
-    private void writeEmptyFile(Path filePath) throws IOException {
-        Files.write(filePath, new byte[0]);
-    }
-
-    private void saveLegacyCfgProperties(Path filePath, Map<String, String> properties) throws IOException {
-        Properties props = new Properties();
-        props.putAll(properties);
-        // Store through a UTF-8 writer (Properties.store(OutputStream) would write ISO-8859-1,
-        // inconsistent with how the file is read back).
-        try (BufferedWriter writer = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8)) {
-            props.store(writer, "Modified by OSGi Configurations Manager");
-        }
-    }
-
-    private void saveCfgEntries(Path filePath, List<Map<String, Object>> entries) throws IOException {
-        try (BufferedWriter bufferedWriter = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8)) {
-            for (Map<String, Object> entry : entries) {
-                String entryType = (String) entry.get("type");
-                if (ENTRY_TYPE_COMMENT.equals(entryType)) {
-                    bufferedWriter.write((String) entry.get(ENTRY_VALUE));
-                    bufferedWriter.newLine();
-                } else if ("empty".equals(entryType)) {
-                    bufferedWriter.newLine();
-                } else if ("property".equals(entryType)) {
-                    bufferedWriter.write(entry.get("key") + " = " + entry.get(ENTRY_VALUE));
-                    bufferedWriter.newLine();
-                }
-            }
         }
     }
 
