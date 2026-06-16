@@ -9,6 +9,11 @@ services:
             - SUPER_USER_PASSWORD=${SUPER_USER_PASSWORD}
             - JAHIA_LICENSE=${JAHIA_LICENSE}
             - JPDA=true
+            # Opt into the built-in (insecure) default encryption key so the E2E suite can exercise
+            # the real encrypt/decrypt round-trip. Tomcat's catalina.sh appends CATALINA_OPTS to the
+            # JVM, and the OSGi module runs in that JVM, so CryptoEngine.isDefaultKeyAllowed() sees it.
+            # FOR TESTS ONLY — production must configure a real ...encryption.key (see SECURITY.md).
+            - CATALINA_OPTS=-Dorg.jahia.modules.osgiconfigmanager.encryption.allowDefaultKey=true
         extra_hosts:
             - jahia:127.0.0.1
         networks:

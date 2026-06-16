@@ -279,14 +279,15 @@ The module is covered at three layers (see [AGENTS.md](AGENTS.md) for commands a
         with **reformat warning** and **preference persistence**, and the **YAML validation** save gate;
     -   sidebar/header: filename filter, **deep content search**, **download**, state badges
         (`USER`/`MODULE_DEFAULT`);
-    -   security: encryption **fails closed** when no server key is configured (the save is aborted
-        rather than persisting a secret as plaintext).
+    -   security: encryption **round-trip** — mark a value encrypted → save (persisted as `ENC(...)`
+        ciphertext on disk) → reload → transparently decrypted in memory. The complementary
+        **fail-closed** guarantee (refusing to encrypt when no key is configured) is covered by the
+        Java unit tests.
 
-    > **Encryption round-trip:** the default test container configures no encryption key, so the E2E
-    > suite asserts the fail-closed behavior. To exercise a full encrypt → save → reload → decrypt
-    > round-trip, start Jahia with
-    > `-Dorg.jahia.modules.osgiconfigmanager.encryption.allowDefaultKey=true` (or a real
-    > `...encryption.key`) and add a round-trip spec.
+    > **Encryption in the E2E container:** the suite opts into the built-in default key via
+    > `CATALINA_OPTS=-Dorg.jahia.modules.osgiconfigmanager.encryption.allowDefaultKey=true`
+    > (`tests/docker-compose.yml`) **for tests only**. Production must configure a real
+    > `...encryption.key` — see the encryption-key section above and [SECURITY.md](SECURITY.md).
 
 ## Technologies
 

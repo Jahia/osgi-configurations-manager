@@ -141,11 +141,12 @@ E2E gotchas:
 - **CSRF:** any direct `cy.request` to the action endpoint needs `X-Requested-With` (already in the
   `osgiRequest` helper). UI saves that change content go through the review-before-save diff — use
   `cy.confirmDiffSave()` (or `[data-cy="diff-modal-cancel"]`).
-- **Encryption in the test container:** no key is configured and `allowDefaultKey` is **not** set,
-  so `encrypt` is expected to **fail closed**. `09-encryption.cy.ts` asserts that. The encrypt/
-  decrypt **round-trip is not covered** because it needs a key — to add it, boot Jahia with
-  `-Dorg.jahia.modules.osgiconfigmanager.encryption.allowDefaultKey=true` (or a real key) and write a
-  spec that encrypts → saves → reloads → reads back the decrypted-in-memory value.
+- **Encryption in the test container:** the Jahia service in `docker-compose.yml` sets
+  `CATALINA_OPTS=-Dorg.jahia.modules.osgiconfigmanager.encryption.allowDefaultKey=true` so encryption
+  is operational and `09-encryption.cy.ts` exercises the full round-trip (encrypt → save → `ENC(...)`
+  at rest → reload → decrypted-in-memory). The complementary **fail-closed** behavior is covered at
+  the unit level (`CryptoEngineTest.serviceEncrypt_defaultKeyNotAllowed_failsClosed`) — it can't share
+  a container with the round-trip because `allowDefaultKey` is a JVM-wide flag.
 - **Selector convention:** tests select by `data-cy`. When you add UI, add a stable `data-cy`;
   dynamic ones are `data-cy={`name-${id}`}` (e.g. `cfg-row-0`, `cfg-delete-0`,
   `file-row-<encoded-name>`). Toast text is asserted against the **English** `notification.*` strings
