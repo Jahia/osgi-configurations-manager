@@ -437,13 +437,6 @@ export const useOsgiConfigs = () => {
         const wasClean = !hasUnsaved;
         const newMode = !isRawMode;
 
-        // Persist preference
-        try {
-            await osgiService.setPreference('osgiEditorMode', newMode ? 'raw' : 'visual');
-        } catch (e) {
-            console.error("Failed to save user preference", e);
-        }
-
         if (isRawMode) {
             // Switching TO Visual Mode
             const { parseCfgContent } = await import('../utils/configUtils');
@@ -509,6 +502,15 @@ export const useOsgiConfigs = () => {
             }
         }
         setIsRawMode(newMode);
+
+        // Persist the editor-mode preference only after the switch has actually completed. Persisting
+        // it up front left osgiEditorMode='raw' even when encryption failed and we aborted the switch
+        // (the fail-closed return above), so a reload would wrongly initialize in raw mode.
+        try {
+            await osgiService.setPreference('osgiEditorMode', newMode ? 'raw' : 'visual');
+        } catch (e) {
+            console.error("Failed to save user preference", e);
+        }
     }, [hasUnsaved, isRawMode, rawContent, properties, resetProperties, selectedFile, t, toastError, toastWarning]);
 
     const handleSetEditorMode = useCallback(async (mode: 'raw' | 'visual') => {

@@ -221,6 +221,9 @@ describe('useOsgiConfigs', () => {
         expect(result.current.isRawMode).toBe(false);
         expect(result.current.rawContent).toBe('password = ENC(cipher)');
         expect(result.current.rawContent).not.toContain('s3cret');
+        // And the persisted preference must not have been flipped to 'raw' for the aborted switch,
+        // otherwise a reload would wrongly initialize in raw mode.
+        expect(osgiService.setPreference).not.toHaveBeenCalledWith('osgiEditorMode', 'raw');
     });
 
     it('handleSave shows a diff and persists only after confirmation when content changed', async () => {
