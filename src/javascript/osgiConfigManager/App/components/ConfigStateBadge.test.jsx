@@ -25,4 +25,18 @@ describe('ConfigStateBadge', () => {
 
         expect(screen.getByText('configState.badge.user')).toBeInTheDocument();
     });
+
+    it('exposes the badge as a labelled img so aria-label/aria-describedby are permitted (no aria-prohibited-attr)', () => {
+        // The Chip renders a <div>; without an explicit role the generic role prohibits aria-label.
+        // role="img" + an accessible name keeps axe's aria-prohibited-attr rule satisfied.
+        render(<ConfigStateBadge state="MODULE" showTooltip={false}/>);
+
+        expect(screen.getByRole('img', {name: 'configState.badge.module'})).toBeInTheDocument();
+    });
+
+    it('keeps the full state as the accessible name even in compact (icon-only) mode', () => {
+        render(<ConfigStateBadge state="MODULE_DEFAULT" compact showTooltip={false}/>);
+
+        expect(screen.getByRole('img', {name: 'configState.badge.moduleDefault'})).toBeInTheDocument();
+    });
 });

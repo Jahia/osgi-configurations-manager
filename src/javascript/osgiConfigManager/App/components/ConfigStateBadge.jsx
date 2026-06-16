@@ -25,6 +25,11 @@ const STATE_STYLES = {
 
 const renderChip = (state, config, label, ariaLabel) => (
     <Chip
+        // Moonstone renders Chip as a bare <div> (implicit ARIA role "generic"), and the generic
+        // role PROHIBITS aria-label/aria-describedby. role="img" models the badge as a single
+        // iconographic graphic whose accessible name is the config state, which permits both the
+        // aria-label below and the aria-describedby injected by the Tooltip wrapper.
+        role="img"
         data-cy={`config-state-badge-${state.toLowerCase()}`}
         aria-label={ariaLabel}
         color={config.color}
