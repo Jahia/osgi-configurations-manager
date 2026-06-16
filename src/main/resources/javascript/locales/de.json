@@ -24,7 +24,10 @@
         "createSuccess": "{{name}} erstellt",
         "uploadSuccess": "{{name}} hochgeladen",
         "markAsDefaultSuccess": "{{name}} ist jetzt als Standardkonfiguration markiert",
-        "dismiss": "Benachrichtigung schließen"
+        "dismiss": "Benachrichtigung schließen",
+        "decryptError": "Ein oder mehrere verschlüsselte Werte konnten nicht entschlüsselt werden.",
+        "encryptError": "Ein oder mehrere Werte konnten nicht verschlüsselt werden; prüfen Sie, ob ein Verschlüsselungsschlüssel auf dem Server konfiguriert ist. Speichern wurde abgebrochen.",
+        "reserializeWarning": "Der Wechsel des Editormodus hat Kommentare, Reihenfolge oder Abstände neu formatiert."
     },
     "modal": {
         "cancel": "Abbrechen",

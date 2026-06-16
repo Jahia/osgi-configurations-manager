@@ -24,7 +24,10 @@
         "createSuccess": "{{name}} criado",
         "uploadSuccess": "{{name}} enviado",
         "markAsDefaultSuccess": "{{name}} está agora marcado como configuração padrão",
-        "dismiss": "Fechar a notificação"
+        "dismiss": "Fechar a notificação",
+        "decryptError": "Não foi possível descriptografar um ou mais valores criptografados.",
+        "encryptError": "Não foi possível criptografar um ou mais valores; verifique se há uma chave de criptografia configurada no servidor. O salvamento foi cancelado.",
+        "reserializeWarning": "A troca de modo do editor reformatou comentários, ordem ou espaçamento."
     },
     "modal": {
         "cancel": "Cancelar",

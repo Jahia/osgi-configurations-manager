@@ -24,7 +24,10 @@
         "createSuccess": "{{name}} créé",
         "markAsDefaultSuccess": "{{name}} est maintenant marqué comme configuration par défaut",
         "uploadSuccess": "{{name}} téléchargé",
-        "dismiss": "Fermer la notification"
+        "dismiss": "Fermer la notification",
+        "decryptError": "Impossible de déchiffrer une ou plusieurs valeurs chiffrées.",
+        "encryptError": "Impossible de chiffrer une ou plusieurs valeurs ; vérifiez qu'une clé de chiffrement est configurée sur le serveur. L'enregistrement a été annulé.",
+        "reserializeWarning": "Le changement de mode d'édition a reformaté les commentaires, l'ordre ou l'espacement."
     },
     "modal": {
         "cancel": "Annuler",

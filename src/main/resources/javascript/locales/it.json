@@ -24,7 +24,10 @@
         "createSuccess": "{{name}} creato",
         "uploadSuccess": "{{name}} caricato",
         "markAsDefaultSuccess": "{{name}} è ora contrassegnato come configurazione predefinita",
-        "dismiss": "Chiudi la notifica"
+        "dismiss": "Chiudi la notifica",
+        "decryptError": "Impossibile decifrare uno o più valori crittografati.",
+        "encryptError": "Impossibile crittografare uno o più valori; verifica che sul server sia configurata una chiave di crittografia. Salvataggio annullato.",
+        "reserializeWarning": "Il cambio di modalità dell'editor ha riformattato commenti, ordine o spaziatura."
     },
     "modal": {
         "cancel": "Annulla",

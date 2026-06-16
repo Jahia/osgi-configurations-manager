@@ -24,7 +24,10 @@
         "createSuccess": "{{name}} creado",
         "uploadSuccess": "{{name}} subido",
         "markAsDefaultSuccess": "{{name}} ahora está marcado como configuración predeterminada",
-        "dismiss": "Cerrar la notificación"
+        "dismiss": "Cerrar la notificación",
+        "decryptError": "No se pudieron descifrar uno o más valores cifrados.",
+        "encryptError": "No se pudieron cifrar uno o más valores; verifica que haya una clave de cifrado configurada en el servidor. Se canceló el guardado.",
+        "reserializeWarning": "El cambio de modo del editor reformateó comentarios, orden o espaciado."
     },
     "modal": {
         "cancel": "Cancelar",

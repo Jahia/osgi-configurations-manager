@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { OsgiAvailableMetatypeDefinition, OsgiMetatypeDefinition, osgiService } from '../api/osgiService';
 import { useToast } from './useToast';
 import { useProperties } from './useProperties';
+import { decryptTree, encryptTree } from '../utils/cryptoTree';
 
 interface OsgiFile {
     name: string;
@@ -53,7 +54,7 @@ const detectConfigStateFromRawContent = (content: string): 'MODULE' | 'MODULE_DE
 
 export const useOsgiConfigs = () => {
     const { t } = useTranslation('osgi-configurations-manager');
-    const { success, error: toastError } = useToast();
+    const { success, error: toastError, warning: toastWarning } = useToast();
     const [files, setFiles] = useState<OsgiFile[]>([]);
     const [selectedFile, setSelectedFile] = useState<OsgiFile | null>(null);
     const {
@@ -85,6 +86,20 @@ export const useOsgiConfigs = () => {
     const [metatypeInfo, setMetatypeInfo] = useState<OsgiMetatypeDefinition | null>(null);
 
     const hasUnsaved = JSON.stringify(properties) !== JSON.stringify(originalProperties) || rawContent !== originalRawContent;
+
+    // Guard against losing edits to a tab close / reload / browser navigation. In-app navigation is
+    // already protected by runWithUnsavedConfirmation; this covers the cases React cannot intercept.
+    useEffect(() => {
+        if (!hasUnsaved) {
+            return undefined;
+        }
+        const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+            event.preventDefault();
+            event.returnValue = '';
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [hasUnsaved]);
 
     const [searchInContent, setSearchInContent] = useState<boolean>(false);
     const [visualFormattingControlsEnabled, setVisualFormattingControlsEnabled] = useState<boolean>(false);
@@ -166,30 +181,14 @@ export const useOsgiConfigs = () => {
                     parsed = {};
                 }
 
-                // 2. Decrypt Recursive Helper
-                const decryptRecursive = async (obj: any) => {
-                    if (Array.isArray(obj)) {
-                        await Promise.all(obj.map(item => decryptRecursive(item)));
-                    } else if (obj && typeof obj === 'object') {
-                        if (obj.isLeaf && obj.encrypted && typeof obj.value === 'string' && obj.value.startsWith('ENC(')) {
-                            try {
-                                const decData = await osgiService.decrypt(obj.value, filename);
-                                obj.value = decData.decryptedValue || obj.value;
-                                // Keep encrypted=true flag, but value is now cleartext
-                            } catch (e: any) {
-                                console.error("Decryption failed for an encrypted property", e);
-                            }
-                        } else {
-                            await Promise.all(Object.entries(obj)
-                                .filter(([k]) => k !== '_order')
-                                .map(([_, v]) => decryptRecursive(v))
-                            );
-                        }
-                    }
-                };
-
-                // 3. Perform Decryption
-                await decryptRecursive(parsed);
+                // Decrypt ENC(...) leaf values in place (decrypt-in-memory model). Surface a toast
+                // if any value could not be decrypted so the user is not misled into thinking a
+                // displayed/blank value is the real secret.
+                let decryptFailed = false;
+                await decryptTree(parsed, filename, () => { decryptFailed = true; });
+                if (decryptFailed) {
+                    toastError(t('notification.decryptError'));
+                }
 
                 resetProperties(parsed);
                 setOriginalProperties(JSON.parse(JSON.stringify(parsed)));
@@ -213,7 +212,7 @@ export const useOsgiConfigs = () => {
             fetchFiles();
         }
         setLoadingFile(false);
-    }, [fetchFiles, resetProperties]);
+    }, [fetchFiles, resetProperties, t, toastError]);
 
     const prevSearchInContent = useRef(searchInContent);
 
@@ -286,34 +285,6 @@ export const useOsgiConfigs = () => {
     const showComments = visualFormattingControlsEnabled && showCommentsPreference;
     const showEmptyLines = visualFormattingControlsEnabled && showEmptyLinesPreference;
 
-    // Helper to encrypt properties tree before saving/converting to raw
-    const encryptRecursive = useCallback(async (obj: any): Promise<any> => {
-        if (Array.isArray(obj)) {
-            return Promise.all(obj.map(item => encryptRecursive(item)));
-        } else if (obj && typeof obj === 'object') {
-            const nextObj = { ...obj };
-            // Ensure we only encrypt if it's a leaf node that is marked as encrypted but NOT already encrypted-string
-            if (nextObj.isLeaf && nextObj.encrypted && typeof nextObj.value === 'string') {
-                if (!nextObj.value.startsWith('ENC(')) {
-                    try {
-                        const encData = await osgiService.encrypt(nextObj.value);
-                        nextObj.value = encData.encryptedValue || nextObj.value;
-                    } catch (e: any) {
-                        console.error("Encryption failed for a property", e);
-                    }
-                }
-            } else {
-                // Not a leaf or not enc leaf, traverse children
-                await Promise.all(Object.keys(nextObj).map(async (k) => {
-                    if (k === '_order' || typeof nextObj[k] !== 'object' || nextObj[k] === null) return;
-                    nextObj[k] = await encryptRecursive(nextObj[k]);
-                }));
-            }
-            return nextObj;
-        }
-        return obj;
-    }, []);
-
     // Persist already-computed content to disk and refresh state. Called after the user confirms
     // the diff (or directly when there is nothing to review).
     const persistContent = useCallback(async (finalContent: string) => {
@@ -334,25 +305,7 @@ export const useOsgiConfigs = () => {
                 const { parseCfgContent } = await import('../utils/configUtils');
                 if (selectedFile?.name.endsWith('.cfg') || selectedFile?.name.endsWith('.cfg.disabled')) {
                     const parsed = parseCfgContent(finalContent);
-                    const decryptRecursiveRaw = async (obj: any) => {
-                        if (Array.isArray(obj)) {
-                            await Promise.all(obj.map(item => decryptRecursiveRaw(item)));
-                        } else if (obj && typeof obj === 'object') {
-                            if (obj.isLeaf && obj.encrypted && typeof obj.value === 'string' && obj.value.startsWith('ENC(')) {
-                                try {
-                                    const decData = await osgiService.decrypt(obj.value, selectedFile?.name ?? '');
-                                    obj.value = decData.decryptedValue || obj.value;
-                                } catch (e: any) {
-                                    // ignore
-                                }
-                            } else {
-                                await Promise.all(Object.keys(obj).map(async k => {
-                                    if (typeof obj[k] === 'object') await decryptRecursiveRaw(obj[k]);
-                                }));
-                            }
-                        }
-                    };
-                    await decryptRecursiveRaw(parsed);
+                    await decryptTree(parsed, selectedFile?.name ?? '');
 
                     resetProperties(parsed);
                     setOriginalProperties(JSON.parse(JSON.stringify(parsed)));
@@ -426,8 +379,15 @@ export const useOsgiConfigs = () => {
             }
         }
 
-        // Encrypt before serializing (decrypted-in-memory model)
-        const propsToSave = await encryptRecursive(JSON.parse(JSON.stringify(properties)));
+        // Encrypt before serializing (decrypted-in-memory model). If any value fails to encrypt
+        // (e.g. no encryption key configured server-side), abort the save rather than silently
+        // persisting a secret as plaintext.
+        let encryptFailed = false;
+        const propsToSave = await encryptTree(JSON.parse(JSON.stringify(properties)), () => { encryptFailed = true; });
+        if (encryptFailed) {
+            toastError(t('notification.encryptError'));
+            return null;
+        }
 
         if (Array.isArray(propsToSave)) {
             const { toCfgFormat } = await import('../utils/configUtils');
@@ -440,7 +400,7 @@ export const useOsgiConfigs = () => {
         const { prepareDataForSave, toCfgFormat } = await import('../utils/configUtils');
         const prepared = await prepareDataForSave(propsToSave);
         return toCfgFormat(prepared);
-    }, [isRawMode, rawContent, selectedFile, isYamlValid, properties, t, encryptRecursive]);
+    }, [isRawMode, rawContent, selectedFile, isYamlValid, properties, t, toastError]);
 
     const handleSave = useCallback(async () => {
         if (!selectedFile) return;
@@ -518,25 +478,11 @@ export const useOsgiConfigs = () => {
             const parsed = parseCfgContent(rawContent); // This will have ENC(...) values
 
             // Decrypt-in-Memory: Decrypt all ENC values
-            const decryptRecursiveRaw = async (obj: any) => {
-                if (Array.isArray(obj)) {
-                    await Promise.all(obj.map(item => decryptRecursiveRaw(item)));
-                } else if (obj && typeof obj === 'object') {
-                    if (obj.isLeaf && obj.encrypted && typeof obj.value === 'string' && obj.value.startsWith('ENC(')) {
-                        try {
-                            const decData = await osgiService.decrypt(obj.value, selectedFile?.name ?? '');
-                            obj.value = decData.decryptedValue || obj.value;
-                        } catch (e: any) {
-                            // ignore
-                        }
-                    } else {
-                        await Promise.all(Object.keys(obj).map(async k => {
-                            if (typeof obj[k] === 'object') await decryptRecursiveRaw(obj[k]);
-                        }));
-                    }
-                }
-            };
-            await decryptRecursiveRaw(parsed);
+            let decryptFailed = false;
+            await decryptTree(parsed, selectedFile?.name ?? '', () => { decryptFailed = true; });
+            if (decryptFailed) {
+                toastError(t('notification.decryptError'));
+            }
 
             resetProperties(parsed);
 
@@ -555,7 +501,11 @@ export const useOsgiConfigs = () => {
 
             // 1. Encrypt properties
             // We clone properties to avoid mutating the Visual State
-            const propsToEnc = await encryptRecursive(JSON.parse(JSON.stringify(properties)));
+            let encryptFailed = false;
+            const propsToEnc = await encryptTree(JSON.parse(JSON.stringify(properties)), () => { encryptFailed = true; });
+            if (encryptFailed) {
+                toastError(t('notification.encryptError'));
+            }
 
             // 2. Convert to String
             let formatted = '';
@@ -567,6 +517,13 @@ export const useOsgiConfigs = () => {
                 formatted = toCfgFormat(prepared);
             }
 
+            // Detect non-equivalent reserialization: regenerating from the property tree can rewrite
+            // hand-authored comments, key ordering, and spacing. Warn before silently re-baselining
+            // a clean file so the user knows formatting may have changed.
+            if (wasClean && formatted !== rawContent) {
+                toastWarning(t('notification.reserializeWarning'));
+            }
+
             setRawContent(formatted);
 
             // Rebaseline if we were clean (ignore formatting changes)
@@ -575,7 +532,7 @@ export const useOsgiConfigs = () => {
             }
         }
         setIsRawMode(newMode);
-    }, [hasUnsaved, isRawMode, rawContent, encryptRecursive, properties, resetProperties]);
+    }, [hasUnsaved, isRawMode, rawContent, properties, resetProperties, selectedFile, t, toastError, toastWarning]);
 
     const handleSetEditorMode = useCallback(async (mode: 'raw' | 'visual') => {
         const shouldBeRaw = mode === 'raw';

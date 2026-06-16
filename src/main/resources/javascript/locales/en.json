@@ -24,7 +24,10 @@
         "createSuccess": "Created {{name}}",
         "markAsDefaultSuccess": "{{name}} is now marked as default configuration",
         "uploadSuccess": "Uploaded {{name}}",
-        "dismiss": "Dismiss notification"
+        "dismiss": "Dismiss notification",
+        "decryptError": "Could not decrypt one or more encrypted values.",
+        "encryptError": "Could not encrypt one or more values; check that a server encryption key is configured. Save was cancelled.",
+        "reserializeWarning": "Switching editor mode reformatted comments, ordering or spacing."
     },
     "modal": {
         "cancel": "Cancel",
