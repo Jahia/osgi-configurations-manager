@@ -2,6 +2,10 @@
 
 A Jahia module to manage OSGi configurations directly from the Jahia Administration interface. This tool provides a user-friendly way to view, edit, create, and delete OSGi configuration files (`.cfg`, `.yml`).
 
+> **Contributing or working with an AI agent?** Start with [AGENTS.md](AGENTS.md) — it maps the
+> architecture, the data-loss-risk invariants, and how to build, test, and run the E2E suite.
+> The security model is documented in [SECURITY.md](SECURITY.md).
+
 ## Features
 
 -   **File Management**:
@@ -256,6 +260,33 @@ Creating from Metatype generates a `.cfg` file with:
 -   commented properties filled with default values when they exist
 
 This makes it possible to bootstrap a valid configuration from the contract declared by the bundle instead of starting from an empty file.
+
+## Testing
+
+The module is covered at three layers (see [AGENTS.md](AGENTS.md) for commands and structure):
+
+-   **Java unit tests** (JUnit 5 + Mockito) — action dispatch, error mapping, filtering, codecs and
+    the fail-closed encryption path. Run via `mvn clean install` (JaCoCo enforces a coverage floor).
+-   **Frontend unit tests** (Jest) — property-tree codec, crypto tree walk, state-detection and
+    editor hooks. Run via `yarn test` / `yarn test:coverage`.
+-   **End-to-end tests** (Cypress, `tests/cypress/e2e`) — run against a Dockerized Jahia and exercise
+    the real `*.osgiConfigManager.do` backend through the UI:
+    -   config lifecycle: create (manual + from Metatype, incl. factory instances), edit, save
+        (review-before-save diff, plus diff **cancel**), toggle enable/disable, **mark-as-default**,
+        upload, delete, invalid-filename rejection, and unsaved-changes guards;
+    -   editors: CFG visual editor (add / **delete** / **reorder** properties, Metatype picker and
+        info affordance), raw Monaco editor (CFG + YAML), Metatype assistance, editor-mode switching
+        with **reformat warning** and **preference persistence**, and the **YAML validation** save gate;
+    -   sidebar/header: filename filter, **deep content search**, **download**, state badges
+        (`USER`/`MODULE_DEFAULT`);
+    -   security: encryption **fails closed** when no server key is configured (the save is aborted
+        rather than persisting a secret as plaintext).
+
+    > **Encryption round-trip:** the default test container configures no encryption key, so the E2E
+    > suite asserts the fail-closed behavior. To exercise a full encrypt → save → reload → decrypt
+    > round-trip, start Jahia with
+    > `-Dorg.jahia.modules.osgiconfigmanager.encryption.allowDefaultKey=true` (or a real
+    > `...encryption.key`) and add a round-trip spec.
 
 ## Technologies
 
