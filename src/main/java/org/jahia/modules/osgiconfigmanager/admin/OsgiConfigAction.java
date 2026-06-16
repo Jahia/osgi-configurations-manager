@@ -73,6 +73,11 @@ public class OsgiConfigAction extends Action {
     // granted), so a forged cross-site POST cannot include it. Same-origin fetch() sets it.
     private static final String CSRF_HEADER = "X-Requested-With";
 
+    // Hard cap on the request body so a hostile/oversized POST is rejected before it is buffered
+    // into the heap. Allows the 5 MiB content cap plus modest JSON/protocol overhead.
+    private static final int MAX_REQUEST_BYTES = (5 * 1024 * 1024) + (64 * 1024);
+    private static final int READ_CHUNK_CHARS = 8192;
+
     private OsgiConfigService configService;
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -170,7 +175,7 @@ public class OsgiConfigAction extends Action {
 
     private List<Map<String, Object>> searchFiles(List<Map<String, Object>> allFiles, String search,
             Locale locale, boolean isRootUser) {
-        String lowerSearch = search.toLowerCase();
+        String lowerSearch = search.toLowerCase(Locale.ROOT);
         List<Map<String, Object>> filtered = new ArrayList<>();
 
         for (Map<String, Object> file : allFiles) {
@@ -178,8 +183,8 @@ public class OsgiConfigAction extends Action {
             try {
                 Map<String, Object> content = configService.readFile(name, locale, isRootUser);
                 String raw = (String) content.get(PARAM_RAW_CONTENT);
-                boolean nameMatch = name.toLowerCase().contains(lowerSearch);
-                boolean contentMatch = raw != null && raw.toLowerCase().contains(lowerSearch);
+                boolean nameMatch = name.toLowerCase(Locale.ROOT).contains(lowerSearch);
+                boolean contentMatch = raw != null && raw.toLowerCase(Locale.ROOT).contains(lowerSearch);
                 if (nameMatch || contentMatch) {
                     filtered.add(file);
                 }
@@ -321,11 +326,22 @@ public class OsgiConfigAction extends Action {
 
     @SuppressWarnings("unchecked")
     private Map<String, Object> parseBody(HttpServletRequest req) throws IOException {
+        // Reject obviously-oversized requests up front via the declared Content-Length...
+        if (req.getContentLength() > MAX_REQUEST_BYTES) {
+            throw new IOException("Request body exceeds the maximum allowed size");
+        }
+        // ...then enforce the same cap while streaming, since Content-Length may be absent or wrong.
         StringBuilder buffer = new StringBuilder();
+        long total = 0;
         try (BufferedReader reader = req.getReader()) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                buffer.append(line);
+            char[] chunk = new char[READ_CHUNK_CHARS];
+            int read;
+            while ((read = reader.read(chunk)) != -1) {
+                total += read;
+                if (total > MAX_REQUEST_BYTES) {
+                    throw new IOException("Request body exceeds the maximum allowed size");
+                }
+                buffer.append(chunk, 0, read);
             }
         }
         return mapper.readValue(buffer.toString(), Map.class);

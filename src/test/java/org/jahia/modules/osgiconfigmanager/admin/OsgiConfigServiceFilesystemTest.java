@@ -1,5 +1,6 @@
 package org.jahia.modules.osgiconfigmanager.admin;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -43,7 +44,15 @@ class OsgiConfigServiceFilesystemTest {
     @BeforeEach
     void setUp() {
         System.setProperty("karaf.etc", etcDir.toString());
+        // These tests exercise encrypt() without a configured key, so opt into the built-in default
+        // key explicitly (encrypt now fails closed otherwise).
+        System.setProperty(CryptoEngine.ALLOW_DEFAULT_KEY_PROPERTY, "true");
         service = new OsgiConfigService();
+    }
+
+    @AfterEach
+    void tearDown() {
+        System.clearProperty(CryptoEngine.ALLOW_DEFAULT_KEY_PROPERTY);
     }
 
     private void writeConfig(String name, String content) throws IOException {

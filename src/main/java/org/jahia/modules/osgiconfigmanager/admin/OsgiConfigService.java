@@ -191,16 +191,22 @@ public class OsgiConfigService {
         this.filterConfig = new FilterConfig(newBlacklist, newWhitelist,
                 newBlacklistPatterns, newWhitelistPatterns, newVisualFormattingControlsEnabled);
 
-        LOGGER.info("Updated blacklist: {}", newBlacklist);
-        LOGGER.info("Updated blacklist wildcard count: {}", newBlacklistPatterns.size());
-        LOGGER.info("Updated whitelist: {}", newWhitelist);
-        LOGGER.info("Updated whitelist wildcard count: {}", newWhitelistPatterns.size());
-        LOGGER.info("Updated visual formatting controls flag: {}", newVisualFormattingControlsEnabled);
+        // Guard the multi-argument logging so the eager .size() calls are skipped when INFO is off
+        // (S2629: do not evaluate logging arguments unconditionally).
+        if (LOGGER.isInfoEnabled()) {
+            LOGGER.info("Updated blacklist: {} (wildcards: {}), whitelist: {} (wildcards: {}), visual formatting controls: {}",
+                    newBlacklist, newBlacklistPatterns.size(), newWhitelist, newWhitelistPatterns.size(),
+                    newVisualFormattingControlsEnabled);
+        }
     }
 
     public Map<String, Object> getUiConfig() {
         Map<String, Object> uiConfig = new LinkedHashMap<>();
         uiConfig.put("visualFormattingControlsEnabled", filterConfig.visualFormattingControlsEnabled);
+        // Surface the encryption-key state so the UI can warn when values cannot be securely encrypted.
+        boolean usingDefaultKey = CryptoEngine.isUsingDefaultKey();
+        uiConfig.put("usingDefaultEncryptionKey", usingDefaultKey);
+        uiConfig.put("canEncrypt", !usingDefaultKey || CryptoEngine.isDefaultKeyAllowed());
         return uiConfig;
     }
 
@@ -411,10 +417,16 @@ public class OsgiConfigService {
     }
 
     private String getFileType(String filename) {
-        if (filename.contains(".cfg"))
+        if (filename == null) {
+            return "unknown";
+        }
+        String lower = filename.toLowerCase(Locale.ROOT);
+        if (lower.endsWith(".cfg") || lower.endsWith(".cfg" + DISABLED_SUFFIX)) {
             return "cfg";
-        if (filename.contains(".yml"))
+        }
+        if (lower.endsWith(".yml") || lower.endsWith(".yml" + DISABLED_SUFFIX)) {
             return "yml";
+        }
         return "unknown";
     }
 
@@ -434,6 +446,7 @@ public class OsgiConfigService {
         if (!Files.exists(filePath)) {
             throw new IOException("File not found: " + safeFilename);
         }
+        ensureFileWithinSizeLimit(filePath, safeFilename);
 
         Map<String, Object> result = new LinkedHashMap<>();
         String type = getFileType(safeFilename);
@@ -926,6 +939,9 @@ public class OsgiConfigService {
         }
 
         Files.move(filePath, newFilePath);
+        // The auto-backup is keyed to the previous filename; remove it so a stale (possibly
+        // secret-bearing) .bak is not left orphaned next to the renamed configuration.
+        Files.deleteIfExists(filePath.resolveSibling(filePath.getFileName().toString() + ".bak"));
     }
 
     public void deleteFile(String filename) throws IOException {
@@ -979,6 +995,7 @@ public class OsgiConfigService {
             return;
         }
 
+        ensureFileWithinSizeLimit(filePath, safeFilename);
         String content = Files.readString(filePath, StandardCharsets.UTF_8);
         String updatedContent = content.isEmpty()
                 ? DEFAULT_CONFIGURATION_COMMENT + '\n'
@@ -1461,6 +1478,17 @@ public class OsgiConfigService {
         }
     }
 
+    /**
+     * Rejects reads of oversized files before they are slurped fully into the heap. A pre-existing
+     * file on disk can be far larger than anything the editor would write, so guard the read side too.
+     */
+    private void ensureFileWithinSizeLimit(Path filePath, String filename) throws IOException {
+        if (Files.size(filePath) > MAX_RAW_CONTENT_BYTES) {
+            throw new IOException("Configuration file " + filename + " exceeds the maximum allowed size of "
+                    + MAX_RAW_CONTENT_BYTES + " bytes");
+        }
+    }
+
     private void writeEmptyFile(Path filePath) throws IOException {
         Files.write(filePath, new byte[0]);
     }
@@ -1506,9 +1534,20 @@ public class OsgiConfigService {
         return normalizedName;
     }
 
-    public String encrypt(String value) {
+    /**
+     * Encrypts a value into the {@code ENC(...)} marker form. Fails closed when no encryption key is
+     * configured (unless the insecure default key has been explicitly opted into) so the manager
+     * never writes ciphertext that is, in practice, public.
+     */
+    public String encrypt(String value) throws IOException {
         if (value == null)
             return null;
+        if (CryptoEngine.isUsingDefaultKey() && !CryptoEngine.isDefaultKeyAllowed()) {
+            throw new IOException("Encryption key is not configured. Set the '" + CryptoEngine.KEY_PROPERTY
+                    + "' system property (or the " + CryptoEngine.KEY_ENV + " environment variable) to a strong "
+                    + "secret before encrypting values, or opt into the insecure default key with '"
+                    + CryptoEngine.ALLOW_DEFAULT_KEY_PROPERTY + "=true' for non-production use.");
+        }
         return "ENC(" + CryptoEngine.encryptString(value) + ")";
     }
 
@@ -1539,6 +1578,7 @@ public class OsgiConfigService {
         if (!Files.exists(filePath)) {
             throw new IOException("File not found: " + safeFilename);
         }
+        ensureFileWithinSizeLimit(filePath, safeFilename);
 
         String rawContent = Files.readString(filePath, StandardCharsets.UTF_8);
         if (!rawContent.contains(value)) {

@@ -97,15 +97,46 @@ class CryptoEngineTest {
 
     @Test
     @DisplayName("service encrypt wraps in ENC(...) and decrypt unwraps it")
-    void serviceEncryptDecrypt_roundTrip_wrapsWithEncMarker() {
+    void serviceEncryptDecrypt_roundTrip_wrapsWithEncMarker() throws Exception {
         OsgiConfigService service = new OsgiConfigService();
         String plaintext = "db.password.value";
 
-        String encrypted = service.encrypt(plaintext);
-        assertTrue(encrypted.startsWith("ENC(") && encrypted.endsWith(")"),
-                "Service-level encrypt must wrap with the ENC(...) marker");
+        try {
+            System.setProperty(CryptoEngine.KEY_PROPERTY, "a-strong-operator-key");
+            String encrypted = service.encrypt(plaintext);
+            assertTrue(encrypted.startsWith("ENC(") && encrypted.endsWith(")"),
+                    "Service-level encrypt must wrap with the ENC(...) marker");
 
-        assertEquals(plaintext, service.decrypt(encrypted));
+            assertEquals(plaintext, service.decrypt(encrypted));
+        } finally {
+            System.clearProperty(CryptoEngine.KEY_PROPERTY);
+        }
+    }
+
+    @Test
+    @DisplayName("service encrypt fails closed when no key is configured and the default is not allowed")
+    void serviceEncrypt_defaultKeyNotAllowed_failsClosed() {
+        OsgiConfigService service = new OsgiConfigService();
+
+        // No key configured and the insecure default not opted into → must refuse to produce ENC(...).
+        java.io.IOException ex = org.junit.jupiter.api.Assertions.assertThrows(
+                java.io.IOException.class, () -> service.encrypt("should-not-be-encrypted"));
+        assertTrue(ex.getMessage().contains("Encryption key is not configured"),
+                "Unexpected message: " + ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("service encrypt is permitted when the default key is explicitly opted into")
+    void serviceEncrypt_defaultKeyAllowed_roundTrips() throws Exception {
+        OsgiConfigService service = new OsgiConfigService();
+        try {
+            System.setProperty(CryptoEngine.ALLOW_DEFAULT_KEY_PROPERTY, "true");
+            String encrypted = service.encrypt("dev-value");
+            assertTrue(encrypted.startsWith("ENC(") && encrypted.endsWith(")"));
+            assertEquals("dev-value", service.decrypt(encrypted));
+        } finally {
+            System.clearProperty(CryptoEngine.ALLOW_DEFAULT_KEY_PROPERTY);
+        }
     }
 
     @Test
@@ -118,7 +149,7 @@ class CryptoEngineTest {
 
     @Test
     @DisplayName("service encrypt/decrypt tolerate null")
-    void serviceEncryptDecrypt_null_returnsNull() {
+    void serviceEncryptDecrypt_null_returnsNull() throws Exception {
         OsgiConfigService service = new OsgiConfigService();
 
         assertNull(service.encrypt(null));
