@@ -3,7 +3,6 @@ package org.jahia.modules.osgiconfigmanager.admin;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jahia.bin.Action;
 import org.jahia.bin.ActionResult;
-import org.jahia.services.content.JCRNodeWrapper;
 import org.jahia.services.content.JCRSessionWrapper;
 import org.jahia.services.render.RenderContext;
 import org.jahia.services.render.Resource;
@@ -188,18 +187,8 @@ public class OsgiConfigAction extends Action {
     private void readPreference(HttpServletRequest req, RenderContext renderContext, JCRSessionWrapper session,
             Map<String, Object> result) throws RepositoryException {
         String key = req.getParameter(PARAM_KEY);
-        if (!PreferenceKeys.isAllowed(key)) {
-            return;
-        }
-
-        LOGGER.info("[AUDIT] User: {} | Action: getPreference | Key: {}", renderContext.getUser().getName(), key);
-        String userPath = renderContext.getUser().getLocalPath();
-        if (session.nodeExists(userPath)) {
-            JCRNodeWrapper userNode = session.getNode(userPath);
-            if (userNode.hasProperty(key)) {
-                result.put(PARAM_VALUE, userNode.getProperty(key).getString());
-            }
-        }
+        UserPreferenceService.read(session, renderContext.getUser(), key)
+                .ifPresent(value -> result.put(PARAM_VALUE, value));
     }
 
     // ----------------------------------------------------------------- POST
@@ -286,18 +275,11 @@ public class OsgiConfigAction extends Action {
     private boolean writePreference(Map<String, Object> payload, RenderContext renderContext,
             JCRSessionWrapper session, Map<String, Object> result) throws RepositoryException {
         String key = (String) payload.get(PARAM_KEY);
-        if (!PreferenceKeys.isAllowed(key)) {
+        String value = (String) payload.get(PARAM_VALUE);
+        if (!UserPreferenceService.write(session, renderContext.getUser(), key, value)) {
             return false;
         }
-
-        String value = (String) payload.get(PARAM_VALUE);
-        String userPath = renderContext.getUser().getLocalPath();
-        if (session.nodeExists(userPath)) {
-            JCRNodeWrapper userNode = session.getNode(userPath);
-            userNode.setProperty(key, value);
-            session.save();
-            result.put(KEY_STATUS, "preferenceSaved");
-        }
+        result.put(KEY_STATUS, "preferenceSaved");
         return true;
     }
 

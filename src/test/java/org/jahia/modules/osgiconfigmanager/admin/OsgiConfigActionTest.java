@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import org.jahia.services.content.JCRPropertyWrapper;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.BufferedReader;
@@ -261,6 +262,42 @@ class OsgiConfigActionTest {
         String body = responseBody.toString();
         assertTrue(body.contains("An internal error occurred"));
         assertTrue(!body.contains("/internal/path"), "Internal detail must not leak to the client");
+    }
+
+    @Test
+    @DisplayName("getPreference returns the stored value for an allowlisted key")
+    void doExecute_getPreferenceAllowed_returnsValue() throws Exception {
+        when(req.getMethod()).thenReturn("GET");
+        when(req.getParameter("action")).thenReturn("getPreference");
+        when(req.getParameter("key")).thenReturn("osgiEditorMode");
+        when(renderContext.getUser().getLocalPath()).thenReturn("/users/alice");
+        JCRNodeWrapper userNode = mock(JCRNodeWrapper.class);
+        when(session.nodeExists("/users/alice")).thenReturn(true);
+        when(session.getNode("/users/alice")).thenReturn(userNode);
+        when(userNode.hasProperty("osgiEditorMode")).thenReturn(true);
+        JCRPropertyWrapper prop = mock(JCRPropertyWrapper.class);
+        when(userNode.getProperty("osgiEditorMode")).thenReturn(prop);
+        when(prop.getString()).thenReturn("raw");
+
+        execute();
+
+        assertTrue(responseBody.toString().contains("raw"));
+    }
+
+    @Test
+    @DisplayName("setPreference persists an allowlisted key and reports status")
+    void doExecute_setPreferenceAllowed_savesAndReportsStatus() throws Exception {
+        when(renderContext.getUser().getLocalPath()).thenReturn("/users/alice");
+        JCRNodeWrapper userNode = mock(JCRNodeWrapper.class);
+        when(session.nodeExists("/users/alice")).thenReturn(true);
+        when(session.getNode("/users/alice")).thenReturn(userNode);
+        stubPost("{\"action\":\"setPreference\",\"key\":\"osgiEditorMode\",\"value\":\"raw\"}");
+
+        execute();
+
+        verify(userNode).setProperty("osgiEditorMode", "raw");
+        verify(session).save();
+        assertTrue(responseBody.toString().contains("preferenceSaved"));
     }
 
     @Test
