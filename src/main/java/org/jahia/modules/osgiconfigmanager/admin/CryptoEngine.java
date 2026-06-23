@@ -16,46 +16,39 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Base64;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class CryptoEngine {
-    private static final Logger LOGGER = LoggerFactory.getLogger(CryptoEngine.class);
-    private static final byte[] salt = "12345678".getBytes();
-    private static final String password = "hardcodedpassword";
+    // Hardcoded obfuscation keys mirroring Jahia core's org.jahia.misc.CryptoEngine.
+    // These MUST NOT be changed or externalized: doing so would break already-encrypted values.
+    private static final byte[] SALT = "12345678".getBytes();
+    private static final String PASSWORD = "hardcodedpassword";
+    private static final int ITERATION_COUNT = 10; // should be more eg 40000
+    private static final int KEY_LENGTH = 128;
+
+    private CryptoEngine() {
+        // Utility class - prevent instantiation
+    }
 
     public static String encryptString(String string) {
-        int iterationCount = 10; // should be more eg 40000
-        int keyLength = 128;
         try {
-            SecretKeySpec key = createSecretKey(password.toCharArray(),
-                    salt, iterationCount, keyLength);
+            SecretKeySpec key = createSecretKey(PASSWORD.toCharArray(),
+                    SALT, ITERATION_COUNT, KEY_LENGTH);
             return encrypt(string, key);
-        } catch (NoSuchAlgorithmException e) {
-            LOGGER.error("NoSuchAlgorithmException", e);
-        } catch (InvalidKeySpecException e) {
-            LOGGER.error("InvalidKeySpecException", e);
         } catch (GeneralSecurityException e) {
-            LOGGER.error("GeneralSecurityException", e);
+            // Fail closed: never return the plaintext on failure, otherwise a secret
+            // would be silently stored unencrypted. The cause is carried for the caller to log.
+            throw new IllegalStateException("Failed to encrypt configuration value", e);
         }
-        return string;
     }
 
     public static String decryptString(String string) {
-        int iterationCount = 10; // should be more eg 40000
-        int keyLength = 128;
         try {
-            SecretKeySpec key = createSecretKey(password.toCharArray(),
-                    salt, iterationCount, keyLength);
+            SecretKeySpec key = createSecretKey(PASSWORD.toCharArray(),
+                    SALT, ITERATION_COUNT, KEY_LENGTH);
             return decrypt(string, key);
-        } catch (NoSuchAlgorithmException e) {
-            LOGGER.error("NoSuchAlgorithmException", e);
-        } catch (InvalidKeySpecException e) {
-            LOGGER.error("InvalidKeySpecException", e);
         } catch (GeneralSecurityException e) {
-            LOGGER.error("GeneralSecurityException", e);
+            throw new IllegalStateException("Failed to decrypt configuration value", e);
         }
-        return string;
     }
 
     private static SecretKeySpec createSecretKey(char[] password, byte[] salt, int iterationCount, int keyLength)

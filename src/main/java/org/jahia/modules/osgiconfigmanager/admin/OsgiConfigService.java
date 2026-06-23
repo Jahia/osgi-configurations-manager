@@ -52,6 +52,9 @@ public class OsgiConfigService {
     private static final String KEY_CONFIG_STATE = "configState";
     private static final String KEY_FILENAME = "filename";
     private static final String KEY_PROPERTIES = "properties";
+    private static final String KEY_RAW_CONTENT = "rawContent";
+    private static final String KEY_COMMENT = "comment";
+    private static final String KEY_VALUE = "value";
     private static final String CONFIG_STATE_MODULE = "MODULE";
     private static final String CONFIG_STATE_MODULE_DEFAULT = "MODULE_DEFAULT";
     private static final String CONFIG_STATE_USER = "USER";
@@ -179,7 +182,9 @@ public class OsgiConfigService {
 
     public List<Map<String, Object>> listFiles(boolean isRootUser) {
         if (karafEtcDir == null) {
-            LOGGER.error("karafEtcDir is null. System property 'karaf.etc' was: {}", System.getProperty("karaf.etc"));
+            if (LOGGER.isErrorEnabled()) {
+                LOGGER.error("karafEtcDir is null. System property 'karaf.etc' was: {}", System.getProperty("karaf.etc"));
+            }
             return Collections.emptyList();
         }
         if (!karafEtcDir.exists()) {
@@ -406,7 +411,7 @@ public class OsgiConfigService {
 
         // Always read raw content for Monaco Support
         String rawContent = Files.readString(filePath, StandardCharsets.UTF_8);
-        result.put("rawContent", rawContent);
+        result.put(KEY_RAW_CONTENT, rawContent);
 
         enrichWithMetatype(result, safeFilename, type, locale);
 
@@ -457,8 +462,8 @@ public class OsgiConfigService {
         }
 
         if (trimmed.startsWith("#")) {
-            entry.put("type", "comment");
-            entry.put("value", line);
+            entry.put("type", KEY_COMMENT);
+            entry.put(KEY_VALUE, line);
             return entry;
         }
 
@@ -466,12 +471,12 @@ public class OsgiConfigService {
         if (separatorIndex != -1) {
             entry.put("type", "property");
             entry.put("key", line.substring(0, separatorIndex).trim());
-            entry.put("value", line.substring(separatorIndex + 1).trim());
+            entry.put(KEY_VALUE, line.substring(separatorIndex + 1).trim());
             return entry;
         }
 
-        entry.put("type", "comment");
-        entry.put("value", line);
+        entry.put("type", KEY_COMMENT);
+        entry.put(KEY_VALUE, line);
         return entry;
     }
 
@@ -763,7 +768,7 @@ public class OsgiConfigService {
         if (optionValues != null) {
             for (int i = 0; i < optionValues.length; i++) {
                 Map<String, String> option = new LinkedHashMap<>();
-                option.put("value", optionValues[i]);
+                option.put(KEY_VALUE, optionValues[i]);
                 option.put("label", optionLabels != null && optionLabels.length > i ? optionLabels[i] : optionValues[i]);
                 options.add(option);
             }
@@ -841,8 +846,8 @@ public class OsgiConfigService {
         // If the frontend sends "rawContent", we trust it completely and write it to
         // disk.
         // This allows the frontend to handle encryption, formatting, and comments.
-        if (content.containsKey("rawContent")) {
-            writeRawContent(filePath, (String) content.get("rawContent"));
+        if (content.containsKey(KEY_RAW_CONTENT)) {
+            writeRawContent(filePath, (String) content.get(KEY_RAW_CONTENT));
             return;
         }
 
@@ -1432,13 +1437,13 @@ public class OsgiConfigService {
              java.io.BufferedWriter bufferedWriter = new java.io.BufferedWriter(writer)) {
             for (Map<String, Object> entry : entries) {
                 String entryType = (String) entry.get("type");
-                if ("comment".equals(entryType)) {
-                    bufferedWriter.write((String) entry.get("value"));
+                if (KEY_COMMENT.equals(entryType)) {
+                    bufferedWriter.write((String) entry.get(KEY_VALUE));
                     bufferedWriter.newLine();
                 } else if ("empty".equals(entryType)) {
                     bufferedWriter.newLine();
                 } else if ("property".equals(entryType)) {
-                    bufferedWriter.write(entry.get("key") + " = " + entry.get("value"));
+                    bufferedWriter.write(entry.get("key") + " = " + entry.get(KEY_VALUE));
                     bufferedWriter.newLine();
                 }
             }
