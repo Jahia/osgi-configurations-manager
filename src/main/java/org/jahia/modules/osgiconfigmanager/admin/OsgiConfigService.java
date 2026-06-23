@@ -1475,7 +1475,15 @@ public class OsgiConfigService {
             return null;
         if (value.startsWith("ENC(") && value.endsWith(")")) {
             String cipherText = value.substring(4, value.length() - 1);
-            return CryptoEngine.decryptString(cipherText);
+            try {
+                return CryptoEngine.decryptString(cipherText);
+            } catch (IllegalStateException e) {
+                // Decryption is a read operation: degrade gracefully (return the value unchanged)
+                // rather than failing the whole request when an ENC(...) payload cannot be
+                // decrypted. Encryption, by contrast, stays fail-closed.
+                LOGGER.warn("Could not decrypt configuration value, returning it unchanged", e);
+                return value;
+            }
         }
         return value;
     }

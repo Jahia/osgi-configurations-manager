@@ -5,7 +5,7 @@ All notable changes to the OSGi Configurations Manager module are documented in 
 ## [Unreleased]
 
 ### Security
-- `CryptoEngine.encryptString` / `decryptString` now **fail closed**: on a crypto error they throw instead of returning the original (plaintext) value, which previously risked storing a secret unencrypted.
+- `CryptoEngine.encryptString` now **fails closed**: on a crypto error it throws instead of returning the original (plaintext) value, which previously risked storing a secret unencrypted. The `decrypt` read path degrades gracefully (logs and returns the value unchanged) so a corrupt `ENC(...)` payload does not fail the whole request.
 
 ### Changed
 - Resolved the SonarQube quality-gate findings (gate now green): extracted duplicated string literals into constants (`comment`, `value`, `rawContent`, `status`), guarded an eagerly-evaluated error log (S2629), gave `CryptoEngine` a private constructor and convention-compliant constant names, and rethrow crypto failures with context (no log-and-throw).
