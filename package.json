@@ -35,7 +35,7 @@
         "style-loader": "^4.0.0"
     },
     "devDependencies": {
-        "@babel/core": "^7.6.2",
+        "@babel/core": "^7.29.6",
         "@babel/preset-env": "^7.6.2",
         "@babel/preset-react": "^7.0.0",
         "@jahia/webpack-config": "^1.0.0",
