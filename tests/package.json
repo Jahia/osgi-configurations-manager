@@ -70,6 +70,15 @@
   "homepage": "https://github.com/Jahia/osgi-configurations-manager#readme",
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
   "resolutions": {
-    "mocha/serialize-javascript": "7.0.5"
+    "@babel/core": "^7.29.6",
+    "@babel/plugin-transform-modules-systemjs": "^7.29.4",
+    "@tootallnate/once": "^2.0.1",
+    "fast-uri": "^3.1.2",
+    "js-yaml": "^4.2.0",
+    "mocha/serialize-javascript": "7.0.5",
+    "qs": "^6.15.2",
+    "systeminformation": "^5.31.6",
+    "tmp": "^0.2.6",
+    "uuid": "^11.1.1"
   }
 }
