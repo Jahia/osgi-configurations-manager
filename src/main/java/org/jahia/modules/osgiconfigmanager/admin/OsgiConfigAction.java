@@ -120,6 +120,16 @@ public class OsgiConfigAction extends Action {
                     }
                 }
             } else if ("POST".equals(method)) {
+                // SEC-138: require an application/json Content-Type on state-changing POSTs. This turns a
+                // cross-origin request into a non-"simple" CORS request (forcing a preflight the browser
+                // blocks), defeating the forged-config-write CSRF that relied on a text/plain body. The SPA
+                // already sends application/json, so this is transparent to the admin UI.
+                final String contentType = req.getContentType();
+                if (contentType == null || !contentType.toLowerCase(java.util.Locale.ROOT).contains("application/json")) {
+                    LOGGER.warn("[AUDIT] Rejected osgiConfigManager POST with non-JSON Content-Type '{}' from {}",
+                            contentType, req.getRemoteAddr());
+                    return new ActionResult(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE);
+                }
                 StringBuilder buffer = new StringBuilder();
                 try (BufferedReader reader = req.getReader()) {
                     String line;
