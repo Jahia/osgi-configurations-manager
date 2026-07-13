@@ -39,8 +39,8 @@ describe('useOsgiConfigs — refresh', () => {
         });
 
         expect(osgiService.getAll.mock.calls.length).toBe(callsAfterMount + 1);
-        // shallow mode => plain getAll() with no deep-search args
-        expect(osgiService.getAll).toHaveBeenLastCalledWith();
+        // shallow mode => fetchFiles() defaults => getAll('', false)
+        expect(osgiService.getAll).toHaveBeenLastCalledWith('', false);
         jest.useRealTimers();
     });
 
