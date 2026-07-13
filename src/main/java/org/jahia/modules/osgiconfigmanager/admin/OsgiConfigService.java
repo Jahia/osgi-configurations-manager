@@ -448,7 +448,8 @@ public class OsgiConfigService {
         return entries;
     }
 
-    private Map<String, String> parseCfgLine(String line) {
+    // package-private seam for unit testing (SUPPORT-646)
+    Map<String, String> parseCfgLine(String line) {
         Map<String, String> entry = new HashMap<>();
         String trimmed = line.trim();
         if (trimmed.isEmpty()) {
@@ -487,7 +488,8 @@ public class OsgiConfigService {
         return colIndex;
     }
 
-    private Object readYamlProperties(Path filePath) throws IOException {
+    // package-private seam for unit testing (SUPPORT-646)
+    Object readYamlProperties(Path filePath) throws IOException {
         LoaderOptions loaderOptions = new LoaderOptions();
         Yaml yaml = new Yaml(new SafeConstructor(loaderOptions) {
             @Override
@@ -1118,7 +1120,8 @@ public class OsgiConfigService {
         return filename;
     }
 
-    private Path resolveConfigPath(String filename) throws IOException {
+    // package-private seam for unit testing (SUPPORT-646)
+    Path resolveConfigPath(String filename) throws IOException {
         if (karafEtcDir == null) {
             throw new IOException("karaf.etc directory is not configured");
         }
@@ -1133,7 +1136,8 @@ public class OsgiConfigService {
         return resolvedPath;
     }
 
-    private String validateFilename(String filename) throws IOException {
+    // package-private seam for unit testing (SUPPORT-646)
+    String validateFilename(String filename) throws IOException {
         if (filename == null || filename.isBlank()) {
             throw new IOException(INVALID_FILENAME_MESSAGE + filename);
         }
@@ -1177,7 +1181,8 @@ public class OsgiConfigService {
         }
     }
 
-    private String detectConfigState(Path filePath) throws IOException {
+    // package-private seam for unit testing (SUPPORT-646)
+    String detectConfigState(Path filePath) throws IOException {
         try (Reader reader = Files.newBufferedReader(filePath, StandardCharsets.UTF_8);
              java.io.BufferedReader bufferedReader = new java.io.BufferedReader(reader)) {
             String line;
@@ -1256,7 +1261,8 @@ public class OsgiConfigService {
         return factoryPid + "-<id>" + DEFAULT_FACTORY_FILE_EXTENSION;
     }
 
-    private void validateFactoryIdentifier(String identifier) throws IOException {
+    // package-private seam for unit testing (SUPPORT-646)
+    void validateFactoryIdentifier(String identifier) throws IOException {
         if (identifier.startsWith(".")) {
             throw new IOException("Factory identifier cannot start with '.'");
         }
@@ -1348,7 +1354,8 @@ public class OsgiConfigService {
         return !exactMatches.isEmpty() || !wildcardPatterns.isEmpty();
     }
 
-    private void ensurePidAllowed(String pid, boolean isRootUser) throws IOException {
+    // package-private seam for unit testing (SUPPORT-646)
+    void ensurePidAllowed(String pid, boolean isRootUser) throws IOException {
         if (isSelfConfigurationPid(pid) && !isRootUser) {
             throw new IOException("Access denied: " + pid + " is reserved for the root user.");
         }
@@ -1384,7 +1391,8 @@ public class OsgiConfigService {
                 || matchesConfiguredFilename(disabledSampleCandidate, whitelist, whitelistPatterns);
     }
 
-    private boolean isSelfConfigurationPid(String pid) {
+    // package-private seam for unit testing (SUPPORT-646)
+    boolean isSelfConfigurationPid(String pid) {
         return SELF_CONFIG_PID.equals(pid);
     }
 
