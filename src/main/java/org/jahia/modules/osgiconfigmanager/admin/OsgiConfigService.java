@@ -578,7 +578,8 @@ public class OsgiConfigService {
         }
     }
 
-    private String findBestFactoryPidMatch(String normalizedConfigurationName, String[] pids,
+    // package-private seam for unit testing (SUPPORT-646)
+    String findBestFactoryPidMatch(String normalizedConfigurationName, String[] pids,
                                            boolean declaredFactory, Set<String> factoryCapablePids, Set<String> seenFactoryPids,
                                            String currentBestMatch) {
         if (pids == null) {
