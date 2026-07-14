@@ -17,12 +17,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * S4 (G2) — CHARACTERIZATION: saving over an existing file leaves a UI-invisible {@code .bak}
- * sibling that still contains the previous (possibly secret) content.
- *
- * <p>This documents the leak. The Stage-7 product fix should purge / restrict the {@code .bak};
- * at that point the existence + readability assertions here get inverted. The
- * "invisible to listFiles()" assertion stays true either way.</p>
+ * S4 (G2) — post-fix (SUPPORT-646): saving over an existing file no longer leaves a secret-bearing
+ * {@code .bak} sibling. The transient recovery copy is PURGED after a successful write, so no
+ * readable plaintext/secret persists in karaf/etc. The "invisible to listFiles() / not an
+ * addressable config filename" assertions remain true either way.
  */
 class OsgiConfigServiceBackupTest {
 
@@ -33,9 +31,8 @@ class OsgiConfigServiceBackupTest {
     }
 
     @Test
-    @DisplayName("S4: save leaves a readable .bak containing the prior secret, invisible to listFiles()")
-    void saveLeavesReadableBackupWithPriorSecret(@TempDir Path etc) throws Exception {
-        // CHARACTERIZATION — invert .bak existence/readability after Stage-7 purge fix
+    @DisplayName("S4 (fixed): save purges the .bak so no readable plaintext secret persists after a successful write")
+    void saveDoesNotLeaveSecretBearingBackup(@TempDir Path etc) throws Exception {
         // Arrange
         OsgiConfigService service = newServicePointedAt(etc);
         Path original = etc.resolve("demo.cfg");
@@ -47,20 +44,30 @@ class OsgiConfigServiceBackupTest {
         content.put("rawContent", "password=new-value");
         service.saveFile("demo.cfg", content, true);
 
-        // Assert
-        Path backup = etc.resolve("demo.cfg.bak");
-        assertTrue(Files.exists(backup), "a .bak sibling is written before overwrite");
-        assertTrue(Files.isReadable(backup), ".bak is readable");
-        assertTrue(Files.readString(backup, StandardCharsets.UTF_8).contains("super-secret-value"),
-                ".bak still holds the prior secret");
+        // Assert: the new content is written...
+        assertTrue(Files.readString(original, StandardCharsets.UTF_8).contains("new-value"));
 
-        // ...and it is NOT a supported extension, so it never appears in the UI listing
+        // ...and NO .bak lingers holding the prior secret.
+        Path backup = etc.resolve("demo.cfg.bak");
+        assertFalse(Files.exists(backup), "the transient .bak must be purged after a successful save");
+
+        // Prove no readable file in etc still holds the prior secret.
+        try (java.util.stream.Stream<Path> files = Files.list(etc)) {
+            boolean anySecretLeft = files.filter(Files::isRegularFile).anyMatch(p -> {
+                try {
+                    return Files.readString(p, StandardCharsets.UTF_8).contains("super-secret-value");
+                } catch (java.io.IOException e) {
+                    return false;
+                }
+            });
+            assertFalse(anySecretLeft, "no readable file in karaf/etc may still contain the prior secret");
+        }
+
+        // The .bak extension remains unsupported / un-addressable regardless.
         List<String> listed = service.listFiles(true).stream()
                 .map(m -> (String) m.get("name"))
                 .collect(Collectors.toList());
         assertFalse(listed.contains("demo.cfg.bak"), ".bak must not be surfaced by listFiles()");
-        // ...and it is not even an addressable config filename (unsupported extension), so no
-        // normal read/save op can reach it through validateFilename.
         assertThrows(java.io.IOException.class, () -> service.validateFilename("demo.cfg.bak"),
                 ".bak is not a supported config extension");
     }

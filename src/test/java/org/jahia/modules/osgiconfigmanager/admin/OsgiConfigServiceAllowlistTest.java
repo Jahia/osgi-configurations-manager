@@ -39,12 +39,12 @@ class OsgiConfigServiceAllowlistTest {
     }
 
     @Test
-    @DisplayName("S12: exact-name blacklist is CASE-SENSITIVE (documents the bypass)")
-    void exactBlacklistIsCaseSensitive() {
+    @DisplayName("S12 (fixed): exact-name blacklist is CASE-INSENSITIVE (bypass closed)")
+    void exactBlacklistIsCaseInsensitive() {
         OsgiConfigService service = serviceWith(props("filteredFiles", "Foo.cfg"));
         assertFalse(service.isFilenameAllowed("Foo.cfg", false), "exact case is blocked");
-        assertTrue(service.isFilenameAllowed("foo.cfg", false),
-                "different case slips past the case-sensitive Set.contains check");
+        assertFalse(service.isFilenameAllowed("foo.cfg", false),
+                "a different-case request no longer slips past the blacklist");
     }
 
     @Test

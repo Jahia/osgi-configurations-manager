@@ -71,26 +71,22 @@ class OsgiConfigActionAuditTest {
     }
 
     @Test
-    @DisplayName("S24: decrypt/encrypt/setPreference are logged WITHOUT [AUDIT] or username")
-    void sensitiveActionsAreUnattributed() throws Exception {
-        for (String body : List.of(
-                "{\"action\":\"decrypt\",\"value\":\"ENC(x)\"}",
-                "{\"action\":\"encrypt\",\"value\":\"secret\"}",
-                "{\"action\":\"setPreference\",\"key\":\"k\",\"value\":\"v\"}")) {
+    @DisplayName("S24 (fixed): decrypt/encrypt/setPreference each emit an attributed [AUDIT] INFO line")
+    void sensitiveActionsAreAttributed() throws Exception {
+        for (String action : List.of("decrypt", "encrypt", "setPreference")) {
             appender.list.clear();
+            String body = "setPreference".equals(action)
+                    ? "{\"action\":\"setPreference\",\"key\":\"osgiCM.showComments\",\"value\":\"v\"}"
+                    : "{\"action\":\"" + action + "\",\"value\":\"secret\"}";
             dispatch(body);
-            boolean anyAudit = events().stream()
-                    .anyMatch(e -> e.getFormattedMessage().contains("[AUDIT]"));
-            boolean anyUsername = events().stream()
-                    .anyMatch(e -> e.getFormattedMessage().contains("jdoe"));
-            assertFalse(anyAudit, "CHARACTERIZATION: sensitive action must currently NOT be [AUDIT]-tagged: " + body);
-            assertFalse(anyUsername, "CHARACTERIZATION: sensitive action must currently NOT carry the username: " + body);
+            assertTrue(hasInfoAudit(action),
+                    action + " must now log an attributed [AUDIT] INFO line: " + body);
         }
     }
 
     @Test
-    @DisplayName("S24: GET read logs its [AUDIT] line only at DEBUG, never INFO")
-    void readIsDebugOnly() throws Exception {
+    @DisplayName("S24 (fixed): GET read emits an attributed [AUDIT] INFO line (auditable in production)")
+    void readIsAuditedAtInfo() throws Exception {
         ActionDispatchFixture fx = ActionDispatchFixture.authorized().get();
         when(fx.request.getParameter("filename")).thenReturn("demo.cfg");
         OsgiConfigService service = mock(OsgiConfigService.class);
@@ -100,11 +96,6 @@ class OsgiConfigActionAuditTest {
 
         fx.action(service).doExecute(fx.request, fx.renderContext, null, fx.session, null, null);
 
-        boolean debugAudit = events().stream().anyMatch(e -> e.getLevel() == Level.DEBUG
-                && e.getFormattedMessage().contains("[AUDIT]") && e.getFormattedMessage().contains("read"));
-        boolean infoAudit = events().stream().anyMatch(e -> e.getLevel() == Level.INFO
-                && e.getFormattedMessage().contains("[AUDIT]"));
-        assertTrue(debugAudit, "read is audited only at DEBUG");
-        assertFalse(infoAudit, "read must not produce an INFO [AUDIT] line (effectively off in prod)");
+        assertTrue(hasInfoAudit("read"), "read must produce an attributed INFO [AUDIT] line");
     }
 }

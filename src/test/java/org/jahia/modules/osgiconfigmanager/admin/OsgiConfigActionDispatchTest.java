@@ -13,10 +13,12 @@ import java.util.Locale;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -188,8 +190,8 @@ class OsgiConfigActionDispatchTest {
     // ---- S25: setPreference writes a client-named property on the caller's own node ----
 
     @Test
-    @DisplayName("S25: setPreference writes the exact client key on the user node and saves (no allowlist)")
-    void setPreferenceWritesClientKey() throws Exception {
+    @DisplayName("S25 (fixed): setPreference rejects an adversarial namespaced key (400) and writes nothing")
+    void setPreferenceRejectsInvalidKey() throws Exception {
         ActionDispatchFixture fx = ActionDispatchFixture.authorized()
                 .postJson("{\"action\":\"setPreference\",\"key\":\"j:someInternal\",\"value\":\"x\"}");
         when(fx.session.nodeExists("/users/jdoe")).thenReturn(true);
@@ -198,16 +200,32 @@ class OsgiConfigActionDispatchTest {
 
         fx.action(service).doExecute(fx.request, fx.renderContext, null, fx.session, null, null);
 
-        // adversarial 'j:'-prefixed key is written unfiltered on the caller's OWN node
-        verify(fx.userNode).setProperty("j:someInternal", "x");
+        // the 'j:'-prefixed key is rejected — no property is written and the session is not saved
+        verify(fx.response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        verify(fx.userNode, never()).setProperty(anyString(), anyString());
+        verify(fx.session, never()).save();
+    }
+
+    @Test
+    @DisplayName("S25 (fixed): setPreference writes a valid plain key on the caller's own node and saves")
+    void setPreferenceWritesValidKey() throws Exception {
+        ActionDispatchFixture fx = ActionDispatchFixture.authorized()
+                .postJson("{\"action\":\"setPreference\",\"key\":\"osgiCM.showComments\",\"value\":\"true\"}");
+        when(fx.session.nodeExists("/users/jdoe")).thenReturn(true);
+        when(fx.session.getNode("/users/jdoe")).thenReturn(fx.userNode);
+        OsgiConfigService service = mock(OsgiConfigService.class);
+
+        fx.action(service).doExecute(fx.request, fx.renderContext, null, fx.session, null, null);
+
+        verify(fx.userNode).setProperty("osgiCM.showComments", "true");
         verify(fx.session).save();
     }
 
-    // ---- S23: error responses leak internal detail ----
+    // ---- S23: error responses no longer leak internal filesystem paths ----
 
     @Test
-    @DisplayName("S23: a handled failure leaks the raw exception message (internal path) with 500")
-    void errorLeaksInternalMessage() throws Exception {
+    @DisplayName("S23 (fixed): a handled failure keeps the reason but strips the internal path (500)")
+    void errorDoesNotLeakInternalPath() throws Exception {
         ActionDispatchFixture fx = ActionDispatchFixture.authorized().get();
         when(fx.request.getParameter("filename")).thenReturn("missing.cfg");
         OsgiConfigService service = mock(OsgiConfigService.class);
@@ -217,8 +235,9 @@ class OsgiConfigActionDispatchTest {
         fx.action(service).doExecute(fx.request, fx.renderContext, null, fx.session, null, null);
 
         verify(fx.response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-        assertTrue(fx.body().contains("/opt/karaf/etc/missing.cfg"),
-                "CHARACTERIZATION: internal filesystem path is leaked to the client");
+        String body = fx.body();
+        assertTrue(body.toLowerCase(Locale.ROOT).contains("not found"), "the actionable reason is preserved");
+        assertFalse(body.contains("/opt/karaf/etc/missing.cfg"), "the internal filesystem path must be stripped");
     }
 
     // ---- helpers ----

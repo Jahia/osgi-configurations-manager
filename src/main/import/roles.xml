@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    SUPPORT-646 (D5): out of the box the `canManageOsgiConfigurations` permission (permissions.xml)
+    was bound to no role, so only root — who bypasses permission checks — could use the tool.
+    This ships a dedicated server-role granting it, so an operator can delegate OSGi-configuration
+    management without handing out full server-administrator rights.
+
+    j:privilegedAccess="true" is REQUIRED (learned from the sibling brute-force-login-protection
+    SUPPORT-646 fix): without it Jahia's AclListener never adds a user holding only this role to the
+    privileged group that the administration shell gates on, so the user would be denied (403)
+    before the canManageOsgiConfigurations check is ever reached.
+-->
+<roles jcr:primaryType="jnt:roles"
+       xmlns:jcr="http://www.jcp.org/jcr/1.0"
+       xmlns:j="http://www.jahia.org/jahia/1.0"
+       xmlns:jnt="http://www.jahia.org/jahia/nt/1.0">
+
+    <osgi-configurations-manager-administrator jcr:primaryType="jnt:role"
+                                               j:nodeTypes="rep:root"
+                                               j:roleGroup="server-role"
+                                               j:permissionNames="administrationAccess canManageOsgiConfigurations"
+                                               j:privilegedAccess="true">
+        <j:translation_en jcr:primaryType="jnt:translation"
+                          jcr:language="en"
+                          jcr:title="OSGi Configurations Manager administrator"
+                          jcr:description="Grants access to the OSGi Configurations Manager administration without requiring full server administrator rights"/>
+    </osgi-configurations-manager-administrator>
+</roles>

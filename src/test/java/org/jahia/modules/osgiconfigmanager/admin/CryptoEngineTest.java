@@ -1,7 +1,10 @@
 package org.jahia.modules.osgiconfigmanager.admin;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
@@ -10,113 +13,170 @@ import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.GeneralSecurityException;
+import java.security.SecureRandom;
 import java.util.Base64;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Characterization + invariant tests for {@link CryptoEngine}.
+ * Post-fix (SUPPORT-646) verification of {@link CryptoEngine}.
  *
- * <p>S1 and S2 are CHARACTERIZATION tests: they PASS today and document the currently BROKEN
- * confidentiality model (hardcoded key + silent plaintext fallback). After the Stage-7 product
- * fix (instance-specific / configurable key, explicit failure), S1 must be INVERTED (external
- * reconstruction must FAIL) and S2 must be INVERTED (crypto failure must throw/log, not return
- * plaintext). S3 is the fix-surviving invariant.</p>
+ * <p>The pre-fix characterizations have been INVERTED:
+ * <ul>
+ *   <li>S1 (inverted): a NEW-scheme value is NOT recoverable from the public hardcoded constants.</li>
+ *   <li>Backward-compat: a value written under the OLD hardcoded-key scheme STILL decrypts, so no
+ *       already-encrypted secret becomes unreadable after upgrade.</li>
+ *   <li>S2 (inverted): a crypto failure now FAILS LOUDLY (throws) instead of silently returning the
+ *       input unchanged.</li>
+ *   <li>S2b (inverted): malformed base64 is handled (thrown as a controlled IllegalStateException),
+ *       not an uncaught IllegalArgumentException.</li>
+ *   <li>S3 (invariant): encrypt/decrypt still round-trips; the (new, versioned) envelope is stable;
+ *       the IV/salt are random.</li>
+ * </ul>
  */
 class CryptoEngineTest {
 
-    // The publicly-known hardcoded constants copied from CryptoEngine.java (they are on MIT/public
-    // source, which is exactly the point of S1). An outside attacker knows all of these.
-    private static final byte[] SALT = "12345678".getBytes(StandardCharsets.UTF_8);
-    private static final String PASSWORD = "hardcodedpassword";
-    private static final int ITERATION_COUNT = 10;
-    private static final int KEY_LENGTH = 128;
+    // Public constants from the OLD scheme — an attacker holding the MIT source knows all of these.
+    private static final byte[] LEGACY_SALT = "12345678".getBytes(StandardCharsets.UTF_8);
+    private static final String LEGACY_PASSWORD = "hardcodedpassword";
+    private static final int LEGACY_ITERATIONS = 10;
+    private static final int LEGACY_KEY_LENGTH = 128;
 
-    private static SecretKeySpec rebuildKeyFromPublicConstants() throws Exception {
+    private static final String OPERATOR_SECRET = "unit-test-operator-secret";
+
+    @BeforeEach
+    void useKnownSecret() {
+        // Deterministic operator secret so the tests do not depend on the persisted-secret file.
+        CryptoEngine.configureSecret(OPERATOR_SECRET.toCharArray());
+    }
+
+    @AfterEach
+    void clearSecret() {
+        CryptoEngine.configureSecret(null);
+    }
+
+    private static SecretKeySpec deriveKey(char[] password, byte[] salt, int iterations, int keyLength) throws Exception {
         SecretKeyFactory keyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512");
-        PBEKeySpec keySpec = new PBEKeySpec(PASSWORD.toCharArray(), SALT, ITERATION_COUNT, KEY_LENGTH);
-        SecretKey keyTmp = keyFactory.generateSecret(keySpec);
+        SecretKey keyTmp = keyFactory.generateSecret(new PBEKeySpec(password, salt, iterations, keyLength));
         return new SecretKeySpec(keyTmp.getEncoded(), "AES");
     }
 
+    /** Produce a value in the OLD (pre-fix) envelope: "<b64iv>:<b64ct>" using the hardcoded key. */
+    private static String legacyEncrypt(String plaintext) throws Exception {
+        SecretKeySpec key = deriveKey(LEGACY_PASSWORD.toCharArray(), LEGACY_SALT, LEGACY_ITERATIONS, LEGACY_KEY_LENGTH);
+        byte[] iv = new byte[12];
+        new SecureRandom().nextBytes(iv);
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        cipher.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, iv));
+        byte[] ct = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
+        return Base64.getEncoder().encodeToString(iv) + ":" + Base64.getEncoder().encodeToString(ct);
+    }
+
     @Test
-    @DisplayName("S1: an encrypted value is decryptable using ONLY the public hardcoded constants")
-    void encryptedValueIsRecoverableFromKnownConstants() throws Exception {
-        // CHARACTERIZATION — invert after Stage-7 key fix (reconstruction must FAIL once the key is secret)
+    @DisplayName("S1 (inverted): a NEW value is NOT decryptable with the public hardcoded constants")
+    void newValueNotRecoverableFromPublicConstants() throws Exception {
         // Arrange
         String secret = "s3cr3t-db-password";
 
-        // Act: encrypt via the product, then decrypt purely with attacker-known material
+        // Act: encrypt with the hardened engine, then TRY to recover it the way an attacker with
+        // only the public source (old password) would — even given the visible per-value salt.
         String enc = CryptoEngine.encryptString(secret);
-        String[] parts = enc.split(":", 2);
-        byte[] iv = Base64.getDecoder().decode(parts[0]);
-        byte[] cipherText = Base64.getDecoder().decode(parts[1]);
+        assertTrue(enc.startsWith("v2:"), "new envelope must be versioned: " + enc);
+        String[] parts = enc.substring("v2:".length()).split(":");
+        byte[] salt = Base64.getDecoder().decode(parts[0]);
+        byte[] iv = Base64.getDecoder().decode(parts[1]);
+        byte[] cipherText = Base64.getDecoder().decode(parts[2]);
 
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        cipher.init(Cipher.DECRYPT_MODE, rebuildKeyFromPublicConstants(), new GCMParameterSpec(128, iv));
-        String recovered = new String(cipher.doFinal(cipherText), StandardCharsets.UTF_8);
+        // Attacker uses the only password present in public source; the real key derives from a
+        // non-public per-instance secret, so the GCM tag must not verify.
+        cipher.init(Cipher.DECRYPT_MODE,
+                deriveKey(LEGACY_PASSWORD.toCharArray(), salt, LEGACY_ITERATIONS, LEGACY_KEY_LENGTH),
+                new GCMParameterSpec(128, iv));
 
-        // Assert: zero confidentiality — anyone holding the source recovers the plaintext
-        assertEquals(2, parts.length, "CryptoEngine output must be <b64iv>:<b64ct>");
-        assertEquals(secret, recovered);
+        // Assert: reconstruction from public constants FAILS
+        assertThrows(GeneralSecurityException.class, () -> cipher.doFinal(cipherText),
+                "a NEW value must not be recoverable with the public hardcoded key");
     }
 
     @Test
-    @DisplayName("S2: decrypt silently falls back to plaintext on a GeneralSecurityException")
-    void decryptSilentlyFallsBackToPlaintextOnCryptoFailure() {
-        // CHARACTERIZATION — invert after Stage-7 fix (failure must be signalled, not swallowed)
-        // (a) a non-envelope string has no ':' separator => decrypt() throws
-        //     GeneralSecurityException("Invalid encrypted payload format") which is CAUGHT and
-        //     the input is returned unchanged (silent fallback).
-        String plain = "plainValue";
-        assertEquals(plain, CryptoEngine.decryptString(plain));
+    @DisplayName("Backward-compat (MANDATORY): a value encrypted under the OLD scheme still decrypts")
+    void legacyValueStillDecrypts() throws Exception {
+        // Arrange: a value that already exists on disk, written by the OLD hardcoded-key code.
+        String legacy = legacyEncrypt("legacy-db-password");
 
-        // (b) a well-formed <b64iv>:<b64ct> whose ciphertext fails the GCM auth tag throws
-        //     AEADBadTagException (a GeneralSecurityException) => also CAUGHT => input returned
-        //     unchanged, with NO signal that decryption actually failed.
+        // Act + Assert: the hardened engine still recovers it (no deployment loses its secrets).
+        assertEquals("legacy-db-password", CryptoEngine.decryptString(legacy));
+    }
+
+    @Test
+    @DisplayName("S2 (inverted): a corrupted payload FAILS LOUDLY instead of returning plaintext")
+    void corruptedPayloadThrows() {
+        // A well-formed new envelope whose ciphertext fails the GCM auth tag must throw.
         String enc = CryptoEngine.encryptString("real-value");
-        String[] parts = enc.split(":", 2);
-        byte[] ct = Base64.getDecoder().decode(parts[1]);
-        ct[ct.length - 1] ^= 0x01; // corrupt one byte of ciphertext -> tag mismatch
-        String corrupted = parts[0] + ":" + Base64.getEncoder().encodeToString(ct);
-        assertEquals(corrupted, CryptoEngine.decryptString(corrupted),
-                "corrupted payload is returned verbatim instead of raising an error");
+        String[] parts = enc.substring("v2:".length()).split(":");
+        byte[] ct = Base64.getDecoder().decode(parts[2]);
+        ct[ct.length - 1] ^= 0x01; // corrupt one byte
+        String corrupted = "v2:" + parts[0] + ":" + parts[1] + ":" + Base64.getEncoder().encodeToString(ct);
+
+        assertThrows(IllegalStateException.class, () -> CryptoEngine.decryptString(corrupted),
+                "a corrupted payload must raise an error, never be returned verbatim");
     }
 
     @Test
-    @DisplayName("S2b: malformed base64 escapes the catch as an uncaught IllegalArgumentException")
-    void decryptMalformedBase64ThrowsUncaught() {
-        // CHARACTERIZATION of a distinct latent bug: the catch only handles the checked crypto
-        // exceptions, so Base64's unchecked IllegalArgumentException propagates out unhandled.
-        assertThrows(IllegalArgumentException.class,
+    @DisplayName("S2b (inverted): malformed base64 is handled as a controlled IllegalStateException")
+    void malformedBase64IsHandled() {
+        // Previously this escaped the catch as an uncaught IllegalArgumentException.
+        assertThrows(IllegalStateException.class,
                 () -> CryptoEngine.decryptString("not-base64:@@@"));
     }
 
     @Test
-    @DisplayName("S3: encrypt/decrypt round-trips; envelope format is stable; IV is random (INVARIANT)")
+    @DisplayName("S3 (invariant): round-trips; versioned envelope is stable; salt+IV are random")
     void roundTripAndEnvelopeInvariant() {
-        // This invariant MUST survive the Stage-7 key fix unchanged.
-        // Arrange
         String[] inputs = {"", "unicode-éà中文", "line1\nline2\nline3", "value with spaces"};
-
-        // Act + Assert: round-trip
         for (String input : inputs) {
             String enc = CryptoEngine.encryptString(input);
-            assertTrue(enc.matches("^[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+$"),
-                    "Envelope must be <b64iv>:<b64ct> but was: " + enc);
+            assertTrue(enc.matches("^v2:[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+$"),
+                    "Envelope must be v2:<b64salt>:<b64iv>:<b64ct> but was: " + enc);
             assertEquals(input, CryptoEngine.decryptString(enc));
         }
 
-        // Assert: two encryptions of the same input differ (random 12-byte IV)
+        // Two encryptions of the same input differ (random per-value salt + IV)
         String a = CryptoEngine.encryptString("same-input");
         String b = CryptoEngine.encryptString("same-input");
-        assertNotEquals(a, b, "Two encryptions must differ due to random IV");
+        assertNotEquals(a, b, "Two encryptions must differ due to random salt/IV");
+    }
 
-        // A non-ENC / non-envelope plain string is returned unchanged by decrypt at the engine layer
-        assertFalse("same-input".contains(":"));
+    @Test
+    @DisplayName("Auto-generated per-instance secret round-trips and is persisted (no hardcoded fallback)")
+    void persistedSecretRoundTrips(@TempDir Path etc) throws Exception {
+        String previous = System.getProperty("karaf.etc");
+        try {
+            System.setProperty("karaf.etc", etc.toString());
+            CryptoEngine.configureSecret(null); // force use of the persisted per-instance secret
+
+            String enc = CryptoEngine.encryptString("persisted-value");
+            assertTrue(enc.startsWith("v2:"));
+            assertEquals("persisted-value", CryptoEngine.decryptString(enc));
+
+            Path secretFile = etc.resolve(".osgi-config-manager.secret");
+            assertTrue(Files.exists(secretFile), "a per-instance secret must be persisted");
+            String persisted = new String(Files.readAllBytes(secretFile), StandardCharsets.UTF_8).trim();
+            assertNotEquals(LEGACY_PASSWORD, persisted, "the persisted secret must not be the hardcoded literal");
+        } finally {
+            CryptoEngine.configureSecret(null);
+            if (previous == null) {
+                System.clearProperty("karaf.etc");
+            } else {
+                System.setProperty("karaf.etc", previous);
+            }
+        }
     }
 }
