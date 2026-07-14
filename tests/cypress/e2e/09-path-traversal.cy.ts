@@ -1,15 +1,16 @@
+import {createUser, deleteUser, grantRoles} from '@jahia/cypress';
+
 /**
  * S48 (G5) — path-traversal defense and self-config gating through the real filter + Action.
  *
  * The traversal probes are user-agnostic (validateFilename rejects them for everyone, root
- * included). The self-config gating requires a NON-root user, so it reuses the scoped users
- * provisioned for 08-authorization (see tests/assets/provision-scoped-users.groovy).
- *
- * STAGE-6 TODO: the self-config `describe` depends on the AUTHORIZED_USER being NON-root with the
- * manage permission. If that provisioning is not yet confirmed, skip that block rather than relax it.
+ * included). The self-config gating requires a NON-root user holding canManageOsgiConfigurations,
+ * provisioned here (see 08-authorization for the rationale on before()-time provisioning).
  */
-const AUTHORIZED_USER = Cypress.env('OSGI_AUTHORIZED_USER') || 'osgi-authorized';
-const SCOPED_PWD = Cypress.env('OSGI_SCOPED_PWD') || 'password';
+const AUTHORIZED_USER = 'osgiTraversalUser';
+const PASSWORD = 'OsgiTrav9PwdTest';
+const MODULE_ROLE = 'osgi-configurations-manager-administrator';
+const SERVER_ADMIN_ROLE = 'server-administrator';
 const ACTION_PATH = '/cms/render/default/en/sites/systemsite.osgiConfigManager.do';
 const SELF_CONFIG = 'org.jahia.modules.osgiconfigmanager.cfg';
 
@@ -55,7 +56,19 @@ describe('OSGi Configurations Manager - Path traversal & self-config gating', ()
     });
 
     describe('non-root user cannot touch the self-configuration (F8/D6)', () => {
-        beforeEach(() => cy.login(AUTHORIZED_USER, SCOPED_PWD));
+        before(() => {
+            cy.login();
+            createUser(AUTHORIZED_USER, PASSWORD);
+            grantRoles('/', [SERVER_ADMIN_ROLE], AUTHORIZED_USER, 'USER');
+            grantRoles('/', [MODULE_ROLE], AUTHORIZED_USER, 'USER');
+        });
+
+        after(() => {
+            cy.login();
+            deleteUser(AUTHORIZED_USER);
+        });
+
+        beforeEach(() => cy.login(AUTHORIZED_USER, PASSWORD));
 
         it('is denied read/save/toggle/delete of the self-config', () => {
             const ops = [

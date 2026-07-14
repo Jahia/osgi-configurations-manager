@@ -1,24 +1,22 @@
+import {createUser, deleteUser, grantRoles} from '@jahia/cypress';
 import {cleanupFiles} from './osgiTestUtils';
 
 /**
  * S22 (G3) + S21e (G4) — authorization negatives and the CSRF JSON-content-type guard through the
  * REAL Jahia security filter + Action servlet.
  *
- * D5 BLOCKER — SCOPED USERS: the module ships permissions.xml only (no roles.xml), and cy.login()
- * with no args logs in as root, who bypasses every permission check. This spec therefore relies on
- * two provisioned, NON-root users (see tests/assets/provision-scoped-users.groovy, wired via
- * tests/assets/provisioning.yml):
- *   - AUTHORIZED_USER: server-admin + a role granting `canManageOsgiConfigurations`
- *   - NEGATIVE_USER:   server-admin (passes the Action's required "admin" permission) but WITHOUT
- *                      `canManageOsgiConfigurations`
- *
- * STAGE-6 TODO: confirm the provisioning actually grants/withholds the permission as intended
- * (the grant could not be validated in Stage 5 — no Docker). If the users are absent, this spec
- * must be skipped, NOT made to pass by weakening the assertions.
+ * D5 — the tool now ships src/main/import/roles.xml with the server-role
+ * `osgi-configurations-manager-administrator` (carries `canManageOsgiConfigurations`). The scoped
+ * users are provisioned HERE, in a before() hook, because the module (and hence its roles.xml) is
+ * installed AFTER the provisioning manifest runs — so the role only exists once tests start.
+ *   - AUTHORIZED_USER: server-administrator (passes the Action's required "admin") + the module role.
+ *   - NEGATIVE_USER:   server-administrator only — passes "admin" but WITHOUT canManageOsgiConfigurations.
  */
-const AUTHORIZED_USER = Cypress.env('OSGI_AUTHORIZED_USER') || 'osgi-authorized';
-const NEGATIVE_USER = Cypress.env('OSGI_NEGATIVE_USER') || 'osgi-plain-admin';
-const SCOPED_PWD = Cypress.env('OSGI_SCOPED_PWD') || 'password';
+const AUTHORIZED_USER = 'osgiAuthorizedUser';
+const NEGATIVE_USER = 'osgiPlainAdminUser';
+const PASSWORD = 'OsgiPerm9PwdTest';
+const MODULE_ROLE = 'osgi-configurations-manager-administrator';
+const SERVER_ADMIN_ROLE = 'server-administrator';
 
 const STATE_CHANGING = [
     {action: 'save', body: {action: 'save', filename: 'authz-probe.cfg', rawContent: 'k=v'}},
@@ -31,9 +29,26 @@ const STATE_CHANGING = [
 ];
 
 describe('OSGi Configurations Manager - Authorization', () => {
+    before(() => {
+        cy.login();
+        createUser(AUTHORIZED_USER, PASSWORD);
+        createUser(NEGATIVE_USER, PASSWORD);
+        // both are server administrators (so both pass the Action's required "admin" permission)
+        grantRoles('/', [SERVER_ADMIN_ROLE], AUTHORIZED_USER, 'USER');
+        grantRoles('/', [SERVER_ADMIN_ROLE], NEGATIVE_USER, 'USER');
+        // only the authorized user additionally receives canManageOsgiConfigurations (module role)
+        grantRoles('/', [MODULE_ROLE], AUTHORIZED_USER, 'USER');
+    });
+
+    after(() => {
+        cy.login();
+        deleteUser(AUTHORIZED_USER);
+        deleteUser(NEGATIVE_USER);
+    });
+
     describe('user WITHOUT canManageOsgiConfigurations', () => {
         beforeEach(() => {
-            cy.login(NEGATIVE_USER, SCOPED_PWD);
+            cy.login(NEGATIVE_USER, PASSWORD);
         });
 
         it('is denied the GET listing (403)', () => {
@@ -53,7 +68,7 @@ describe('OSGi Configurations Manager - Authorization', () => {
         const probe = 'authz-allowed-probe.cfg';
 
         beforeEach(() => {
-            cy.login(AUTHORIZED_USER, SCOPED_PWD);
+            cy.login(AUTHORIZED_USER, PASSWORD);
             cleanupFiles([probe]);
         });
 
@@ -69,9 +84,19 @@ describe('OSGi Configurations Manager - Authorization', () => {
                 .its('status').should('eq', 200);
             cy.osgiRequest({method: 'GET', url: `/cms/render/default/en/sites/systemsite.osgiConfigManager.do?filename=${probe}`})
                 .its('status').should('eq', 200);
-            // D4: any gate-passer may decrypt; there is no per-file/graded decrypt authorization.
-            cy.osgiRequest({method: 'POST', body: {action: 'decrypt', value: 'ENC(x)'}})
-                .its('status').should('eq', 200);
+            // D4: any gate-passer may encrypt/decrypt (single-gate authz — no per-file/graded
+            // decrypt authorization). Round-trip a REAL value: post-SUPPORT-646 the engine fails
+            // loudly on a malformed ENC(...) instead of silently returning it, so use a value the
+            // backend actually produced.
+            cy.osgiRequest({method: 'POST', body: {action: 'encrypt', value: 'probe-secret'}})
+                .then(res => {
+                    expect(res.status, 'authorized user may encrypt').to.eq(200);
+                    cy.osgiRequest({method: 'POST', body: {action: 'decrypt', value: res.body.encryptedValue}})
+                        .then(dec => {
+                            expect(dec.status, 'authorized user may decrypt').to.eq(200);
+                            expect(dec.body.decryptedValue).to.eq('probe-secret');
+                        });
+                });
         });
 
         it('S21e: rejects a form-encoded POST (415) but accepts the same JSON payload', () => {
