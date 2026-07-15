@@ -1,4 +1,3 @@
 - karafCommand: "log:log 'START - provisioning for osgi-configurations-manager'"
 - karafCommand: "log:log 'No extra bundles or demo sites are required for these tests'"
 - karafCommand: "log:log 'END - provisioning for osgi-configurations-manager'"
-

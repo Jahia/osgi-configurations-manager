@@ -31,6 +31,8 @@ public class OsgiConfigAction extends Action {
     private static final String PARAM_FILENAME = "filename";
     private static final String KEY_PROPERTIES = "properties";
     private static final String STATUS_CREATED = "created";
+    private static final String GENERIC_ERROR_MESSAGE =
+            "An internal error occurred while processing the request. See server logs for details.";
     private OsgiConfigService configService;
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -65,8 +67,9 @@ public class OsgiConfigAction extends Action {
             if ("GET".equals(method)) {
                 String filename = req.getParameter(PARAM_FILENAME);
                 if (filename != null && !filename.isEmpty()) {
-                    // Read specific file
-                    LOGGER.debug("[AUDIT] User: {} | Action: read | File: {}", renderContext.getUser().getName(),
+                    // Read specific file — attributed at INFO so reads (which can expose ENC values)
+                    // are auditable in production, not only when DEBUG logging is enabled (SUPPORT-646).
+                    LOGGER.info("[AUDIT] User: {} | Action: read | File: {}", renderContext.getUser().getName(),
                             filename);
                     Map<String, Object> fileContent = configService.readFile(filename, req.getLocale(), isRootUser);
                     result.put("data", fileContent);
@@ -74,6 +77,9 @@ public class OsgiConfigAction extends Action {
                     result.put("metatypes", configService.listAvailableMetatypeConfigurations(req.getLocale(), isRootUser));
                 } else if ("getPreference".equals(req.getParameter(PARAM_ACTION))) {
                     String key = req.getParameter("key");
+                    if (!isValidPreferenceKey(key)) {
+                        return badRequest(response, "Invalid preference key");
+                    }
                     String userPath = renderContext.getUser().getLocalPath();
                     if (session.nodeExists(userPath)) {
                         org.jahia.services.content.JCRNodeWrapper userNode = session.getNode(userPath);
@@ -141,14 +147,10 @@ public class OsgiConfigAction extends Action {
                 String actionType = (String) payload.get(PARAM_ACTION);
                 String filename = (String) payload.get(PARAM_FILENAME);
 
-                if ("save".equals(actionType) || "toggle".equals(actionType) || "delete".equals(actionType)
-                        || "markAsDefault".equals(actionType)
-                        || "create".equals(actionType) || "createFromMetatype".equals(actionType)) {
-                    LOGGER.info("[AUDIT] User: {} | Action: {} | File: {}", renderContext.getUser().getName(),
-                            actionType, filename);
-                } else {
-                    LOGGER.info("Received action: {} for filename: {}", actionType, filename);
-                }
+                // SUPPORT-646: attribute EVERY state-changing / secret-touching action (including
+                // encrypt/decrypt/setPreference) with the caller identity and the [AUDIT] tag.
+                LOGGER.info("[AUDIT] User: {} | Action: {} | File: {}", renderContext.getUser().getName(),
+                        actionType, filename);
 
                 if ("save".equals(actionType)) {
                     Map<String, Object> contentMap = new LinkedHashMap<>();
@@ -190,6 +192,9 @@ public class OsgiConfigAction extends Action {
                 } else if ("setPreference".equals(actionType)) {
                     String key = (String) payload.get("key");
                     String value = (String) payload.get("value");
+                    if (!isValidPreferenceKey(key)) {
+                        return badRequest(response, "Invalid preference key");
+                    }
                     String userPath = renderContext.getUser().getLocalPath();
                     if (session.nodeExists(userPath)) {
                         org.jahia.services.content.JCRNodeWrapper userNode = session.getNode(userPath);
@@ -213,14 +218,54 @@ public class OsgiConfigAction extends Action {
             response.getWriter().flush();
             return null;
 
+        } catch (java.io.IOException e) {
+            // Controlled service error (validation / authorization / not-found). Keep the actionable
+            // reason but strip any absolute filesystem path so server internals are not leaked.
+            LOGGER.warn("[AUDIT] Request rejected (action={}): {}", req.getParameter(PARAM_ACTION), e.getMessage());
+            return writeError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, sanitizePath(e.getMessage()));
         } catch (Exception e) {
-            LOGGER.error("Error in OsgiConfigAction", e);
-            Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            response.setContentType("application/json");
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            mapper.writeValue(response.getWriter(), error);
-            return null;
+            // SUPPORT-646: any OTHER (unexpected) exception may carry internal detail / filesystem
+            // paths / stack context — log it server-side but return only a generic message.
+            LOGGER.error("[AUDIT] Error in OsgiConfigAction (action={}, method={})",
+                    req.getParameter(PARAM_ACTION), method, e);
+            return writeError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, GENERIC_ERROR_MESSAGE);
         }
+    }
+
+    // Absolute unix paths of >=2 segments (e.g. /opt/karaf/etc/x.cfg) and Windows paths (C:\...).
+    private static final java.util.regex.Pattern ABSOLUTE_PATH =
+            java.util.regex.Pattern.compile("(?:/[\\w.\\-]+){2,}|[A-Za-z]:\\\\[^\\s\"]+");
+
+    /** Remove absolute filesystem paths from a client-bound message, preserving the reason text. */
+    private String sanitizePath(String message) {
+        if (message == null) {
+            return GENERIC_ERROR_MESSAGE;
+        }
+        return ABSOLUTE_PATH.matcher(message).replaceAll("<path>");
+    }
+
+    private ActionResult writeError(HttpServletResponse response, int status, String message) throws java.io.IOException {
+        Map<String, String> error = new HashMap<>();
+        error.put("error", message);
+        response.setContentType("application/json");
+        response.setStatus(status);
+        mapper.writeValue(response.getWriter(), error);
+        return null;
+    }
+
+    private static final String PREFERENCE_KEY_PATTERN = "^[A-Za-z][A-Za-z0-9_.]*$";
+
+    /**
+     * A preference key is written verbatim as a JCR property on the caller's own node, so it must
+     * be a plain, un-namespaced identifier. Rejecting anything containing a namespace separator
+     * (":") or other special characters prevents a client from setting internal/system properties
+     * (e.g. {@code j:...}, {@code jcr:...}).
+     */
+    private boolean isValidPreferenceKey(String key) {
+        return key != null && !key.isEmpty() && key.length() <= 100 && key.matches(PREFERENCE_KEY_PATTERN);
+    }
+
+    private ActionResult badRequest(HttpServletResponse response, String message) throws java.io.IOException {
+        return writeError(response, HttpServletResponse.SC_BAD_REQUEST, message);
     }
 }

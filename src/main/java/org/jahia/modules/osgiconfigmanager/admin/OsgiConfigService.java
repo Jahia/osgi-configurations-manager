@@ -99,6 +99,16 @@ public class OsgiConfigService {
                 required = false
         )
         boolean visualFormattingControlsEnabled() default false;
+
+        @org.osgi.service.metatype.annotations.AttributeDefinition(
+                name = "Encryption secret",
+                description = "Passphrase used to derive the encryption key for NEW ENC(...) values. "
+                        + "Leave empty to auto-generate and persist a per-instance random secret. "
+                        + "Never uses a hardcoded default. Legacy values remain decryptable regardless.",
+                required = false,
+                type = org.osgi.service.metatype.annotations.AttributeType.PASSWORD
+        )
+        String cryptoSecret() default "";
     }
 
     private static final class MetatypeCollectionContext {
@@ -153,6 +163,12 @@ public class OsgiConfigService {
             addConfiguredFilenames(newWhitelist, newWhitelistPatterns, allowedFiles);
         }
         this.visualFormattingControlsEnabled = getBooleanProperty(properties, "visualFormattingControlsEnabled", false);
+        if (properties != null && properties.get("cryptoSecret") != null) {
+            String secret = String.valueOf(properties.get("cryptoSecret"));
+            CryptoEngine.configureSecret(secret.isEmpty() ? null : secret.toCharArray());
+        } else {
+            CryptoEngine.configureSecret(null);
+        }
         this.blacklist = newBlacklist;
         this.whitelist = newWhitelist;
         this.blacklistPatterns = newBlacklistPatterns;
@@ -448,7 +464,8 @@ public class OsgiConfigService {
         return entries;
     }
 
-    private Map<String, String> parseCfgLine(String line) {
+    // package-private seam for unit testing (SUPPORT-646)
+    Map<String, String> parseCfgLine(String line) {
         Map<String, String> entry = new HashMap<>();
         String trimmed = line.trim();
         if (trimmed.isEmpty()) {
@@ -487,7 +504,8 @@ public class OsgiConfigService {
         return colIndex;
     }
 
-    private Object readYamlProperties(Path filePath) throws IOException {
+    // package-private seam for unit testing (SUPPORT-646)
+    Object readYamlProperties(Path filePath) throws IOException {
         LoaderOptions loaderOptions = new LoaderOptions();
         Yaml yaml = new Yaml(new SafeConstructor(loaderOptions) {
             @Override
@@ -576,7 +594,8 @@ public class OsgiConfigService {
         }
     }
 
-    private String findBestFactoryPidMatch(String normalizedConfigurationName, String[] pids,
+    // package-private seam for unit testing (SUPPORT-646)
+    String findBestFactoryPidMatch(String normalizedConfigurationName, String[] pids,
                                            boolean declaredFactory, Set<String> factoryCapablePids, Set<String> seenFactoryPids,
                                            String currentBestMatch) {
         if (pids == null) {
@@ -826,39 +845,61 @@ public class OsgiConfigService {
 
         Path filePath = resolveConfigPath(safeFilename);
 
-        // Auto-Backup Logic
+        // Auto-Backup Logic: a transient recovery copy in case the write below fails.
+        // It is PURGED on success (SUPPORT-646) — a lingering .bak holds the prior (possibly
+        // secret) content, is invisible in the UI and un-filterable by the allow/blacklist.
+        Path backupPath = null;
         if (Files.exists(filePath)) {
             try {
-                Path backupPath = filePath.resolveSibling(filePath.getFileName().toString() + ".bak");
-                Files.copy(filePath, backupPath, StandardCopyOption.REPLACE_EXISTING);
-                LOGGER.info("Created backup for {}: {}", safeFilename, backupPath.getFileName());
+                Path candidate = filePath.resolveSibling(filePath.getFileName().toString() + ".bak");
+                Files.copy(filePath, candidate, StandardCopyOption.REPLACE_EXISTING);
+                backupPath = candidate;
+                LOGGER.debug("Created transient backup for {}: {}", safeFilename, candidate.getFileName());
             } catch (IOException e) {
                 LOGGER.error("Failed to create backup for " + safeFilename, e);
             }
         }
 
-        // Universal Raw Content Handling
-        // If the frontend sends "rawContent", we trust it completely and write it to
-        // disk.
-        // This allows the frontend to handle encryption, formatting, and comments.
-        if (content.containsKey("rawContent")) {
-            writeRawContent(filePath, (String) content.get("rawContent"));
-            return;
+        try {
+            // Universal Raw Content Handling
+            // If the frontend sends "rawContent", we trust it completely and write it to
+            // disk. This allows the frontend to handle encryption, formatting, and comments.
+            if (content.containsKey("rawContent")) {
+                writeRawContent(filePath, (String) content.get("rawContent"));
+            } else {
+                String type = getFileType(safeFilename);
+                if ("cfg".equals(type)) {
+                    saveCfgContent(filePath, content.get(KEY_PROPERTIES));
+                } else if ("yml".equals(type)) {
+                    // YML fallback if no rawContent sent (unlikely given frontend logic, but good
+                    // for completeness)
+                    DumperOptions options = new DumperOptions();
+                    options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+                    Yaml yaml = new Yaml(options);
+                    try (Writer writer = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8)) {
+                        yaml.dump(content.get(KEY_PROPERTIES), writer);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            // Write failed: retain the backup so the operator can recover the prior content.
+            LOGGER.error("[AUDIT] Save failed for {}; retained recovery backup {}", safeFilename,
+                    backupPath == null ? "<none>" : backupPath.getFileName(), e);
+            throw e;
         }
 
-        String type = getFileType(safeFilename);
+        // Success: purge the secret-bearing backup so it never lingers in karaf/etc.
+        purgeBackup(backupPath);
+    }
 
-        if ("cfg".equals(type)) {
-            saveCfgContent(filePath, content.get(KEY_PROPERTIES));
-        } else if ("yml".equals(type)) {
-            // YML fallback if no rawContent sent (unlikely given frontend logic, but good
-            // for completeness)
-            DumperOptions options = new DumperOptions();
-            options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-            Yaml yaml = new Yaml(options);
-            try (Writer writer = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8)) {
-                yaml.dump(content.get(KEY_PROPERTIES), writer);
-            }
+    private void purgeBackup(Path backupPath) {
+        if (backupPath == null) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(backupPath);
+        } catch (IOException e) {
+            LOGGER.warn("Could not purge transient backup {}", backupPath.getFileName(), e);
         }
     }
 
@@ -1118,7 +1159,8 @@ public class OsgiConfigService {
         return filename;
     }
 
-    private Path resolveConfigPath(String filename) throws IOException {
+    // package-private seam for unit testing (SUPPORT-646)
+    Path resolveConfigPath(String filename) throws IOException {
         if (karafEtcDir == null) {
             throw new IOException("karaf.etc directory is not configured");
         }
@@ -1133,7 +1175,8 @@ public class OsgiConfigService {
         return resolvedPath;
     }
 
-    private String validateFilename(String filename) throws IOException {
+    // package-private seam for unit testing (SUPPORT-646)
+    String validateFilename(String filename) throws IOException {
         if (filename == null || filename.isBlank()) {
             throw new IOException(INVALID_FILENAME_MESSAGE + filename);
         }
@@ -1177,7 +1220,8 @@ public class OsgiConfigService {
         }
     }
 
-    private String detectConfigState(Path filePath) throws IOException {
+    // package-private seam for unit testing (SUPPORT-646)
+    String detectConfigState(Path filePath) throws IOException {
         try (Reader reader = Files.newBufferedReader(filePath, StandardCharsets.UTF_8);
              java.io.BufferedReader bufferedReader = new java.io.BufferedReader(reader)) {
             String line;
@@ -1256,7 +1300,8 @@ public class OsgiConfigService {
         return factoryPid + "-<id>" + DEFAULT_FACTORY_FILE_EXTENSION;
     }
 
-    private void validateFactoryIdentifier(String identifier) throws IOException {
+    // package-private seam for unit testing (SUPPORT-646)
+    void validateFactoryIdentifier(String identifier) throws IOException {
         if (identifier.startsWith(".")) {
             throw new IOException("Factory identifier cannot start with '.'");
         }
@@ -1337,7 +1382,9 @@ public class OsgiConfigService {
     }
 
     private boolean matchesConfiguredFilename(String filename, Set<String> exactMatches, List<Pattern> wildcardPatterns) {
-        if (exactMatches.contains(filename)) {
+        // SUPPORT-646: exact-name matching is case-insensitive so a blacklist entry such as
+        // "Foo.cfg" cannot be bypassed on a case-preserving filesystem by requesting "foo.cfg".
+        if (exactMatches.stream().anyMatch(entry -> entry.equalsIgnoreCase(filename))) {
             return true;
         }
 
@@ -1348,7 +1395,8 @@ public class OsgiConfigService {
         return !exactMatches.isEmpty() || !wildcardPatterns.isEmpty();
     }
 
-    private void ensurePidAllowed(String pid, boolean isRootUser) throws IOException {
+    // package-private seam for unit testing (SUPPORT-646)
+    void ensurePidAllowed(String pid, boolean isRootUser) throws IOException {
         if (isSelfConfigurationPid(pid) && !isRootUser) {
             throw new IOException("Access denied: " + pid + " is reserved for the root user.");
         }
@@ -1384,7 +1432,8 @@ public class OsgiConfigService {
                 || matchesConfiguredFilename(disabledSampleCandidate, whitelist, whitelistPatterns);
     }
 
-    private boolean isSelfConfigurationPid(String pid) {
+    // package-private seam for unit testing (SUPPORT-646)
+    boolean isSelfConfigurationPid(String pid) {
         return SELF_CONFIG_PID.equals(pid);
     }
 
@@ -1408,8 +1457,16 @@ public class OsgiConfigService {
         saveCfgEntries(filePath, (List<Map<String, Object>>) propertiesObj);
     }
 
+    // SUPPORT-646: an upper bound on client-supplied raw content — a config file has no legitimate
+    // reason to exceed this, and the cap prevents an unbounded write into karaf/etc.
+    private static final int MAX_RAW_CONTENT_BYTES = 5 * 1024 * 1024;
+
     private void writeRawContent(Path filePath, String raw) throws IOException {
-        Files.write(filePath, (raw == null ? "" : raw).getBytes(StandardCharsets.UTF_8));
+        byte[] bytes = (raw == null ? "" : raw).getBytes(StandardCharsets.UTF_8);
+        if (bytes.length > MAX_RAW_CONTENT_BYTES) {
+            throw new IOException("Configuration content exceeds the maximum allowed size");
+        }
+        Files.write(filePath, bytes);
     }
 
     private void writeEmptyFile(Path filePath) throws IOException {
