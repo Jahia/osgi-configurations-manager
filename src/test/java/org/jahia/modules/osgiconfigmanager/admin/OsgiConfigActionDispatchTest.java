@@ -109,7 +109,7 @@ class OsgiConfigActionDispatchTest {
 
             assertEquals(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE, result.getResultCode(),
                     "Content-Type '" + contentType + "' must be rejected 415");
-            verify(service, never()).saveFile(any(), any(), anyBoolean());
+            verifyNoInteractions(service);
         }
     }
 

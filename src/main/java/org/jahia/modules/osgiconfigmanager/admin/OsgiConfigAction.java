@@ -132,8 +132,14 @@ public class OsgiConfigAction extends Action {
                 // is media type text/plain and must be rejected even though the header text contains
                 // "application/json". Only an exact application/json essence is accepted.
                 final String contentType = req.getContentType();
-                final String mediaType = (contentType == null) ? null
-                        : contentType.split(";", 2)[0].trim().toLowerCase(java.util.Locale.ROOT);
+                final String mediaType;
+                if (contentType == null) {
+                    mediaType = null;
+                } else {
+                    final int paramIdx = contentType.indexOf(';');
+                    final String essence = (paramIdx >= 0) ? contentType.substring(0, paramIdx) : contentType;
+                    mediaType = essence.trim().toLowerCase(java.util.Locale.ROOT);
+                }
                 if (!"application/json".equals(mediaType)) {
                     LOGGER.warn("[AUDIT] Rejected osgiConfigManager POST with non-JSON Content-Type '{}' from {}",
                             contentType, req.getRemoteAddr());
