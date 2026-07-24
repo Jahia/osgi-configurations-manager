@@ -90,6 +90,43 @@ class OsgiConfigActionDispatchTest {
         verify(service).deleteFile("x.cfg", false);
     }
 
+    @Test
+    @DisplayName("S21: a Content-Type whose MEDIA TYPE is not application/json is rejected 415, "
+            + "even if the header text contains \"application/json\" as a parameter")
+    void nonJsonMediaTypeRejectedRegardlessOfParameters() throws Exception {
+        // The media type is the essence before ';'; parameters are not part of it. Each of these has
+        // media type text/plain, so the guard must reject it with no service side effect — a substring
+        // match on the raw header would wrongly let them through.
+        for (String contentType : List.of(
+                "text/plain;application/json",
+                "text/plain; charset=application/json",
+                "text/plain")) {
+            ActionDispatchFixture fx = ActionDispatchFixture.authorized()
+                    .postWithContentType(contentType, "{\"action\":\"save\",\"filename\":\"x.cfg\",\"rawContent\":\"k=v\"}");
+            OsgiConfigService service = mock(OsgiConfigService.class);
+
+            ActionResult result = fx.action(service).doExecute(fx.request, fx.renderContext, null, fx.session, null, null);
+
+            assertEquals(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE, result.getResultCode(),
+                    "Content-Type '" + contentType + "' must be rejected 415");
+            verify(service, never()).saveFile(any(), any(), anyBoolean());
+        }
+    }
+
+    @Test
+    @DisplayName("S21: application/json with a charset parameter still passes the guard")
+    void jsonWithCharsetParameterPasses() throws Exception {
+        ActionDispatchFixture fx = ActionDispatchFixture.authorized()
+                .postWithContentType("application/json; charset=UTF-8",
+                        "{\"action\":\"delete\",\"filename\":\"x.cfg\"}");
+        OsgiConfigService service = mock(OsgiConfigService.class);
+
+        ActionResult result = fx.action(service).doExecute(fx.request, fx.renderContext, null, fx.session, null, null);
+
+        assertNull(result);
+        verify(service).deleteFile("x.cfg", false);
+    }
+
     // ---- S27: POST routing ----
 
     @Test
