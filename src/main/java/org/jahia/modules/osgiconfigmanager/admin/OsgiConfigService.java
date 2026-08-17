@@ -1527,7 +1527,19 @@ public class OsgiConfigService {
             return null;
         if (value.startsWith("ENC(") && value.endsWith(")")) {
             String cipherText = value.substring(4, value.length() - 1);
-            return CryptoEngine.decryptString(cipherText);
+            try {
+                return CryptoEngine.decryptString(cipherText);
+            } catch (IllegalStateException e) {
+                // Decryption is a READ operation, so degrade gracefully: hand back the value
+                // untouched instead of failing the request. The SUPPORT-646 hardening made
+                // CryptoEngine.decryptString() throw on an undecryptable payload, which is right
+                // for the engine but turned this call site into an opaque 500 — a v2 value
+                // encrypted with another instance's secret (a config copied between
+                // environments) is undecryptable here by design, not a server fault.
+                // Encryption stays fail-closed: a secret must never be persisted in clear.
+                LOGGER.warn("Could not decrypt configuration value, returning it unchanged", e);
+                return value;
+            }
         }
         return value;
     }
