@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { parseData } from '../utils/configUtils';
+import { decryptTree, encryptTree } from '../utils/cryptoTree';
 import { useTranslation } from 'react-i18next';
 import { OsgiAvailableMetatypeDefinition, OsgiMetatypeDefinition, osgiService } from '../api/osgiService';
 import { useToast } from './useToast';
@@ -166,30 +167,9 @@ export const useOsgiConfigs = () => {
                     parsed = {};
                 }
 
-                // 2. Decrypt Recursive Helper
-                const decryptRecursive = async (obj: any) => {
-                    if (Array.isArray(obj)) {
-                        await Promise.all(obj.map(item => decryptRecursive(item)));
-                    } else if (obj && typeof obj === 'object') {
-                        if (obj.isLeaf && obj.encrypted && typeof obj.value === 'string' && obj.value.startsWith('ENC(')) {
-                            try {
-                                const decData = await osgiService.decrypt(obj.value, filename);
-                                obj.value = decData.decryptedValue || obj.value;
-                                // Keep encrypted=true flag, but value is now cleartext
-                            } catch (e: any) {
-                                console.error("Decryption failed for", obj.value, e);
-                            }
-                        } else {
-                            await Promise.all(Object.entries(obj)
-                                .filter(([k]) => k !== '_order')
-                                .map(([_, v]) => decryptRecursive(v))
-                            );
-                        }
-                    }
-                };
-
-                // 3. Perform Decryption
-                await decryptRecursive(parsed);
+                // Shared traversal (utils/cryptoTree): the same recursion used to be inlined here and
+                // in two more places, with the copies diverging on _order handling and error logging.
+                await decryptTree(parsed, filename, e => console.error('Decryption failed during load', e));
 
                 resetProperties(parsed);
                 setOriginalProperties(JSON.parse(JSON.stringify(parsed)));
@@ -287,32 +267,10 @@ export const useOsgiConfigs = () => {
     const showEmptyLines = visualFormattingControlsEnabled && showEmptyLinesPreference;
 
     // Helper to encrypt properties tree before saving/converting to raw
-    const encryptRecursive = useCallback(async (obj: any): Promise<any> => {
-        if (Array.isArray(obj)) {
-            return Promise.all(obj.map(item => encryptRecursive(item)));
-        } else if (obj && typeof obj === 'object') {
-            const nextObj = { ...obj };
-            // Ensure we only encrypt if it's a leaf node that is marked as encrypted but NOT already encrypted-string
-            if (nextObj.isLeaf && nextObj.encrypted && typeof nextObj.value === 'string') {
-                if (!nextObj.value.startsWith('ENC(')) {
-                    try {
-                        const encData = await osgiService.encrypt(nextObj.value);
-                        nextObj.value = encData.encryptedValue || nextObj.value;
-                    } catch (e: any) {
-                        console.error("Encryption failed for", nextObj.value, e);
-                    }
-                }
-            } else {
-                // Not a leaf or not enc leaf, traverse children
-                await Promise.all(Object.keys(nextObj).map(async (k) => {
-                    if (k === '_order' || typeof nextObj[k] !== 'object' || nextObj[k] === null) return;
-                    nextObj[k] = await encryptRecursive(nextObj[k]);
-                }));
-            }
-            return nextObj;
-        }
-        return obj;
-    }, []);
+    const encryptRecursive = useCallback(
+        (obj: any) => encryptTree(obj, e => console.error('Encryption failed', e)),
+        []
+    );
 
     // handleSave re-enters itself through the diff modal's onConfirm (the confirm path passes the
     // already-computed content, which skips recomputation and the gate below). A ref breaks the
@@ -425,25 +383,9 @@ export const useOsgiConfigs = () => {
                 const { parseCfgContent } = await import('../utils/configUtils');
                 if (selectedFile?.name.endsWith('.cfg') || selectedFile?.name.endsWith('.cfg.disabled')) {
                     const parsed = parseCfgContent(finalContent);
-                    const decryptRecursiveRaw = async (obj: any) => {
-                        if (Array.isArray(obj)) {
-                            await Promise.all(obj.map(item => decryptRecursiveRaw(item)));
-                        } else if (obj && typeof obj === 'object') {
-                            if (obj.isLeaf && obj.encrypted && typeof obj.value === 'string' && obj.value.startsWith('ENC(')) {
-                                try {
-                                    const decData = await osgiService.decrypt(obj.value, selectedFile.name);
-                                    obj.value = decData.decryptedValue || obj.value;
-                                } catch (e: any) {
-                                    // ignore
-                                }
-                            } else {
-                                await Promise.all(Object.keys(obj).map(async k => {
-                                    if (typeof obj[k] === 'object') await decryptRecursiveRaw(obj[k]);
-                                }));
-                            }
-                        }
-                    };
-                    await decryptRecursiveRaw(parsed);
+                    // Same shared traversal as the load path; these copies previously swallowed decryption
+                    // errors entirely, so a refusal left the value unchanged with no trace at all.
+                    await decryptTree(parsed, selectedFile.name, e => console.error('Decryption failed', e));
 
                     resetProperties(parsed);
                     setOriginalProperties(JSON.parse(JSON.stringify(parsed)));
@@ -523,25 +465,9 @@ export const useOsgiConfigs = () => {
             const parsed = parseCfgContent(rawContent); // This will have ENC(...) values
 
             // Decrypt-in-Memory: Decrypt all ENC values
-            const decryptRecursiveRaw = async (obj: any) => {
-                if (Array.isArray(obj)) {
-                    await Promise.all(obj.map(item => decryptRecursiveRaw(item)));
-                } else if (obj && typeof obj === 'object') {
-                    if (obj.isLeaf && obj.encrypted && typeof obj.value === 'string' && obj.value.startsWith('ENC(')) {
-                        try {
-                            const decData = await osgiService.decrypt(obj.value, selectedFile.name);
-                            obj.value = decData.decryptedValue || obj.value;
-                        } catch (e: any) {
-                            // ignore
-                        }
-                    } else {
-                        await Promise.all(Object.keys(obj).map(async k => {
-                            if (typeof obj[k] === 'object') await decryptRecursiveRaw(obj[k]);
-                        }));
-                    }
-                }
-            };
-            await decryptRecursiveRaw(parsed);
+            // Same shared traversal as the load path; these copies previously swallowed decryption
+            // errors entirely, so a refusal left the value unchanged with no trace at all.
+            await decryptTree(parsed, selectedFile.name, e => console.error('Decryption failed', e));
 
             resetProperties(parsed);
 
