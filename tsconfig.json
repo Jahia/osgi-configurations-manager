@@ -10,6 +10,12 @@
             "dom"
         ],
         "moduleResolution": "node",
+        // TypeScript 6 deprecates moduleResolution=node10 (what "node" maps to) and
+        // target=es5, and errors on them unless this is set. Both are kept deliberately:
+        // raising the target would change the emitted bundle and the browser baseline the
+        // module ships against, which is a separate, deliberate decision. Revisit before
+        // TypeScript 7, where the options stop functioning altogether.
+        "ignoreDeprecations": "6.0",
         "forceConsistentCasingInFileNames": true,
         "noImplicitReturns": true,
         "noImplicitThis": true,
