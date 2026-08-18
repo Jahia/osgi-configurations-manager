@@ -27,7 +27,7 @@ jobs:
 
       # Matches <nodeVersion>/<yarnVersion> in pom.xml so the Jest run here and
       # the webpack build driven by frontend-maven-plugin agree.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '20.9.0'
           cache: yarn
