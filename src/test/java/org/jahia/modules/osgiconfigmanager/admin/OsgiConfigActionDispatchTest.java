@@ -142,8 +142,8 @@ class OsgiConfigActionDispatchTest {
                 (s) -> verifyNoException(() -> verify(s).createFile("a.cfg", false)));
         routeAndVerify("{\"action\":\"encrypt\",\"value\":\"secret\"}",
                 (s) -> verifyNoException(() -> verify(s).encrypt("secret")));
-        routeAndVerify("{\"action\":\"decrypt\",\"value\":\"ENC(x)\"}",
-                (s) -> verifyNoException(() -> verify(s).decrypt("ENC(x)")));
+        routeAndVerify("{\"action\":\"decrypt\",\"value\":\"ENC(x)\",\"filename\":\"x.cfg\"}",
+                (s) -> verifyNoException(() -> verify(s).decryptForFile("x.cfg", "ENC(x)", false)));
     }
 
     @Test

@@ -1522,6 +1522,40 @@ public class OsgiConfigService {
         return "ENC(" + CryptoEngine.encryptString(value) + ")";
     }
 
+    /**
+     * Decrypt a value that is known to belong to a given configuration file.
+     *
+     * <p>{@link #decrypt(String)} will decrypt anything handed to it, which makes the action that
+     * exposes it a decryption oracle: a caller holding an {@code ENC(...)} string obtained anywhere
+     * else — a backup, a git history, a log, a screenshot — could have it decrypted regardless of
+     * whether they are allowed to see the file it came from. The blacklist/whitelist only gates
+     * reading files, not decrypting values.
+     *
+     * <p>This binds the two together. It runs the same authorization path as
+     * {@link #readFile(String, java.util.Locale, boolean)} and then requires the ciphertext to
+     * actually appear in that file, so a caller can only decrypt what they could already read.
+     */
+    public String decryptForFile(String filename, String value, boolean isRootUser) throws IOException {
+        if (value == null) {
+            return null;
+        }
+
+        String safeFilename = validateFilename(filename);
+        ensureFilenameAllowed(safeFilename, isRootUser, "Access");
+
+        Path filePath = resolveConfigPath(safeFilename);
+        if (!Files.exists(filePath)) {
+            throw new IOException("File not found: " + safeFilename);
+        }
+
+        String rawContent = Files.readString(filePath, StandardCharsets.UTF_8);
+        if (!rawContent.contains(value)) {
+            throw new IOException("Encrypted value does not belong to " + safeFilename);
+        }
+
+        return decrypt(value);
+    }
+
     public String decrypt(String value) {
         if (value == null)
             return null;

@@ -63,8 +63,10 @@ describe('osgiService — all actions send JSON POSTs to the .do endpoint', () =
 
     it('decrypt', async () => {
         fetch.mockResolvedValueOnce(okJson({ decryptedValue: 'secret' }));
-        await osgiService.decrypt('ENC(iv:ct)');
-        expectJsonPost({ action: 'decrypt', value: 'ENC(iv:ct)' });
+        await osgiService.decrypt('ENC(iv:ct)', 'conf.cfg');
+        // the filename travels with the value: the server refuses to decrypt a ciphertext that
+        // does not belong to a file the caller may read
+        expectJsonPost({ action: 'decrypt', value: 'ENC(iv:ct)', filename: 'conf.cfg' });
     });
 
     it('setPreference', async () => {

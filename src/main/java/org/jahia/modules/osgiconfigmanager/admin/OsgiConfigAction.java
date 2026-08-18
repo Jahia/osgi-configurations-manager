@@ -266,7 +266,11 @@ public class OsgiConfigAction extends Action {
         } else if ("encrypt".equals(actionType)) {
             result.put("encryptedValue", configService.encrypt((String) payload.get(KEY_VALUE)));
         } else if ("decrypt".equals(actionType)) {
-            result.put("decryptedValue", configService.decrypt((String) payload.get(KEY_VALUE)));
+            // File-bound on purpose: the caller must name the file the ciphertext came from, and the
+            // service checks both that they may read it and that the value is really in it. Without
+            // that, this action decrypts anything and becomes an oracle.
+            result.put("decryptedValue",
+                    configService.decryptForFile(filename, (String) payload.get(KEY_VALUE), isRootUser));
         } else if ("setPreference".equals(actionType)) {
             return handleSetPreference(payload, renderContext, session, response, result);
         } else {

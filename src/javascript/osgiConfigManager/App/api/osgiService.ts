@@ -170,11 +170,13 @@ export const osgiService = {
         }));
     },
 
-    decrypt: async (value: string): Promise<OsgiServiceResponse> => {
+    // filename is required: the server only decrypts a value that really belongs to a file the
+    // caller may read, so it cannot be used as a decryption oracle for ciphertext found elsewhere.
+    decrypt: async (value: string, filename: string): Promise<OsgiServiceResponse> => {
         return handleResponse(await fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'decrypt', value })
+            body: JSON.stringify({ action: 'decrypt', value, filename })
         }));
     },
 
