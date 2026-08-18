@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Button, Typography, Paper, Close } from '@jahia/moonstone';
 import { diffLines, Change } from 'diff';
 import { useTranslation } from 'react-i18next';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 
 interface DiffModalProps {
     isOpen: boolean;
@@ -22,6 +23,9 @@ export const DiffModal: React.FC<DiffModalProps> = ({
 }) => {
     const { t } = useTranslation('osgi-configurations-manager');
 
+    // Focus into the dialog, trap Tab, close on Escape, restore focus on unmount.
+    const dialogRef = useDialogA11y(isOpen, onClose);
+
     const changes = useMemo(() => {
         if (!originalContent && !newContent) return [];
         return diffLines(originalContent || '', newContent || '');
@@ -30,7 +34,12 @@ export const DiffModal: React.FC<DiffModalProps> = ({
     if (!isOpen) return null;
 
     return (
-        <div data-cy="diff-modal" style={{
+        <div
+            data-cy="diff-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('modal.diff.title', { name: filename })}
+            style={{
             position: 'fixed',
             top: 0,
             left: 0,
@@ -45,6 +54,7 @@ export const DiffModal: React.FC<DiffModalProps> = ({
             transition: 'all 0.2s ease'
         }} onClick={onClose}>
             <Paper
+                ref={dialogRef}
                 style={{
                     width: '900px',
                     maxWidth: '90%',
