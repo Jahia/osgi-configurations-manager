@@ -761,6 +761,22 @@ public class OsgiConfigService {
     }
 
     public void saveFile(String filename, Map<String, Object> content, boolean isRootUser) throws IOException {
+        // A malformed payload used to reach content.containsKey(...) and throw a NullPointerException,
+        // which the action maps to a generic 500 with no usable message. Fail with a clear reason.
+        if (content == null) {
+            throw new IOException("Save denied: content is required for " + filename);
+        }
+
+        // MAX_RAW_CONTENT_BYTES was declared but never enforced, so rawContent of any size was
+        // written straight to disk. Check before touching the filesystem, so an oversized payload
+        // creates nothing.
+        Object rawContent = content.get("rawContent");
+        if (rawContent instanceof String
+                && ((String) rawContent).getBytes(StandardCharsets.UTF_8).length > MAX_RAW_CONTENT_BYTES) {
+            throw new IOException("Save denied: content exceeds the maximum allowed size of "
+                    + MAX_RAW_CONTENT_BYTES + " bytes");
+        }
+
         String safeFilename = validateFilename(filename);
         ensureFilenameAllowed(safeFilename, isRootUser, "Save");
 
@@ -1274,7 +1290,7 @@ public class OsgiConfigService {
 
     // SUPPORT-646: an upper bound on client-supplied raw content — a config file has no legitimate
     // reason to exceed this, and the cap prevents an unbounded write into karaf/etc.
-    private static final int MAX_RAW_CONTENT_BYTES = 5 * 1024 * 1024;
+    static final int MAX_RAW_CONTENT_BYTES = 5 * 1024 * 1024;
 
 
     private void writeEmptyFile(Path filePath) throws IOException {
