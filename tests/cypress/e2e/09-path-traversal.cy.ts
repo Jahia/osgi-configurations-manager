@@ -79,8 +79,9 @@ describe('OSGi Configurations Manager - Path traversal & self-config gating', ()
             ];
             ops.forEach(op => {
                 cy.osgiRequest(op).then(res => {
-                    // access is denied at the service layer (IOException -> 500 with a denial message)
-                    expect(res.status).to.eq(500);
+                    // ConfigAccessDeniedException now maps to 403 rather than the blanket 500 this
+                    // used to return; the denial message is still sanitised.
+                    expect(res.status).to.eq(403);
                     expect(String(res.body?.error || '')).to.match(/denied|reserved|blacklisted/i);
                 });
             });

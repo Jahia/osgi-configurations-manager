@@ -140,9 +140,9 @@ describe('OSGi Configurations Manager - Authorization', () => {
                 expect(res.status, 'missing header is refused').to.eq(403);
             });
             // No side effect: the refused create must not have written the file, so reading it
-            // fails (IOException -> sanitised 500 in this API's error mapping).
+            // now answers 404 (ConfigNotFoundException) instead of the blanket 500.
             cy.osgiRequest({method: 'GET', url: '/cms/render/default/en/sites/systemsite.osgiConfigManager.do?filename=csrf-probe.cfg'})
-                .its('status').should('eq', 500);
+                .its('status').should('eq', 404);
         });
 
         it('S21e: rejects a form-encoded POST (415) but accepts the same JSON payload', () => {
