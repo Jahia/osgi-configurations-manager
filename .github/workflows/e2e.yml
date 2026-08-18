@@ -12,6 +12,9 @@ jobs:
   e2e:
     name: Cypress
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     # Jahia boot plus provisioning plus the suite; well clear of the ~12 min observed locally.
     timeout-minutes: 45
     steps:
@@ -37,6 +40,12 @@ jobs:
           mkdir -p tests/artifacts
           cp target/osgi-configurations-manager-*.jar tests/artifacts/
 
+      # jahia-ee-dev is a private package — anonymous pull is refused (403). GITHUB_TOKEN
+      # works if the package grants this repository access; set a GHCR_PULL_TOKEN secret
+      # (a PAT with read:packages) to override it otherwise.
+      - name: Log in to ghcr.io
+        run: echo "${{ secrets.GHCR_PULL_TOKEN || secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
       - name: Start Jahia
         working-directory: tests
         env:
@@ -49,6 +58,11 @@ jobs:
             echo "::error::The JAHIA_LICENSE secret is not set. Add it in the repository settings (base64 of the licence XML)."
             exit 1
           fi
+          # set-env.sh fills every compose variable (TESTS_IMAGE, MANIFEST, ...) from
+          # .env.example. Compose validates the WHOLE project even when starting only the
+          # jahia service, so the cypress service's image reference must be non-empty even
+          # though that service is never started here.
+          source ./set-env.sh
           docker compose up -d --renew-anon-volumes jahia
 
       # ci.startup.sh returns as soon as the container starts, so readiness has to be
