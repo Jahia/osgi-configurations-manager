@@ -210,13 +210,13 @@ class OsgiConfigActionDispatchTest {
     void getPreference() throws Exception {
         ActionDispatchFixture fx = ActionDispatchFixture.authorized().get();
         when(fx.request.getParameter("action")).thenReturn("getPreference");
-        when(fx.request.getParameter("key")).thenReturn("osgiCM.showComments");
+        when(fx.request.getParameter("key")).thenReturn("osgiShowComments");
         when(fx.session.nodeExists("/users/jdoe")).thenReturn(true);
         when(fx.session.getNode("/users/jdoe")).thenReturn(fx.userNode);
-        when(fx.userNode.hasProperty("osgiCM.showComments")).thenReturn(true);
+        when(fx.userNode.hasProperty("osgiShowComments")).thenReturn(true);
         JCRPropertyWrapper prop = mock(JCRPropertyWrapper.class);
         when(prop.getString()).thenReturn("true");
-        when(fx.userNode.getProperty("osgiCM.showComments")).thenReturn(prop);
+        when(fx.userNode.getProperty("osgiShowComments")).thenReturn(prop);
         OsgiConfigService service = mock(OsgiConfigService.class);
 
         fx.action(service).doExecute(fx.request, fx.renderContext, null, fx.session, null, null);
@@ -224,7 +224,26 @@ class OsgiConfigActionDispatchTest {
         assertTrue(fx.body().contains("true"));
     }
 
-    // ---- S25: setPreference writes a client-named property on the caller's own node ----
+    // ---- S25: setPreference writes an ALLOWLISTED property on the caller's own node ----
+
+    @Test
+    @DisplayName("S25b: setPreference rejects a plain non-allowlisted key — the shape-based check let these through")
+    void setPreferenceRejectsPlainButUnknownKey() throws Exception {
+        // The previous guard accepted any un-namespaced identifier, so a caller could write
+        // arbitrary JCR properties on their own node as long as the name looked innocuous.
+        // Only the three editor-UI preferences are accepted now.
+        ActionDispatchFixture fx = ActionDispatchFixture.authorized()
+                .postJson("{\"action\":\"setPreference\",\"key\":\"arbitraryProperty\",\"value\":\"x\"}");
+        when(fx.session.nodeExists("/users/jdoe")).thenReturn(true);
+        when(fx.session.getNode("/users/jdoe")).thenReturn(fx.userNode);
+        OsgiConfigService service = mock(OsgiConfigService.class);
+
+        fx.action(service).doExecute(fx.request, fx.renderContext, null, fx.session, null, null);
+
+        verify(fx.response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        verify(fx.userNode, never()).setProperty(anyString(), anyString());
+        verify(fx.session, never()).save();
+    }
 
     @Test
     @DisplayName("S25 (fixed): setPreference rejects an adversarial namespaced key (400) and writes nothing")
@@ -247,14 +266,14 @@ class OsgiConfigActionDispatchTest {
     @DisplayName("S25 (fixed): setPreference writes a valid plain key on the caller's own node and saves")
     void setPreferenceWritesValidKey() throws Exception {
         ActionDispatchFixture fx = ActionDispatchFixture.authorized()
-                .postJson("{\"action\":\"setPreference\",\"key\":\"osgiCM.showComments\",\"value\":\"true\"}");
+                .postJson("{\"action\":\"setPreference\",\"key\":\"osgiShowComments\",\"value\":\"true\"}");
         when(fx.session.nodeExists("/users/jdoe")).thenReturn(true);
         when(fx.session.getNode("/users/jdoe")).thenReturn(fx.userNode);
         OsgiConfigService service = mock(OsgiConfigService.class);
 
         fx.action(service).doExecute(fx.request, fx.renderContext, null, fx.session, null, null);
 
-        verify(fx.userNode).setProperty("osgiCM.showComments", "true");
+        verify(fx.userNode).setProperty("osgiShowComments", "true");
         verify(fx.session).save();
     }
 
