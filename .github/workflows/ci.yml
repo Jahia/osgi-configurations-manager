@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # JDK 11, not 17: maven-compiler-plugin targets release 11 and the Lombok
+      # version inherited from the jahia-modules parent fails on JDK 17 with
+      # "ExceptionInInitializerError: com.sun.tools.javac.code.TypeTag :: UNKNOWN".
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '11'
+          distribution: temurin
+          cache: maven
+
+      # Matches <nodeVersion>/<yarnVersion> in pom.xml so the Jest run here and
+      # the webpack build driven by frontend-maven-plugin agree.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.9.0'
+          cache: yarn
+
+      - name: Install frontend dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Jest
+        run: npx jest --ci
+
+      # verify (not test) so the OSGi bundle packaging is exercised too.
+      # This also runs the webpack build via frontend-maven-plugin.
+      - name: Maven verify
+        run: mvn -B -ntp verify
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            target/surefire-reports/
+            target/site/jacoco/
+          if-no-files-found: ignore
