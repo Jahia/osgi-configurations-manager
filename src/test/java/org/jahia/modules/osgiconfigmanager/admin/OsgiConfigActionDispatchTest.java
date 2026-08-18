@@ -227,6 +227,22 @@ class OsgiConfigActionDispatchTest {
     // ---- S25: setPreference writes an ALLOWLISTED property on the caller's own node ----
 
     @Test
+    @DisplayName("S28: a POST without the X-Requested-With header is refused 403 before any dispatch")
+    void postWithoutCsrfHeaderIsForbidden() throws Exception {
+        // CSRF defense in depth: a forged cross-site POST cannot carry this non-safelisted header
+        // without a CORS preflight. The fixture normally stubs it; clear it to simulate the forgery.
+        ActionDispatchFixture fx = ActionDispatchFixture.authorized()
+                .postJson("{\"action\":\"save\",\"filename\":\"x.cfg\",\"rawContent\":\"k=v\"}");
+        when(fx.request.getHeader("X-Requested-With")).thenReturn(null);
+        OsgiConfigService service = mock(OsgiConfigService.class);
+
+        fx.action(service).doExecute(fx.request, fx.renderContext, null, fx.session, null, null);
+
+        verify(fx.response).setStatus(HttpServletResponse.SC_FORBIDDEN);
+        verifyNoInteractions(service);
+    }
+
+    @Test
     @DisplayName("S25b: setPreference rejects a plain non-allowlisted key — the shape-based check let these through")
     void setPreferenceRejectsPlainButUnknownKey() throws Exception {
         // The previous guard accepted any un-namespaced identifier, so a caller could write

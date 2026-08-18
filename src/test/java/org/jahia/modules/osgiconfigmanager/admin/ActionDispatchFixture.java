@@ -67,6 +67,7 @@ class ActionDispatchFixture {
 
     ActionDispatchFixture postJson(String body) throws Exception {
         when(request.getMethod()).thenReturn("POST");
+        when(request.getHeader("X-Requested-With")).thenReturn("XMLHttpRequest");
         when(request.getContentType()).thenReturn("application/json; charset=UTF-8");
         when(request.getReader()).thenReturn(new BufferedReader(new StringReader(body)));
         return this;
@@ -74,6 +75,7 @@ class ActionDispatchFixture {
 
     ActionDispatchFixture postWithContentType(String contentType, String body) throws Exception {
         when(request.getMethod()).thenReturn("POST");
+        when(request.getHeader("X-Requested-With")).thenReturn("XMLHttpRequest");
         when(request.getContentType()).thenReturn(contentType);
         lenient().when(request.getReader()).thenReturn(new BufferedReader(new StringReader(body)));
         return this;

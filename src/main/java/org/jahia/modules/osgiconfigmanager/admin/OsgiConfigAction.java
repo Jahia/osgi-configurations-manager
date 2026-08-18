@@ -36,6 +36,7 @@ public class OsgiConfigAction extends Action {
     private static final String KEY_KEY = "key";
     private static final String KEY_FILES = "files";
     private static final String MEDIA_TYPE_JSON = "application/json";
+    private static final String CSRF_HEADER = "X-Requested-With";
     private static final String STATUS_CREATED = "created";
     private static final String GENERIC_ERROR_MESSAGE =
             "An internal error occurred while processing the request. See server logs for details.";
@@ -198,6 +199,16 @@ public class OsgiConfigAction extends Action {
 
     private ActionResult handlePost(HttpServletRequest req, RenderContext renderContext, JCRSessionWrapper session,
             HttpServletResponse response, boolean isRootUser, Map<String, Object> result) throws Exception {
+        // CSRF defense in depth, alongside the application/json requirement below: browsers cannot
+        // attach a non-safelisted header to a cross-origin request without a CORS preflight (which
+        // is never granted), so a forged cross-site POST cannot carry it. Same-origin fetch() can.
+        if (req.getHeader(CSRF_HEADER) == null) {
+            LOGGER.warn("[AUDIT] Rejected osgiConfigManager POST without {} header from {}",
+                    CSRF_HEADER, req.getRemoteAddr());
+            return writeError(response, HttpServletResponse.SC_FORBIDDEN,
+                    "Missing required " + CSRF_HEADER + " header");
+        }
+
         if (!isJsonMediaType(req.getContentType())) {
             LOGGER.warn("[AUDIT] Rejected osgiConfigManager POST with non-JSON Content-Type '{}' from {}",
                     req.getContentType(), req.getRemoteAddr());

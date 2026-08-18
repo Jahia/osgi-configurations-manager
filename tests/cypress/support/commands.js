@@ -168,12 +168,25 @@ const OSGI_ADMIN_PATH = '/jahia/administration/osgi-configurations-manager';
  * Keeping it in one place makes the spec easier to read and update.
  */
 Cypress.Commands.add('osgiRequest', (options = {}) => {
-    const {url, ...requestOptions} = options;
+    const {url, headers, ...requestOptions} = options;
+
+    // The action refuses POSTs without this custom header (CSRF defense), mirroring what the
+    // real UI sends. Callers can override it, or strip it by passing the header as null.
+    const mergedHeaders = {
+        'X-Requested-With': 'XMLHttpRequest',
+        ...(headers || {})
+    };
+    Object.keys(mergedHeaders).forEach(key => {
+        if (mergedHeaders[key] === null) {
+            delete mergedHeaders[key];
+        }
+    });
 
     return cy.request({
         url: url || OSGI_ACTION_PATH,
         failOnStatusCode: false,
-        ...requestOptions
+        ...requestOptions,
+        headers: mergedHeaders
     });
 });
 

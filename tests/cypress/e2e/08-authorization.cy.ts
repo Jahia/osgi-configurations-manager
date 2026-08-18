@@ -129,6 +129,22 @@ describe('OSGi Configurations Manager - Authorization', () => {
                 });
         });
 
+        it('S28: rejects a POST missing the X-Requested-With header (403, no side effect)', () => {
+            // cy.request is not a browser fetch, so it CAN omit the header a forged cross-site
+            // request could never set — which is exactly what makes this simulation faithful.
+            cy.osgiRequest({
+                method: 'POST',
+                headers: {'X-Requested-With': null},
+                body: {action: 'create', filename: 'csrf-probe.cfg'}
+            }).then(res => {
+                expect(res.status, 'missing header is refused').to.eq(403);
+            });
+            // No side effect: the refused create must not have written the file, so reading it
+            // fails (IOException -> sanitised 500 in this API's error mapping).
+            cy.osgiRequest({method: 'GET', url: '/cms/render/default/en/sites/systemsite.osgiConfigManager.do?filename=csrf-probe.cfg'})
+                .its('status').should('eq', 500);
+        });
+
         it('S21e: rejects a form-encoded POST (415) but accepts the same JSON payload', () => {
             cy.osgiRequest({
                 method: 'POST',
