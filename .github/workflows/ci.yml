@@ -19,7 +19,7 @@ jobs:
       # JDK 11, not 17: maven-compiler-plugin targets release 11 and the Lombok
       # version inherited from the jahia-modules parent fails on JDK 17 with
       # "ExceptionInInitializerError: com.sun.tools.javac.code.TypeTag :: UNKNOWN".
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           java-version: '11'
           distribution: temurin
