@@ -141,13 +141,8 @@ public class OsgiConfigAction extends Action {
         if (!PreferenceKeys.isAllowed(key)) {
             return badRequest(response, "Invalid preference key");
         }
-        String userPath = renderContext.getUser().getLocalPath();
-        if (session.nodeExists(userPath)) {
-            org.jahia.services.content.JCRNodeWrapper userNode = session.getNode(userPath);
-            if (userNode.hasProperty(key)) {
-                result.put(KEY_VALUE, userNode.getProperty(key).getString());
-            }
-        }
+        UserPreferenceService.read(session, renderContext.getUser(), key)
+                .ifPresent(value -> result.put(KEY_VALUE, value));
         return CONTINUE;
     }
 
@@ -320,11 +315,9 @@ public class OsgiConfigAction extends Action {
         if (!PreferenceKeys.isAllowed(key)) {
             return badRequest(response, "Invalid preference key");
         }
-        String userPath = renderContext.getUser().getLocalPath();
-        if (session.nodeExists(userPath)) {
-            org.jahia.services.content.JCRNodeWrapper userNode = session.getNode(userPath);
-            userNode.setProperty(key, value);
-            session.save();
+        // Only report success when something was actually written: with no user node the write is
+        // a no-op, and the previous inline code likewise left the status out.
+        if (UserPreferenceService.write(session, renderContext.getUser(), key, value)) {
             result.put(KEY_STATUS, "preferenceSaved");
         }
         return CONTINUE;

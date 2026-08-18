@@ -243,6 +243,22 @@ class OsgiConfigActionDispatchTest {
     }
 
     @Test
+    @DisplayName("S25c: setPreference reports no success when the caller has no user node")
+    void setPreferenceWithoutUserNodeReportsNothing() throws Exception {
+        // Nothing was persisted, so the response must not claim it was. No test covered this
+        // before, which is how the extracted service nearly started reporting a phantom success.
+        ActionDispatchFixture fx = ActionDispatchFixture.authorized()
+                .postJson("{\"action\":\"setPreference\",\"key\":\"osgiShowComments\",\"value\":\"true\"}");
+        when(fx.session.nodeExists("/users/jdoe")).thenReturn(false);
+        OsgiConfigService service = mock(OsgiConfigService.class);
+
+        fx.action(service).doExecute(fx.request, fx.renderContext, null, fx.session, null, null);
+
+        assertFalse(fx.body().contains("preferenceSaved"), fx.body());
+        verify(fx.session, never()).save();
+    }
+
+    @Test
     @DisplayName("S25b: setPreference rejects a plain non-allowlisted key — the shape-based check let these through")
     void setPreferenceRejectsPlainButUnknownKey() throws Exception {
         // The previous guard accepted any un-namespaced identifier, so a caller could write
