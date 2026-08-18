@@ -35,7 +35,7 @@ interface DiffConfig {
     onConfirm: () => void;
 }
 
-const detectConfigStateFromRawContent = (content: string): 'MODULE' | 'MODULE_DEFAULT' | 'USER' => {
+export const detectConfigStateFromRawContent = (content: string): 'MODULE' | 'MODULE_DEFAULT' | 'USER' => {
     const lines = (content || '').split(/\r?\n/);
     for (const line of lines) {
         const lowered = line.trim().toLowerCase();

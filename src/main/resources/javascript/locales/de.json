@@ -21,7 +21,8 @@
         "toggleSuccess": "Status für {{name}} geändert",
         "deleteSuccess": "{{name}} gelöscht",
         "createSuccess": "{{name}} erstellt",
-        "uploadSuccess": "{{name}} hochgeladen"
+        "uploadSuccess": "{{name}} hochgeladen",
+        "markAsDefaultSuccess": "{{name}} ist jetzt als Standardkonfiguration markiert"
     },
     "modal": {
         "cancel": "Abbrechen",
@@ -93,7 +94,8 @@
             "propertyExists": "Die Eigenschaft '{{name}}' existiert bereits.",
             "invalidExtension": "Der Dateiname muss mit .cfg, .yml, .cfg.disabled oder .yml.disabled enden",
             "invalidExtensionUpload": "Nur .cfg und .yml Dateien werden unterstützt.",
-            "duplicateKeys": "Doppelte Schlüssel gefunden: {{keys}}"
+            "duplicateKeys": "Doppelte Schlüssel gefunden: {{keys}}",
+            "markAsDefault": "Fehler beim Markieren der Datei als Standardkonfiguration: {{error}}"
         },
         "conflict": {
             "title": "Datei existiert",
@@ -110,6 +112,11 @@
         },
         "diff": {
             "title": "Änderungen überprüfen: {{name}}"
+        },
+        "markAsDefault": {
+            "title": "Als Standardkonfiguration markieren",
+            "message": "Den Header '# default configuration' zu {{name}} hinzufügen? Jahia bewahrt dann die lokalen Änderungen für diese vom Modul bereitgestellte Standardkonfiguration.",
+            "confirm": "Als Standard markieren"
         }
     },
     "editor": {
@@ -132,7 +139,8 @@
             "modeVisual": "Visueller Modus",
             "encrypt": "Verschlüsseln",
             "decrypt": "Entschlüsseln",
-            "toggleEmptyLines": "Leerzeilen umschalten"
+            "toggleEmptyLines": "Leerzeilen umschalten",
+            "toggleComments": "Kommentare umschalten"
         },
         "placeholder": {
             "key": "Schlüssel",
@@ -211,10 +219,32 @@
         "showSecret": "Geheimen Wert anzeigen",
         "hideSecret": "Geheimen Wert ausblenden",
         "toggleComments": "Kommentarsichtbarkeit umschalten (außer Kopfzeile)",
-        "toggleEmptyLines": "Sichtbarkeit leerer Zeilen umschalten (außer Kopfzeile)"
+        "toggleEmptyLines": "Sichtbarkeit leerer Zeilen umschalten (außer Kopfzeile)",
+        "markAsDefault": "Den Header '# default configuration' hinzufügen, damit Jahia lokale Änderungen für Modul-Standardwerte bewahrt"
     },
     "sidebar": {
         "on": "Ein",
         "off": "Aus"
+    },
+    "configState": {
+        "badge": {
+            "module": "Modul",
+            "moduleDefault": "Standard",
+            "user": "Benutzer"
+        },
+        "badgeCompact": {
+            "module": "M",
+            "moduleDefault": "S",
+            "user": "B"
+        },
+        "tooltip": {
+            "module": "Vom Modul verwaltete Konfiguration. Lokale Änderungen können beim Neustart oder erneuten Deployment überschrieben werden.",
+            "moduleDefault": "Modul-Standardkonfiguration. Jahia bewahrt lokale Änderungen.",
+            "user": "Lokale Instanzkonfiguration."
+        },
+        "banner": {
+            "module": "Diese vom Modul verwaltete Konfiguration kann beim Neustart oder erneuten Deployment überschrieben werden. Das Fortbestehen lokaler Änderungen ist nicht garantiert.",
+            "moduleDefault": "Diese Modul-Standardkonfiguration ist bearbeitbar. Jahia bewahrt lokale Änderungen."
+        }
     }
 }
