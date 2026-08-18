@@ -23,6 +23,12 @@ yarn-error.log
 dist/
 build/
 
+# Webpack output. Generated into the module's resources by `yarn build`, which Maven runs at
+# generate-resources, so every build produces it and `mvn clean` already deletes it (see the
+# maven-clean-plugin fileset in pom.xml). Tracking it meant `mvn clean` removed committed files
+# and every local build re-dirtied the tree with freshly hashed names.
+src/main/resources/javascript/apps/
+
 # Local / accidental commits
 .agent/
 __mocks__/
