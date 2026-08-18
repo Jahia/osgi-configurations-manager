@@ -1,4 +1,5 @@
 import React from 'react';
+import { useDialogA11y } from '../hooks/useDialogA11y';
 import { createPortal } from 'react-dom';
 import { Button, Close, Input, Paper, Typography } from '@jahia/moonstone';
 import { useTranslation } from 'react-i18next';
@@ -33,6 +34,9 @@ export const CfgMetatypePropertyDialog = ({
     onCreateCustomProperty
 }) => {
     const { t } = useTranslation('osgi-configurations-manager');
+
+    // Focus into the dialog, trap Tab, close on Escape, restore focus on unmount.
+    const dialogRef = useDialogA11y(open, onClose);
     const [query, setQuery] = React.useState('');
 
     React.useEffect(() => {
@@ -67,6 +71,9 @@ export const CfgMetatypePropertyDialog = ({
     return createPortal(
         <div
             data-cy="cfg-metatype-property-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('editor.metatype.cfgPicker.title')}
             onClick={onClose}
             style={{
                 position: 'fixed',
@@ -79,6 +86,7 @@ export const CfgMetatypePropertyDialog = ({
             }}
         >
             <Paper
+                ref={dialogRef}
                 onClick={event => event.stopPropagation()}
                 style={{
                     width: '760px',
@@ -138,9 +146,11 @@ export const CfgMetatypePropertyDialog = ({
                         {filteredProperties.map(property => {
                             const defaultValue = formatDefaultValue(property);
                             return (
-                                <div
+                                <button
+                                    type="button"
                                     key={property.id}
                                     data-cy={`cfg-metatype-property-option-${encodeURIComponent(property.id)}`}
+                                    aria-label={property.id}
                                     onClick={() => {
                                         onSelectMetatypeProperty(property);
                                         onClose();
@@ -151,7 +161,15 @@ export const CfgMetatypePropertyDialog = ({
                                         cursor: 'pointer',
                                         display: 'flex',
                                         flexDirection: 'column',
-                                        gap: '4px'
+                                        gap: '4px',
+                                        // reset the button chrome so the row keeps its original look
+                                        background: 'none',
+                                        border: 'none',
+                                        borderRadius: 0,
+                                        width: '100%',
+                                        textAlign: 'left',
+                                        font: 'inherit',
+                                        color: 'inherit'
                                     }}
                                 >
                                     <Typography variant="body" weight="bold" style={{ wordBreak: 'break-word' }}>
@@ -174,7 +192,7 @@ export const CfgMetatypePropertyDialog = ({
                                             {property.description}
                                         </Typography>
                                     )}
-                                </div>
+                                </button>
                             );
                         })}
                     </div>
