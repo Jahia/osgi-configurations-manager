@@ -14,7 +14,7 @@ jobs:
     name: Build & test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # JDK 11, not 17: maven-compiler-plugin targets release 11 and the Lombok
       # version inherited from the jahia-modules parent fails on JDK 17 with
