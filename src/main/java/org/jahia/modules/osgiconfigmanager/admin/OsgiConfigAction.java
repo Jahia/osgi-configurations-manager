@@ -137,7 +137,7 @@ public class OsgiConfigAction extends Action {
     private ActionResult handleGetPreference(HttpServletRequest req, RenderContext renderContext,
             JCRSessionWrapper session, HttpServletResponse response, Map<String, Object> result) throws Exception {
         String key = req.getParameter(KEY_KEY);
-        if (!isValidPreferenceKey(key)) {
+        if (!PreferenceKeys.isAllowed(key)) {
             return badRequest(response, "Invalid preference key");
         }
         String userPath = renderContext.getUser().getLocalPath();
@@ -302,7 +302,7 @@ public class OsgiConfigAction extends Action {
             JCRSessionWrapper session, HttpServletResponse response, Map<String, Object> result) throws Exception {
         String key = (String) payload.get(KEY_KEY);
         String value = (String) payload.get(KEY_VALUE);
-        if (!isValidPreferenceKey(key)) {
+        if (!PreferenceKeys.isAllowed(key)) {
             return badRequest(response, "Invalid preference key");
         }
         String userPath = renderContext.getUser().getLocalPath();
@@ -334,18 +334,6 @@ public class OsgiConfigAction extends Action {
         response.setStatus(status);
         mapper.writeValue(response.getWriter(), error);
         return null;
-    }
-
-    private static final String PREFERENCE_KEY_PATTERN = "^[A-Za-z][A-Za-z0-9_.]*$";
-
-    /**
-     * A preference key is written verbatim as a JCR property on the caller's own node, so it must
-     * be a plain, un-namespaced identifier. Rejecting anything containing a namespace separator
-     * (":") or other special characters prevents a client from setting internal/system properties
-     * (e.g. {@code j:...}, {@code jcr:...}).
-     */
-    private boolean isValidPreferenceKey(String key) {
-        return key != null && !key.isEmpty() && key.length() <= 100 && key.matches(PREFERENCE_KEY_PATTERN);
     }
 
     private ActionResult badRequest(HttpServletResponse response, String message) throws java.io.IOException {

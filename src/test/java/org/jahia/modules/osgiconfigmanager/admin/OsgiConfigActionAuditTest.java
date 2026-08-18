@@ -76,7 +76,7 @@ class OsgiConfigActionAuditTest {
         for (String action : List.of("decrypt", "encrypt", "setPreference")) {
             appender.list.clear();
             String body = "setPreference".equals(action)
-                    ? "{\"action\":\"setPreference\",\"key\":\"osgiCM.showComments\",\"value\":\"v\"}"
+                    ? "{\"action\":\"setPreference\",\"key\":\"osgiShowComments\",\"value\":\"v\"}"
                     : "{\"action\":\"" + action + "\",\"value\":\"secret\"}";
             dispatch(body);
             assertTrue(hasInfoAudit(action),
