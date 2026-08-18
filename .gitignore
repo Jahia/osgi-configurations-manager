@@ -34,6 +34,12 @@ src/main/resources/javascript/apps/
 __mocks__/
 build_log.txt
 FigmaScreenshots/
+# Personal working notes. Both were committed by accident and removed: they held
+# machine-specific absolute paths and referenced directories that are themselves
+# ignored, so they only ever made sense on one machine. Ignored so a local copy
+# can live here without coming back.
+AGENTS.md
+backlog.md
 Result.txt
 pom.xml.releaseBackup
 release.properties

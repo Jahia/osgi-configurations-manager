@@ -135,7 +135,6 @@
                 <configuration>
                     <checkModificationExcludes>
                         <checkModificationExclude>src/main/resources/javascript/apps/**</checkModificationExclude>
-                        <checkModificationExclude>AGENTS.md</checkModificationExclude>
                     </checkModificationExcludes>
                 </configuration>
             </plugin>
