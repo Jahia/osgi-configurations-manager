@@ -3,9 +3,8 @@ import {cleanupFiles, findAvailableMetatype} from './osgiTestUtils';
 /**
  * Property-level operations in the visual CFG editor.
  *
- * Salvaged from the full-review branch (#17). Its third case there exercised a keyboard reorder
- * handle (`cfg-reorder-*`) that does not exist in this codebase, so it is deliberately not carried
- * over — it would test a feature that is not implemented rather than guard existing behaviour.
+ * Salvaged from the full-review branch (#17). The keyboard-reorder case was held back until the
+ * handle actually existed here; it now does, so it is covered again.
  */
 describe('OSGi Configurations Manager - CFG property operations', () => {
     const propsFile = 'org.jahia.modules.e2e-cfg-props.cfg';
@@ -46,6 +45,23 @@ describe('OSGi Configurations Manager - CFG property operations', () => {
             .its('data.rawContent')
             .should('contain', 'del.two = second')
             .and('not.contain', 'del.one');
+    });
+
+    it('reorders property rows with the keyboard handle', () => {
+        // Arrange
+        cy.upsertOsgiFile(propsFile, 're.one = first\nre.two = second\n');
+        cy.openOsgiConfigManager();
+        cy.openOsgiFile(propsFile);
+        cy.ensureVisualCfgMode();
+        cy.get('[data-cy="cfg-key-0"]', {timeout: 30000}).should('have.value', 're.one');
+
+        // Act: move the second row up via its reorder handle (Arrow Up).
+        cy.get('[data-cy="cfg-reorder-1"]').focus();
+        cy.get('[data-cy="cfg-reorder-1"]').trigger('keydown', {key: 'ArrowUp'});
+
+        // Assert: the two rows swapped.
+        cy.get('[data-cy="cfg-key-0"]', {timeout: 30000}).should('have.value', 're.two');
+        cy.get('[data-cy="cfg-key-1"]').should('have.value', 're.one');
     });
 
     it('inserts a Metatype property via the visual picker and shows its info affordance', () => {
