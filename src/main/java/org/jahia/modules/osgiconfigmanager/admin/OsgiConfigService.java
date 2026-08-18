@@ -16,14 +16,8 @@ import org.osgi.service.metatype.MetaTypeService;
 import org.osgi.service.metatype.ObjectClassDefinition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.yaml.snakeyaml.DumperOptions;
-import org.yaml.snakeyaml.LoaderOptions;
-import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.constructor.SafeConstructor;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
@@ -409,7 +403,7 @@ public class OsgiConfigService {
         enrichWithMetatype(result, safeFilename, type, locale);
 
         if ("cfg".equals(type)) {
-            result.put(KEY_PROPERTIES, readCfgProperties(filePath));
+            result.put(KEY_PROPERTIES, ConfigFileCodec.readCfgProperties(filePath));
         } else if ("yml".equals(type)) {
             result.put(KEY_PROPERTIES, readYamlProperties(filePath));
         }
@@ -434,71 +428,16 @@ public class OsgiConfigService {
         }
     }
 
-    private List<Map<String, String>> readCfgProperties(Path filePath) throws IOException {
-        List<Map<String, String>> entries = new ArrayList<>();
-        try (Reader reader = Files.newBufferedReader(filePath, StandardCharsets.UTF_8);
-             java.io.BufferedReader bufferedReader = new java.io.BufferedReader(reader)) {
-            String line;
-            while ((line = bufferedReader.readLine()) != null) {
-                entries.add(parseCfgLine(line));
-            }
-        }
-        return entries;
-    }
 
-    // package-private seam for unit testing (SUPPORT-646)
+    // package-private seam for unit testing (SUPPORT-646); the logic lives in ConfigFileCodec
     Map<String, String> parseCfgLine(String line) {
-        Map<String, String> entry = new HashMap<>();
-        String trimmed = line.trim();
-        if (trimmed.isEmpty()) {
-            entry.put("type", "empty");
-            return entry;
-        }
-
-        if (trimmed.startsWith("#")) {
-            entry.put("type", "comment");
-            entry.put("value", line);
-            return entry;
-        }
-
-        int separatorIndex = findCfgSeparatorIndex(line);
-        if (separatorIndex != -1) {
-            entry.put("type", "property");
-            entry.put("key", line.substring(0, separatorIndex).trim());
-            entry.put("value", line.substring(separatorIndex + 1).trim());
-            return entry;
-        }
-
-        entry.put("type", "comment");
-        entry.put("value", line);
-        return entry;
+        return ConfigFileCodec.parseCfgLine(line);
     }
 
-    private int findCfgSeparatorIndex(String line) {
-        int eqIndex = line.indexOf('=');
-        int colIndex = line.indexOf(':');
-        if (eqIndex != -1 && colIndex != -1) {
-            return Math.min(eqIndex, colIndex);
-        }
-        if (eqIndex != -1) {
-            return eqIndex;
-        }
-        return colIndex;
-    }
 
-    // package-private seam for unit testing (SUPPORT-646)
+    // package-private seam for unit testing (SUPPORT-646); the logic lives in ConfigFileCodec
     Object readYamlProperties(Path filePath) throws IOException {
-        LoaderOptions loaderOptions = new LoaderOptions();
-        Yaml yaml = new Yaml(new SafeConstructor(loaderOptions) {
-            @Override
-            protected Map<Object, Object> createDefaultMap(int initSize) {
-                return new LinkedHashMap<>(initSize);
-            }
-        });
-
-        try (FileInputStream in = new FileInputStream(filePath.toFile())) {
-            return yaml.load(in);
-        }
+        return ConfigFileCodec.readYamlProperties(filePath);
     }
 
     private String resolveMetatypePid(String filename, Locale locale) {
@@ -847,20 +786,15 @@ public class OsgiConfigService {
             // If the frontend sends "rawContent", we trust it completely and write it to
             // disk. This allows the frontend to handle encryption, formatting, and comments.
             if (content.containsKey("rawContent")) {
-                writeRawContent(filePath, (String) content.get("rawContent"));
+                ConfigFileCodec.writeRawContent(filePath, (String) content.get("rawContent"));
             } else {
                 String type = getFileType(safeFilename);
                 if ("cfg".equals(type)) {
-                    saveCfgContent(filePath, content.get(KEY_PROPERTIES));
+                    ConfigFileCodec.saveCfgContent(filePath, content.get(KEY_PROPERTIES));
                 } else if ("yml".equals(type)) {
                     // YML fallback if no rawContent sent (unlikely given frontend logic, but good
                     // for completeness)
-                    DumperOptions options = new DumperOptions();
-                    options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-                    Yaml yaml = new Yaml(options);
-                    try (Writer writer = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8)) {
-                        yaml.dump(content.get(KEY_PROPERTIES), writer);
-                    }
+                    ConfigFileCodec.saveYaml(filePath, content.get(KEY_PROPERTIES));
                 }
             }
         } catch (IOException e) {
@@ -1337,32 +1271,11 @@ public class OsgiConfigService {
 
 
     @SuppressWarnings("unchecked")
-    private void saveCfgContent(Path filePath, Object propertiesObj) throws IOException {
-        if (propertiesObj == null) {
-            LOGGER.warn("No properties or rawContent provided for .cfg save. Writing empty file.");
-            writeEmptyFile(filePath);
-            return;
-        }
-
-        if (propertiesObj instanceof Map) {
-            saveLegacyCfgProperties(filePath, (Map<String, String>) propertiesObj);
-            return;
-        }
-
-        saveCfgEntries(filePath, (List<Map<String, Object>>) propertiesObj);
-    }
 
     // SUPPORT-646: an upper bound on client-supplied raw content — a config file has no legitimate
     // reason to exceed this, and the cap prevents an unbounded write into karaf/etc.
     private static final int MAX_RAW_CONTENT_BYTES = 5 * 1024 * 1024;
 
-    private void writeRawContent(Path filePath, String raw) throws IOException {
-        byte[] bytes = (raw == null ? "" : raw).getBytes(StandardCharsets.UTF_8);
-        if (bytes.length > MAX_RAW_CONTENT_BYTES) {
-            throw new IOException("Configuration content exceeds the maximum allowed size");
-        }
-        Files.write(filePath, bytes);
-    }
 
     private void writeEmptyFile(Path filePath) throws IOException {
         try (Writer writer = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8);
@@ -1371,31 +1284,7 @@ public class OsgiConfigService {
         }
     }
 
-    private void saveLegacyCfgProperties(Path filePath, Map<String, String> properties) throws IOException {
-        Properties props = new Properties();
-        props.putAll(properties);
-        try (FileOutputStream out = new FileOutputStream(filePath.toFile())) {
-            props.store(out, "Modified by OSGi Configurations Manager");
-        }
-    }
 
-    private void saveCfgEntries(Path filePath, List<Map<String, Object>> entries) throws IOException {
-        try (Writer writer = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8);
-             java.io.BufferedWriter bufferedWriter = new java.io.BufferedWriter(writer)) {
-            for (Map<String, Object> entry : entries) {
-                String entryType = (String) entry.get("type");
-                if ("comment".equals(entryType)) {
-                    bufferedWriter.write((String) entry.get("value"));
-                    bufferedWriter.newLine();
-                } else if ("empty".equals(entryType)) {
-                    bufferedWriter.newLine();
-                } else if ("property".equals(entryType)) {
-                    bufferedWriter.write(entry.get("key") + " = " + entry.get("value"));
-                    bufferedWriter.newLine();
-                }
-            }
-        }
-    }
 
     private String normalizeConfigFilename(String filename) {
         String normalizedName = filename;
