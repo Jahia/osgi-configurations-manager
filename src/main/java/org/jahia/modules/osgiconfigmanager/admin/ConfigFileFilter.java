@@ -175,14 +175,20 @@ final class ConfigFileFilter {
             }
         }
         regex.append('$');
-        return Pattern.compile(regex.toString());
+        // SUPPORT-646, same reasoning as the exact-name path in matchesConfiguredFilename: a
+        // blacklist entry must not be bypassable by changing the case of the request. Exact names
+        // were made case-insensitive, but wildcards were left case-sensitive, so "org.apache.*"
+        // still let "ORG.APACHE.felix.cfg" through on a case-insensitive filesystem (macOS,
+        // Windows), where that name resolves to the very file the pattern was meant to hide.
+        return Pattern.compile(regex.toString(), Pattern.CASE_INSENSITIVE);
     }
 
     private boolean matchesConfiguredFilename(String filename, Set<String> exactMatches, List<Pattern> wildcardPatterns) {
-        // SUPPORT-646: exact-name matching is case-insensitive so a blacklist entry such as
-        // "Foo.cfg" cannot be bypassed on a case-preserving filesystem by requesting "foo.cfg".
-        // #17's version of this class used a plain contains() and would have reopened that bypass;
-        // OsgiConfigServiceAllowlistTest S12 covers it.
+        // SUPPORT-646: matching is case-insensitive, for both exact names and wildcards, so a
+        // blacklist entry such as "Foo.cfg" or "org.apache.*" cannot be bypassed on a
+        // case-preserving filesystem by varying the case of the request. #17's version of this
+        // class used a plain contains() and would have reopened that bypass;
+        // OsgiConfigServiceAllowlistTest S12 covers the exact-name half.
         if (exactMatches.stream().anyMatch(entry -> entry.equalsIgnoreCase(filename))) {
             return true;
         }
