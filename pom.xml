@@ -50,7 +50,7 @@
     <parent>
         <groupId>org.jahia.modules</groupId>
         <artifactId>jahia-modules</artifactId>
-        <version>8.2.2.0</version>
+        <version>8.2.3.2</version>
         <relativePath />
     </parent>
 
@@ -88,7 +88,7 @@
         <dependency>
             <groupId>org.yaml</groupId>
             <artifactId>snakeyaml</artifactId>
-            <version>2.5</version>
+            <version>2.6</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -113,7 +113,7 @@
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-            <version>1.2.13</version>
+            <version>1.6.3</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -147,13 +147,13 @@
             </plugin>
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.2.5</version>
+                <version>3.5.6</version>
             </plugin>
             <!-- SUPPORT-646: JaCoCo coverage for the unit-test suite -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.12</version>
+                <version>0.8.15</version>
                 <executions>
                     <execution>
                         <id>prepare-agent</id>
