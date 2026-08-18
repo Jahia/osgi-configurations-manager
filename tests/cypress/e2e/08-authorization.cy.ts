@@ -25,6 +25,8 @@ const STATE_CHANGING = [
     {action: 'markAsDefault', body: {action: 'markAsDefault', filename: 'authz-probe.cfg'}},
     {action: 'create', body: {action: 'create', filename: 'authz-probe.cfg'}},
     {action: 'encrypt', body: {action: 'encrypt', value: 'secret'}},
+    // deliberately no filename: the permission check runs before any dispatch, so this must be
+    // refused as 403 rather than reaching the file-bound validation
     {action: 'decrypt', body: {action: 'decrypt', value: 'ENC(x)'}}
 ];
 
@@ -76,26 +78,54 @@ describe('OSGi Configurations Manager - Authorization', () => {
             cleanupFiles([probe]);
         });
 
-        it('can list, create, read, save, and decrypt (single-gate authz — D4)', () => {
+        it('can list, create, read, save, and decrypt a value from its own file (D4)', () => {
             cy.osgiRequest({method: 'GET'}).its('status').should('eq', 200);
             cy.osgiRequest({method: 'POST', body: {action: 'create', filename: probe}})
                 .its('status').should('eq', 200);
-            cy.osgiRequest({method: 'POST', body: {action: 'save', filename: probe, rawContent: 'k=v'}})
-                .its('status').should('eq', 200);
             cy.osgiRequest({method: 'GET', url: `/cms/render/default/en/sites/systemsite.osgiConfigManager.do?filename=${probe}`})
                 .its('status').should('eq', 200);
-            // D4: any gate-passer may encrypt/decrypt (single-gate authz — no per-file/graded
-            // decrypt authorization). Round-trip a REAL value: post-SUPPORT-646 the engine fails
-            // loudly on a malformed ENC(...) instead of silently returning it, so use a value the
-            // backend actually produced.
+
+            // Decryption is FILE-BOUND: the caller names the file the ciphertext came from, and the
+            // service requires the value to actually be in it. Round-trip a REAL value — the engine
+            // fails loudly on a malformed ENC(...) rather than returning it unchanged.
             cy.osgiRequest({method: 'POST', body: {action: 'encrypt', value: 'probe-secret'}})
                 .then(res => {
                     expect(res.status, 'authorized user may encrypt').to.eq(200);
-                    cy.osgiRequest({method: 'POST', body: {action: 'decrypt', value: res.body.encryptedValue}})
+                    const wrapped = res.body.encryptedValue;
+
+                    // Store it in the probe file, so it genuinely belongs there.
+                    cy.osgiRequest({
+                        method: 'POST',
+                        body: {action: 'save', filename: probe, rawContent: `sample.value = ${wrapped}\n`}
+                    }).its('status').should('eq', 200);
+
+                    cy.osgiRequest({method: 'POST', body: {action: 'decrypt', value: wrapped, filename: probe}})
                         .then(dec => {
-                            expect(dec.status, 'authorized user may decrypt').to.eq(200);
+                            expect(dec.status, 'authorized user may decrypt a value from that file').to.eq(200);
                             expect(dec.body.decryptedValue).to.eq('probe-secret');
                         });
+                });
+        });
+
+        it('cannot decrypt a value that does not belong to the named file (no oracle)', () => {
+            // The ciphertext is genuine and the caller is authorized, but it is not in this file.
+            // Before decryption was file-bound this succeeded, which made the action usable to
+            // decrypt any ENC(...) obtained elsewhere — a backup, a log, a git history.
+            cy.osgiRequest({method: 'POST', body: {action: 'create', filename: probe}})
+                .its('status').should('eq', 200);
+            cy.osgiRequest({method: 'POST', body: {action: 'save', filename: probe, rawContent: 'unrelated = 1\n'}})
+                .its('status').should('eq', 200);
+
+            cy.osgiRequest({method: 'POST', body: {action: 'encrypt', value: 'elsewhere-secret'}})
+                .then(res => {
+                    expect(res.status).to.eq(200);
+                    cy.osgiRequest({
+                        method: 'POST',
+                        body: {action: 'decrypt', value: res.body.encryptedValue, filename: probe}
+                    }).then(dec => {
+                        expect(dec.status, 'a foreign ciphertext is refused').to.eq(500);
+                        expect(dec.body.decryptedValue, 'nothing is decrypted').to.be.undefined;
+                    });
                 });
         });
 

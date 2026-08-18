@@ -35,8 +35,9 @@ describe('OSGi Configurations Manager - Encryption round-trip', () => {
                     .its('body.data.rawContent').should('contain', encrypted)
                     .and('not.contain', secret);
 
-                // decrypt-on-view returns the original plaintext for the authorized user
-                cy.osgiRequest({method: 'POST', body: {action: 'decrypt', value: encrypted}})
+                // decrypt-on-view returns the original plaintext — naming the file the value was
+                // just saved into, since decryption is file-bound
+                cy.osgiRequest({method: 'POST', body: {action: 'decrypt', value: encrypted, filename: file}})
                     .its('body.decryptedValue').should('eq', secret);
             });
     });
