@@ -24,6 +24,14 @@ describe('OSGi Configurations Manager - Download', () => {
         cy.openOsgiConfigManager();
         cy.openOsgiFile(file);
 
+        // openOsgiFile only waits for the NAME to appear in the header, which happens as soon as
+        // the row is clicked — before the content request comes back. The download builds its Blob
+        // from rawContent, so clicking too early produced an empty Blob: on a CI runner this failed
+        // with "expected '' to equal 'download.marker = present\n'" while passing locally, where
+        // the fetch always won the race. Wait for the parsed content to be on screen instead.
+        cy.ensureVisualCfgMode();
+        cy.get('[data-cy="cfg-key-0"]', {timeout: 30000}).should('have.value', 'download.marker');
+
         const captured: {blob?: Blob; downloadName?: string} = {};
         cy.window().then(win => {
             cy.stub(win.URL, 'createObjectURL').callsFake((blob: Blob) => {
@@ -48,11 +56,13 @@ describe('OSGi Configurations Manager - Download', () => {
 
         cy.get('[data-cy="download-file-button"]', {timeout: 30000}).click();
 
-        cy.wrap(null).then(() => {
-            expect(captured.downloadName, 'download filename').to.eq(file);
-            expect(captured.blob, 'download blob').to.exist;
-            return (captured.blob as Blob).text();
-        }).then(text => {
+        // should() retries, then() does not — so the capture is awaited rather than sampled once.
+        cy.wrap(captured).should(c => {
+            expect(c.downloadName, 'download filename').to.eq(file);
+            expect(c.blob, 'download blob').to.exist;
+        });
+
+        cy.wrap(captured).then(c => (c.blob as Blob).text()).then(text => {
             expect(text).to.eq(content);
         });
     });
