@@ -22,6 +22,7 @@ declare namespace Cypress {
         cancelModal(): Chainable<void>;
         createManualOsgiFile(filename: string): Chainable<void>;
         assertToastContains(message: string): Chainable<void>;
+        confirmDiffSave(): Chainable<void>;
         getAvailableMetatypes(): Chainable<Array<{
             pid: string;
             filename: string;

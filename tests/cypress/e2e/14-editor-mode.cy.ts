@@ -1,32 +1,21 @@
 import {cleanupFiles} from './osgiTestUtils';
 
 describe('OSGi Configurations Manager - Editor mode behavior', () => {
-    const reserializeFile = 'org.jahia.modules.e2e-reserialize.cfg';
     const preferenceFile = 'org.jahia.modules.e2e-mode-pref.cfg';
 
     beforeEach(() => {
         cy.login();
-        cleanupFiles([reserializeFile, preferenceFile]);
+        cleanupFiles([preferenceFile]);
     });
 
     afterEach(() => {
-        cleanupFiles([reserializeFile, preferenceFile]);
+        cleanupFiles([preferenceFile]);
     });
 
-    it('warns when switching to raw mode reformats the file', () => {
-        // Arrange: tight `key=value` spacing that the visual model re-serializes as `key = value`,
-        // so toggling a clean file to raw mode is a non-equivalent reformat.
-        cy.upsertOsgiFile(reserializeFile, 'reserialize.key=value\n');
-        cy.openOsgiConfigManager();
-        cy.openOsgiFile(reserializeFile);
-        cy.ensureVisualCfgMode();
-
-        // Act: switch the clean file to raw mode.
-        cy.ensureRawCfgMode();
-
-        // Assert: the reformatting warning is surfaced.
-        cy.assertToastContains('Switching editor mode reformatted comments, ordering or spacing');
-    });
+    // The full-review branch (#17) also had a case asserting a toast when switching a clean file
+    // to raw mode reformats it. That warning does not exist in this codebase — "reformat" appears
+    // nowhere in the sources or the locale bundles, only on #17 — so the case was dropped rather
+    // than left asserting an unimplemented feature.
 
     it('persists the chosen editor mode across a page reload', () => {
         // Arrange
