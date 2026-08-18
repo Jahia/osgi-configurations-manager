@@ -40,6 +40,7 @@ describe('OSGi Configurations Manager - CFG property operations', () => {
 
         // Assert (persistence): saving drops the deleted key from disk.
         cy.get('[data-cy="save-config-button"] button').click();
+        cy.confirmDiffSave();
         cy.assertToastContains('Configuration saved successfully');
         cy.readOsgiFile(propsFile)
             .its('data.rawContent')

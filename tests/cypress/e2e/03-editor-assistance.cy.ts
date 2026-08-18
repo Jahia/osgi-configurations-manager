@@ -29,6 +29,7 @@ describe('OSGi Configurations Manager - Editor assistance', () => {
             cy.get(`[data-cy="metatype-property-card-${encodeURIComponent(definition.properties[0].id)}"]`, {timeout: 30000}).should('be.visible');
             cy.get(`[data-cy="metatype-property-insert-${encodeURIComponent(definition.properties[0].id)}"]`).click();
             cy.get('[data-cy="save-config-button"] button').click();
+            cy.confirmDiffSave();
             cy.assertToastContains('Configuration saved successfully');
             readOsgiFileBody(createdYamlFilename).then(body => {
                 expect(body.error, `read error for ${createdYamlFilename}`).to.not.exist;

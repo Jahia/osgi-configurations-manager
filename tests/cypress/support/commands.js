@@ -360,3 +360,12 @@ Cypress.Commands.add('getAvailableMetatypes', () => {
         url: '/cms/render/default/en/sites/systemsite.osgiConfigManager.do?action=availableMetatypes'
     }).its('body.metatypes');
 });
+
+/**
+ * Confirm the review-before-save diff modal, which opens on a UI Save whenever the computed
+ * content differs from what is on disk. Without this step the save never happens and no
+ * "saved successfully" toast is emitted.
+ */
+Cypress.Commands.add('confirmDiffSave', () => {
+    cy.get('[data-cy="diff-modal-confirm"] button', {timeout: 30000}).should('be.visible').click();
+});
