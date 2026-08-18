@@ -46,6 +46,49 @@ class ConfigFileFilterTest {
     }
 
     @Test
+    @DisplayName("wildcard blacklist patterns are case-insensitive too")
+    void wildcardBlacklistIsCaseInsensitive() {
+        ConfigFileFilter filter = new ConfigFileFilter(OsgiConfigService.SELF_CONFIG_PID);
+        filter.update(props("filteredFiles", "org.apache.*"));
+
+        assertFalse(filter.isFilenameAllowed("org.apache.felix.cfg", false));
+        // The exact-name path was made case-insensitive for SUPPORT-646 but wildcards were not, so
+        // this request used to slip past the pattern — and on a case-insensitive filesystem (macOS,
+        // Windows) it resolves to the very file the pattern was meant to hide.
+        assertFalse(filter.isFilenameAllowed("ORG.APACHE.felix.cfg", false),
+                "case variation must not bypass a wildcard blacklist entry");
+        assertFalse(filter.isFilenameAllowed("Org.Apache.Felix.cfg", false),
+                "case variation must not bypass a wildcard blacklist entry");
+    }
+
+    @Test
+    @DisplayName("wildcard whitelist patterns admit case variations rather than denying them")
+    void wildcardWhitelistIsCaseInsensitive() {
+        ConfigFileFilter filter = new ConfigFileFilter(OsgiConfigService.SELF_CONFIG_PID);
+        filter.update(props("allowedFiles", "org.jahia.*"));
+
+        assertTrue(filter.isFilenameAllowed("org.jahia.something.cfg", false));
+        // The whitelist direction is the mirror image: case-sensitivity denied legitimate access
+        // instead of granting unintended access.
+        assertTrue(filter.isFilenameAllowed("ORG.JAHIA.something.cfg", false),
+                "a case variation of an allowed pattern must stay allowed");
+        assertFalse(filter.isFilenameAllowed("com.example.other.cfg", false),
+                "the whitelist must still exclude what it does not list");
+    }
+
+    @Test
+    @DisplayName("wildcard matching stays anchored — it is not a substring test")
+    void wildcardStaysAnchored() {
+        ConfigFileFilter filter = new ConfigFileFilter(OsgiConfigService.SELF_CONFIG_PID);
+        filter.update(props("filteredFiles", "org.apache.*"));
+
+        // Case-insensitivity must not be confused with loosening the anchors: a name that merely
+        // contains the prefix is not a match.
+        assertTrue(filter.isFilenameAllowed("my-org.apache.thing.cfg", false),
+                "the pattern is anchored at both ends, so a containing name is not filtered");
+    }
+
+    @Test
     @DisplayName("the manager's own configuration is visible to root only")
     void selfConfigurationIsRootOnly() {
         ConfigFileFilter filter = new ConfigFileFilter(OsgiConfigService.SELF_CONFIG_PID);
