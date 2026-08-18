@@ -14,7 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: read
     # Jahia boot plus provisioning plus the suite; well clear of the ~12 min observed locally.
     timeout-minutes: 45
     steps:
@@ -26,9 +25,15 @@ jobs:
           distribution: temurin
           cache: maven
 
+      # Node 22, not the 20.9.0 that ci.yml uses. That pin mirrors <nodeVersion> in pom.xml so
+      # the module's webpack build and its Jest run agree, and it stays correct there — the
+      # bundle is still built by frontend-maven-plugin with its own pinned node, below.
+      # tests/ is a separate project with its own manifest, and its dependencies need newer:
+      # @babel/core 8 declares engines ^22.18.0 || >=24.11.0, so installing it under 20.9.0
+      # fails outright.
       - uses: actions/setup-node@v7
         with:
-          node-version: '20.9.0'
+          node-version: '22'
           cache: yarn
 
       # The suite exercises the module through Jahia, so it needs the real bundle.
@@ -40,18 +45,18 @@ jobs:
           mkdir -p tests/artifacts
           cp target/osgi-configurations-manager-*.jar tests/artifacts/
 
-      # jahia-ee-dev is a private package — anonymous pull is refused (403). GITHUB_TOKEN
-      # works if the package grants this repository access; set a GHCR_PULL_TOKEN secret
-      # (a PAT with read:packages) to override it otherwise.
-      - name: Log in to ghcr.io
-        run: echo "${{ secrets.GHCR_PULL_TOKEN || secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-
       - name: Start Jahia
         working-directory: tests
         env:
           # Base64 of the licence XML. Without it Jahia refuses to boot.
           JAHIA_LICENSE: ${{ secrets.JAHIA_LICENSE }}
-          JAHIA_IMAGE: ghcr.io/jahia/jahia-ee-dev:8-SNAPSHOT
+          # Public on Docker Hub, so the runner needs no registry credentials at all.
+          # ghcr.io/jahia/jahia-ee-dev is a private package: anonymous pull returns 403, and
+          # GITHUB_TOKEN only reaches packages that grant this repository access, which it
+          # does not — so that route needed an org-level grant or a long-lived PAT.
+          # Pinned to the same version as the jahia-modules parent in pom.xml (8.2.3.2), and
+          # a release rather than a moving -SNAPSHOT, so a run is reproducible.
+          JAHIA_IMAGE: jahia/jahia-ee:8.2.3.2
           SUPER_USER_PASSWORD: root1234
         run: |
           if [ -z "$JAHIA_LICENSE" ]; then
