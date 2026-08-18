@@ -184,7 +184,8 @@
             }
         },
         "empty": "leer",
-        "emptyLine": "Leerzeile"
+        "emptyLine": "Leerzeile",
+        "reorderHandle": "Eintrag neu anordnen – mit Pfeil-hoch oder Pfeil-runter verschieben"
     },
     "tooltip": {
         "downloadFile": "Aktuelle Datei herunterladen (Rohdaten)",

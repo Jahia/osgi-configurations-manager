@@ -192,7 +192,8 @@
             }
         },
         "empty": "vide",
-        "emptyLine": "Ligne vide"
+        "emptyLine": "Ligne vide",
+        "reorderHandle": "Réorganiser cette entrée — utilisez Flèche haut ou Flèche bas pour la déplacer"
     },
     "configState": {
         "badge": {
