@@ -97,9 +97,20 @@ public class OsgiConfigAction extends Action {
             response.getWriter().flush();
             return null;
 
+        } catch (ConfigNotFoundException e) {
+            // These three carry a meaning the client can act on, so they get a status that says so
+            // rather than the blanket 500 every controlled failure used to return. The message is
+            // still path-sanitised: a typed status must not become a way to learn server layout.
+            return writeError(response, HttpServletResponse.SC_NOT_FOUND, sanitizePath(e.getMessage()));
+        } catch (ConfigConflictException e) {
+            return writeError(response, HttpServletResponse.SC_CONFLICT, sanitizePath(e.getMessage()));
+        } catch (ConfigAccessDeniedException e) {
+            LOGGER.warn("[AUDIT] Access denied (action={}): {}", req.getParameter(PARAM_ACTION), e.getMessage());
+            return writeError(response, HttpServletResponse.SC_FORBIDDEN, sanitizePath(e.getMessage()));
         } catch (java.io.IOException e) {
-            // Controlled service error (validation / authorization / not-found). Keep the actionable
-            // reason but strip any absolute filesystem path so server internals are not leaked.
+            // Any OTHER controlled service error (validation, size, malformed payload). Keep the
+            // actionable reason but strip any absolute filesystem path so server internals are not
+            // leaked.
             LOGGER.warn("[AUDIT] Request rejected (action={}): {}", req.getParameter(PARAM_ACTION), e.getMessage());
             return writeError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, sanitizePath(e.getMessage()));
         } catch (Exception e) {

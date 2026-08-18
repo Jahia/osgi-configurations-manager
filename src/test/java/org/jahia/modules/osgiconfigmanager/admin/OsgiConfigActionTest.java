@@ -300,9 +300,42 @@ class OsgiConfigActionTest {
     // #17 capped the request body in the Action (MAX_REQUEST_BYTES) and answered 400. There is no
     // such cap here, so this case specified a new guard rather than covering existing behaviour.
 
-    // Three cases from #17 are deliberately absent here: they assert that a not-found, a conflict
-    // and an access-denied map to 404 / 409 / 403. This codebase maps every IOException to a
-    // sanitised 500, so those cases are the SPECIFICATION for the typed-exception change, not
-    // coverage of current behaviour. Landing them means changing a client-visible HTTP contract,
-    // which is a decision of its own rather than a side effect of salvaging tests.
+    @Test
+    @DisplayName("maps ConfigNotFoundException to 404")
+    void doExecute_notFound_returns404() throws Exception {
+        doThrow(new ConfigNotFoundException("File not found: x.cfg"))
+                .when(configService).deleteFile(eq("x.cfg"), anyBoolean());
+        stubPost("{\"action\":\"delete\",\"filename\":\"x.cfg\"}");
+
+        execute();
+
+        verify(response).setStatus(HttpServletResponse.SC_NOT_FOUND);
+        assertTrue(responseBody.toString().contains("File not found"));
+    }
+
+    @Test
+    @DisplayName("maps ConfigConflictException to 409")
+    void doExecute_conflict_returns409() throws Exception {
+        doThrow(new ConfigConflictException("File already exists: x.cfg"))
+                .when(configService).createFile(eq("x.cfg"), anyBoolean());
+        stubPost("{\"action\":\"create\",\"filename\":\"x.cfg\"}");
+
+        execute();
+
+        verify(response).setStatus(HttpServletResponse.SC_CONFLICT);
+        assertTrue(responseBody.toString().contains("already exists"));
+    }
+
+    @Test
+    @DisplayName("maps ConfigAccessDeniedException to 403")
+    void doExecute_accessDenied_returns403() throws Exception {
+        doThrow(new ConfigAccessDeniedException("Save denied: x.cfg is blacklisted or reserved."))
+                .when(configService).saveFile(eq("x.cfg"), any(), anyBoolean());
+        stubPost("{\"action\":\"save\",\"filename\":\"x.cfg\",\"rawContent\":\"a=1\"}");
+
+        execute();
+
+        verify(response).setStatus(HttpServletResponse.SC_FORBIDDEN);
+        assertTrue(responseBody.toString().contains("denied"));
+    }
 }
