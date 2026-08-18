@@ -1,3 +1,7 @@
+// Sent on every mutating POST. The server refuses POSTs without X-Requested-With (CSRF defense
+// in depth): a browser cannot set this header cross-origin without a CORS preflight.
+const JSON_POST_HEADERS = { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' };
+
 interface OsgiFile {
     name: string;
     configState?: 'MODULE' | 'MODULE_DEFAULT' | 'USER';
@@ -125,7 +129,7 @@ export const osgiService = {
     save: async (payload: OsgiPayload): Promise<OsgiServiceResponse> => {
         return handleResponse(await fetch(apiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: JSON_POST_HEADERS,
             body: JSON.stringify(payload)
         }));
     },
@@ -133,7 +137,7 @@ export const osgiService = {
     toggle: async (filename: string): Promise<OsgiServiceResponse> => {
         return handleResponse(await fetch(apiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: JSON_POST_HEADERS,
             body: JSON.stringify({ action: 'toggle', filename })
         }));
     },
@@ -141,7 +145,7 @@ export const osgiService = {
     markAsDefault: async (filename: string): Promise<OsgiServiceResponse> => {
         return handleResponse(await fetch(apiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: JSON_POST_HEADERS,
             body: JSON.stringify({ action: 'markAsDefault', filename })
         }));
     },
@@ -149,7 +153,7 @@ export const osgiService = {
     delete: async (filename: string): Promise<OsgiServiceResponse> => {
         return handleResponse(await fetch(apiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: JSON_POST_HEADERS,
             body: JSON.stringify({ action: 'delete', filename })
         }));
     },
@@ -157,7 +161,7 @@ export const osgiService = {
     create: async (filename: string): Promise<OsgiServiceResponse> => {
         return handleResponse(await fetch(apiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: JSON_POST_HEADERS,
             body: JSON.stringify({ action: 'create', filename })
         }));
     },
@@ -165,7 +169,7 @@ export const osgiService = {
     createFromMetatype: async (pid: string, instanceIdentifier?: string): Promise<OsgiServiceResponse> => {
         return handleResponse(await fetch(apiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: JSON_POST_HEADERS,
             body: JSON.stringify({ action: 'createFromMetatype', pid, instanceIdentifier })
         }));
     },
@@ -175,7 +179,7 @@ export const osgiService = {
     decrypt: async (value: string, filename: string): Promise<OsgiServiceResponse> => {
         return handleResponse(await fetch(apiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: JSON_POST_HEADERS,
             body: JSON.stringify({ action: 'decrypt', value, filename })
         }));
     },
@@ -183,7 +187,7 @@ export const osgiService = {
     encrypt: async (value: string): Promise<OsgiServiceResponse> => {
         return handleResponse(await fetch(apiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: JSON_POST_HEADERS,
             body: JSON.stringify({ action: 'encrypt', value })
         }));
     },
@@ -195,7 +199,7 @@ export const osgiService = {
     setPreference: async (key: string, value: string): Promise<OsgiServiceResponse> => {
         return handleResponse(await fetch(apiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: JSON_POST_HEADERS,
             body: JSON.stringify({ action: 'setPreference', key, value })
         }));
     }
