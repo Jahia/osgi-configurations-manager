@@ -2132,10 +2132,10 @@ cypress-iframe@^1.0.1:
   resolved "https://registry.yarnpkg.com/cypress-iframe/-/cypress-iframe-1.0.1.tgz#2a286cfd47a240aa9af0ad9f339f4c6f942089f8"
   integrity sha512-Ne+xkZmWMhfq3x6wbfzK/SzsVTCrJru3R3cLXsoSAZyfUtJDamXyaIieHXeea3pQDXF4wE2w4iUuvCYHhoD31g==
 
-cypress-mailpit@^1.4.0:
-  version "1.4.0"
-  resolved "https://registry.yarnpkg.com/cypress-mailpit/-/cypress-mailpit-1.4.0.tgz#eaf5a42014181cff6b6da1f8e999794e89a8cb05"
-  integrity sha512-Ee7DuY+Fsj95ST2aNuspdkbpdSd5jKj2ESwYTKLpRicDTWTXk2XwpBzILG+SDCFZyToDVeYXlaYWwA4cUyKSuQ==
+cypress-mailpit@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/cypress-mailpit/-/cypress-mailpit-2.0.0.tgz#3edf792515a8db6d4467a22db140025513a8250a"
+  integrity sha512-xP99xkEpL9QFdVgrptz7UKIpGlcaNw1N3n/JZ5boz/FhecImjYfDqkgsXd3IGw4cDf33PEvsTQmxha0Fgjd8+g==
 
 cypress-multi-reporters@^1.6.3:
   version "1.6.4"
