@@ -314,6 +314,11 @@ export const useOsgiConfigs = () => {
         return obj;
     }, []);
 
+    // handleSave re-enters itself through the diff modal's onConfirm (the confirm path passes the
+    // already-computed content, which skips recomputation and the gate below). A ref breaks the
+    // circular dependency a direct self-reference would create inside useCallback.
+    const handleSaveRef = useRef<((contentToSave?: string) => Promise<void>) | undefined>(undefined);
+
     const handleSave = useCallback(async (contentToSave?: string) => {
         let finalContent = contentToSave;
 
@@ -387,6 +392,24 @@ export const useOsgiConfigs = () => {
 
         if (!selectedFile) return;
 
+        // Review-before-save: when the user pressed Save, show what will change on disk and persist
+        // only once they confirm. An explicit contentToSave means this IS the confirm path, so it
+        // falls through. Identical content skips the modal rather than showing an empty diff.
+        if (contentToSave === undefined && finalContent !== originalRawContent) {
+            const confirmedContent = finalContent;
+            setDiffConfig({
+                isOpen: true,
+                originalContent: originalRawContent,
+                newContent: confirmedContent || '',
+                filename: selectedFile.name,
+                onConfirm: () => {
+                    setDiffConfig(prev => ({ ...prev, isOpen: false }));
+                    void handleSaveRef.current?.(confirmedContent);
+                }
+            });
+            return;
+        }
+
         try {
             await osgiService.save({
                 action: 'save',
@@ -448,7 +471,9 @@ export const useOsgiConfigs = () => {
         } catch (e: any) {
             toastError(e.message);
         }
-    }, [isRawMode, rawContent, selectedFile, isYamlValid, properties, t, success, toastError, resetProperties, encryptRecursive, fetchFiles, fetchFileContent]);
+    }, [isRawMode, rawContent, selectedFile, isYamlValid, properties, originalRawContent, t, success, toastError, resetProperties, encryptRecursive, fetchFiles, fetchFileContent]);
+
+    handleSaveRef.current = handleSave;
 
     const handleToggleComments = useCallback(async () => {
         if (!visualFormattingControlsEnabled) {
