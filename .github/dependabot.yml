@@ -19,6 +19,16 @@ updates:
       npm-minor-patch:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+    ignore:
+      # monaco-editor 0.53+ dropped ./esm/vs/editor/editor.worker.js from its exports
+      # map, but monaco-worker-manager (pulled in by monaco-yaml) still imports that
+      # exact path, so the webpack build fails with "no valid target file was found".
+      # monaco-yaml 5.5.1 is the latest release and has not adapted yet, despite
+      # advertising a permissive `monaco-editor >=0.36` peer range. Hold the 0.52 line
+      # until monaco-yaml/monaco-worker-manager catch up, then remove this entry.
+      # Without it, monaco-editor keeps breaking the whole grouped npm PR (see #50).
+      - dependency-name: "monaco-editor"
+        versions: [">=0.53.0"]
 
   # Cypress end-to-end suite, which has its own manifest.
   - package-ecosystem: "npm"
