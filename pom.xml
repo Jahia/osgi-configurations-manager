@@ -147,7 +147,7 @@
             </plugin>
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.2.5</version>
+                <version>3.5.6</version>
             </plugin>
             <!-- SUPPORT-646: JaCoCo coverage for the unit-test suite -->
             <plugin>
