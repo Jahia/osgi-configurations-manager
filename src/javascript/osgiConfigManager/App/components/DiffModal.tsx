@@ -30,7 +30,7 @@ export const DiffModal: React.FC<DiffModalProps> = ({
     if (!isOpen) return null;
 
     return (
-        <div style={{
+        <div data-cy="diff-modal" style={{
             position: 'fixed',
             top: 0,
             left: 0,
@@ -121,13 +121,17 @@ export const DiffModal: React.FC<DiffModalProps> = ({
                     gap: '14px',
                     background: '#fafafa'
                 }}>
-                    <Button label={t('modal.cancel')} variant="ghost" onClick={onClose} />
-                    <Button
-                        label={t('app.save')}
-                        color="accent"
-                        onClick={onConfirm}
-                        style={{ backgroundColor: '#00a0e3', color: '#fff', fontWeight: '600' }}
-                    />
+                    <div data-cy="diff-modal-cancel">
+                        <Button label={t('modal.cancel')} variant="ghost" onClick={onClose} />
+                    </div>
+                    <div data-cy="diff-modal-confirm">
+                        <Button
+                            label={t('app.save')}
+                            color="accent"
+                            onClick={onConfirm}
+                            style={{ backgroundColor: '#00a0e3', color: '#fff', fontWeight: '600' }}
+                        />
+                    </div>
                 </div>
             </Paper>
 
