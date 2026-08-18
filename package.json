@@ -46,7 +46,7 @@
     "@types/minimatch": "^5.1.2",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
-    "babel-jest": "^29.0.0",
+    "babel-jest": "^30.4.1",
     "babel-loader": "^8.0.6",
     "clean-webpack-plugin": "^4.0.0",
     "copy-webpack-plugin": "^14.0.0",
