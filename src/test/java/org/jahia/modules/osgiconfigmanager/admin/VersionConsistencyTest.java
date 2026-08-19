@@ -11,6 +11,8 @@ import java.nio.file.Paths;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -60,21 +62,35 @@ class VersionConsistencyTest {
     }
 
     @Test
-    @DisplayName("CHARACTERIZATION: the pom header and the LICENSE file still disagree")
-    void licenseDeclarationsStillDisagree() throws IOException {
+    @DisplayName("every manifest declares MIT, and the GPL/JSEL header is gone for good")
+    void licenceIsMitEverywhere() throws IOException {
         String pom = read("pom.xml");
         String readme = read("README.md");
         String license = read("LICENSE");
+        String rootPkg = read("package.json");
+        String testsPkg = read("tests/package.json");
 
-        boolean pomIsDualGpl = pom.contains("DUAL LICENSING") || pom.contains("GPL");
-        boolean readmeIsMit = readme.contains("MIT License");
-        boolean licenseIsMit = license.startsWith("MIT License");
+        // pom.xml used to carry Jahia's dual GPL/JSEL header, inherited from the module archetype,
+        // while LICENSE and the README declared MIT. MIT is authoritative. No plugin in the pom
+        // chain generates or checks this header, so nothing restores it: only a copy-paste from
+        // another Jahia module would, which is what this assertion is here to catch.
+        assertFalse(pom.contains("DUAL LICENSING") || pom.contains("JSEL"),
+                "the pom must not reintroduce the dual GPL/JSEL header — MIT is authoritative");
 
-        // This records an unresolved inconsistency rather than a desired state: pom.xml carries
-        // Jahia's standard dual GPL/JSEL header while LICENSE and the README declare MIT. Which one
-        // is authoritative is the owner's call, not something a test should decide — so if you
-        // reconcile them, this test is expected to fail. Update it to assert the outcome you chose.
-        assertTrue(pomIsDualGpl, "pom header still advertises GPL/JSEL dual licensing");
-        assertTrue(readmeIsMit && licenseIsMit, "README and LICENSE still declare MIT");
+        // Neither this pom nor anything it inherits declared a licence at all, so consumers had no
+        // machine-readable answer. It is declared now; keep it declared.
+        assertTrue(pom.contains("<name>MIT License</name>"),
+                "the pom must declare MIT in <licenses>");
+
+        assertTrue(license.startsWith("MIT License"), "LICENSE must be the MIT text");
+        assertTrue(readme.contains("MIT License"), "the README must declare MIT");
+
+        String rootPkgLicense = find(rootPkg, "\"license\"\\s*:\\s*\"([^\"]+)\"");
+        assertEquals("MIT", rootPkgLicense, "package.json must declare MIT");
+
+        // tests/package.json pointed at "LICENSE IN LICENSE.txt" — a file that does not exist; the
+        // licence lives in LICENSE.
+        String testsPkgLicense = find(testsPkg, "\"license\"\\s*:\\s*\"([^\"]+)\"");
+        assertEquals("MIT", testsPkgLicense, "tests/package.json must declare MIT");
     }
 }
