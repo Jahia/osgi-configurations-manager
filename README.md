@@ -19,7 +19,8 @@ A Jahia module to manage OSGi configurations directly from the Jahia Administrat
 -   **Configuration Editing**:
     -   **Visual Editor**: Structured view for `.cfg` files.
         -   Supports adding, modifying, and deleting properties.
-        -   Drag-and-drop reordering of properties and comments.
+        -   Drag-and-drop reordering of properties and comments, with a keyboard-accessible
+            handle (focus a row's handle and use the arrow keys).
         -   Multiline text support with adaptive hover overlay for long values.
         -   **Comment and Empty Line Controls**:
             -   Hidden by default to keep the visual editor focused on editable properties.
@@ -53,7 +54,11 @@ A Jahia module to manage OSGi configurations directly from the Jahia Administrat
 -   **Security & Traceability**:
     -   **Encryption**: Support for encrypted values using a custom CryptoEngine.
     -   Toggle encryption on properties directly from the UI.
-    -   Automatic decryption of values for viewing (if authorized).
+    -   Decryption for viewing is authorized per file: a value is only decrypted for a user who may
+        read the file it actually appears in.
+    -   **Review before save**: saving shows the raw diff of what is about to be written and requires
+        an explicit confirmation.
+    -   Saves are capped at 5 MiB of raw content.
     -   **Audit Logging**: Every sensitive action (save, delete, toggle) is logged with the username of the performer for security auditing.
     -   **Safe Disable Flow**: Disabling a configuration now shows a warning dialog before renaming to `.disabled`.
     -   **Jahia Configuration State Awareness**:
@@ -66,6 +71,8 @@ A Jahia module to manage OSGi configurations directly from the Jahia Administrat
     -   **Internationalization (i18n)**: Fully translated in English 🇬🇧, French 🇫🇷, German 🇩🇪, Italian 🇮🇹, Spanish 🇪🇸, and Portuguese 🇵🇹.
     -   Responsive layout with sticky headers and optimized scrolling.
     -   Unsaved changes protection (confirmation modals) across file switching, create, upload, refresh, disable and mark-as-default flows.
+    -   Accessible dialogs: both modals are exposed as dialogs to assistive technology, with focus
+        moved into the dialog and returned on close.
 
 ## Configuration
 
@@ -111,6 +118,11 @@ When `allowedFiles` is defined:
 
 When you encrypt a property in the UI, it is stored in the `.cfg` or `.yml` file with the prefix `ENC(...)`. To use these properties in your OSGi services, you need to decrypt them.
 
+> [!IMPORTANT]
+> `CryptoEngine.decryptString` **fails closed**: it throws `IllegalStateException` rather than handing
+> back a value that might still be ciphertext. Handle that — an uncaught throw inside `@Activate`
+> leaves your component unable to start. It also throws on a `null` argument.
+
 ### Example
 
 ```java
@@ -130,14 +142,20 @@ public class MyService {
     @Activate
     @Modified
     public void update(Map<String, Object> properties) {
-        String value = (String) properties.get("apiSecret");
-        
-        // Decrypt if it's an encrypted string
-        if (value != null && value.startsWith("ENC(") && value.endsWith(")")) {
-            String cipherText = value.substring(4, value.length() - 1);
-            this.apiSecret = CryptoEngine.decryptString(cipherText);
-        } else {
-            this.apiSecret = value;
+        this.apiSecret = decryptIfNeeded((String) properties.get("apiSecret"));
+    }
+
+    private String decryptIfNeeded(String value) {
+        if (value == null || !value.startsWith("ENC(") || !value.endsWith(")")) {
+            return value;
+        }
+        String cipherText = value.substring(4, value.length() - 1);
+        try {
+            return CryptoEngine.decryptString(cipherText);
+        } catch (IllegalStateException e) {
+            // Decide what your component should do with an unusable secret. Refusing to start, as
+            // here, is usually safer than running with a half-configured service.
+            throw new IllegalStateException("Could not decrypt apiSecret for org.my.config", e);
         }
     }
 }
@@ -146,6 +164,15 @@ public class MyService {
 > [!NOTE]
 > Ensure your module has access to the `org.jahia.modules.osgiconfigmanager.admin` package to use `CryptoEngine`.
 
+### Portability between instances
+
+New values are encrypted with a **per-instance** secret — either operator-provided through the
+module's own OSGi configuration, or generated and persisted on first use. A `.cfg` copied from one
+instance to another therefore cannot be decrypted on arrival. The manager handles this by showing the
+value still wrapped in `ENC(...)` rather than failing the page, but a consumer module reading it will
+hit the throw above. Re-enter such secrets on the target instance, or set the same operator-provided
+secret on both.
+
 ## Installation
 
 1.  Build the module:
@@ -153,7 +180,10 @@ public class MyService {
     export JAVA_HOME=$(/usr/libexec/java_home -v 17)
     mvn clean install
     ```
-2.  Run the Cypress end-to-end tests from the `tests` directory when needed:
+2.  Run the Cypress end-to-end tests from the `tests` directory when needed. Both wrappers need a
+    Jahia EE licence; point `JAHIA_LICENSE_FILE` at yours, since the built-in default is a path that
+    only exists on the original author's machine. See [tests/README.md](tests/README.md) for the
+    full set of options.
     ```bash
     cd tests
     ./run-e2e-docker.sh
@@ -168,7 +198,19 @@ public class MyService {
     export JAVA_HOME=$(/usr/libexec/java_home -v 17)
     mvn clean install sonar:sonar
     ```
-4.  Deploy the generated JAR file (`target/osgi-configurations-manager-1.0.3-SNAPSHOT.jar`) to your Jahia instance.
+4.  Deploy the generated JAR file from `target/` (`osgi-configurations-manager-<version>.jar`) to
+    your Jahia instance.
+
+## Calling the endpoint directly
+
+If you script against the module instead of using the UI, state-changing `POST`s must carry both:
+
+-   an `X-Requested-With` header (any value), or the request is rejected with **403**
+-   an `application/json` content type, or the request is rejected with **415**
+
+Both are CSRF defences: a browser cannot attach a non-safelisted header to a forged cross-origin
+request. Beyond that, the endpoint answers **404** for a missing file, **409** for a conflict such as
+creating a file that already exists, and **403** when the caller may not touch the file.
 
 ## Usage
 
@@ -223,11 +265,15 @@ This makes it possible to bootstrap a valid configuration from the contract decl
 
 ## Technologies
 
--   React
+-   React with TypeScript
 -   Jahia Moonstone UI
 -   Monaco Editor
 -   React i18next
 -   Jahia Javascript Modules
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

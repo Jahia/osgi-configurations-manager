@@ -61,3 +61,14 @@ If you run Cypress against a locally started Jahia, make sure the expected envir
 ```bash
 source set-env.sh
 ```
+
+## Environment variables worth knowing
+
+| Variable | Why you need it |
+|---|---|
+| `JAHIA_LICENSE_FILE` | Path to a Jahia EE licence XML. Both `run-e2e-*.sh` wrappers fall back to a hardcoded path that only exists on the original author's machine, so set this. A 30-day demo licence is enough. |
+| `JAHIA_IMAGE` | Jahia image to run. The CI workflow uses the public `jahia/jahia-ee:8.2.3.2`; override it to test against another version. |
+
+The suite needs a licence allowing **4 concurrent users** — `root` plus the three scoped users the
+authorization specs provision. A licence capped below that fails specs 08 and 09 with what looks like
+an unrelated UI error, so check this first if those two are the only ones failing.

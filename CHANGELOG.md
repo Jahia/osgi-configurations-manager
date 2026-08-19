@@ -61,6 +61,11 @@ pull-request numbers are the merged changes that carry them.
   683 lines. The unsaved-changes guarding stays in `index.jsx`, which wraps these handlers.
 - **Build moved to JDK 17** (#79) with Java 11 still the target, unblocking two dependency bumps
   (#80), and the frontend moved to TypeScript 6 (#81).
+- **Licensing reconciled on MIT.** `pom.xml` carried Jahia's dual GPL/JSEL header, inherited from
+  the module archetype, while `LICENSE` and the README declared MIT — and no pom in the chain
+  declared a licence at all, so consumers had no machine-readable answer. MIT is authoritative: the
+  header is aligned, `<licenses>` now declares MIT, and `tests/package.json` no longer points at a
+  `LICENSE.txt` that does not exist. A test asserts all five declarations agree.
 - **Dependabot reconfigured** (#35, #60, #75) onto the four real ecosystems, with minor/patch and
   major grouped separately per ecosystem so lockfile rewrites stop invalidating each other.
 

@@ -63,7 +63,7 @@
         "directory": "tests"
     },
     "author": "",
-    "license": "SEE LICENSE IN LICENSE.txt",
+    "license": "MIT",
     "bugs": {
         "url": "https://github.com/Jahia/osgi-configurations-manager/issues"
     },
