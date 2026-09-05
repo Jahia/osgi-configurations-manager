@@ -66,12 +66,17 @@ describe('OSGi Configurations Manager - CFG property operations', () => {
         cy.confirmDiffSave();
         cy.assertToastContains('Configuration saved successfully');
 
-        // Assert (persistence): the continuation marker is on disk and nothing was commented out.
+        // Assert (persistence): the marker is on disk, the tail was not commented out, and the
+        // continued line is lined up under the start of the value.
         cy.readOsgiFile(propsFile).its('data.rawContent').then((raw: string) => {
+            const indent = ' '.repeat('multi.key = '.length);
+
             expect(raw, 'the continued line must carry the trailing backslash')
                 .to.contain('multi.key = first \\');
             expect(raw, 'the tail must still be there').to.contain('second');
             expect(raw, 'the tail must NOT have become a comment').not.to.contain('# second');
+            expect(raw, 'the continued line must be aligned under the value')
+                .to.contain(`\n${indent}second`);
         });
 
         // Assert (reload): it comes back as one property, not a property followed by a comment.

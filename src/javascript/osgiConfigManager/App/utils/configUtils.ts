@@ -292,27 +292,45 @@ const countTrailingBackslashes = (str: string): number => {
  * being byte-identical. Values TYPED in the visual editor arrive as a bare "\n" and need one.
  * Testing the marker rather than the origin covers both without having to tell them apart.
  */
-const withLineContinuations = (value: any): any => {
+const withLineContinuations = (key: string, value: any): any => {
     if (typeof value !== 'string' || !value.includes('\n')) {
         return value;
     }
 
+    // Continued lines are lined up under the start of the value, so the raw view of a saved file
+    // reads as a block instead of falling back to column 0. The visual editor has no "format"
+    // button, so saving is the only moment this layout can be applied.
+    //
+    // This is cosmetic, not semantic: a properties reader discards the leading whitespace of a
+    // continuation line, so the value Karaf sees is the same with or without it. Existing leading
+    // whitespace is stripped before the padding is applied, which is what makes saving twice a
+    // no-op instead of indenting a little further each time.
+    const indent = ' '.repeat(`${key} = `.length);
+
     const lines = value.split('\n');
     // A value ending in a newline has no following line to continue onto; emitting a marker there
     // would dangle, and the parser would meet an empty line while still expecting a continuation.
-    while (lines.length > 1 && lines[lines.length - 1] === '') {
+    while (lines.length > 1 && lines[lines.length - 1].trim() === '') {
         lines.pop();
     }
 
     return lines.map((line, index) => {
-        if (index === lines.length - 1) {
-            return line;
-        }
-        // On CRLF input the terminator is "\r\n", so the marker belongs before the "\r".
+        // On CRLF input the terminator is "\r\n", so both the padding and the marker belong
+        // before the "\r".
         const hasCr = line.endsWith('\r');
-        const body = hasCr ? line.slice(0, -1) : line;
-        const marker = countTrailingBackslashes(body) % 2 === 1 ? '' : ' \\';
-        return body + marker + (hasCr ? '\r' : '');
+        let body = hasCr ? line.slice(0, -1) : line;
+
+        if (index > 0) {
+            // Only ordinary indentation is stripped. A line starting with "\ " escapes a space the
+            // author meant to keep, and does not begin with whitespace, so it is left alone.
+            body = indent + body.replace(/^[ \t]+/, '');
+        }
+
+        if (index < lines.length - 1) {
+            body += countTrailingBackslashes(body) % 2 === 1 ? '' : ' \\';
+        }
+
+        return body + (hasCr ? '\r' : '');
     }).join('\n');
 };
 
@@ -336,7 +354,7 @@ export const toCfgFormat = (data: any): string => {
             }
             if (type === 'property') {
                 // Direct Encryption: Value IS the string.
-                return `${key} = ${withLineContinuations(value)}`;
+                return `${key} = ${withLineContinuations(key, value)}`;
             }
             // Fallback for unknown types or mixed structures
             return '';
@@ -369,7 +387,7 @@ export const toCfgFormat = (data: any): string => {
     };
 
     const flatProps = flatten(data);
-    lines = flatProps.map(p => `${p.key} = ${withLineContinuations(p.value)}`);
+    lines = flatProps.map(p => `${p.key} = ${withLineContinuations(p.key, p.value)}`);
     return lines.join('\n') + '\n';
 };
 // Basic deep equal
