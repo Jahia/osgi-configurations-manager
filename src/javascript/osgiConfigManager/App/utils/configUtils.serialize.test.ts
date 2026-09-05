@@ -35,6 +35,99 @@ describe('toCfgFormat <-> parseCfgContent round-trip (array mode)', () => {
     });
 });
 
+describe('multiline values: continuation markers and alignment', () => {
+    // A .cfg value cannot span raw lines: every continued line must end with a backslash.
+    // Values READ from a file already carry it, because the parser keeps the backslash it saw.
+    // Values TYPED in the visual editor do not — the textarea yields a bare "\n" — and writing
+    // that out unchanged produced a line with no separator, which the parser then classified as a
+    // comment and the next save prefixed with "# ". The user's value silently became a comment.
+    //
+    // Continued lines are also lined up under the start of the value: the visual editor has no
+    // "format" button, so saving is the only moment that layout can be applied.
+
+    const prop = (key: string, value: string) => [{
+        type: { value: 'property' },
+        key: { value: key },
+        value: { value }
+    }];
+
+    test('a value typed with a bare newline gets a marker and is aligned under the value', () => {
+        const indent = ' '.repeat('multi.key = '.length);
+
+        expect(toCfgFormat(prop('multi.key', 'first\nsecond'))).toBe(
+            `multi.key = first \\\n${indent}second\n`
+        );
+    });
+
+    test('every continued line of a three-line value is aligned', () => {
+        const indent = ' '.repeat('org.example.long.key = '.length);
+
+        expect(toCfgFormat(prop('org.example.long.key', 'a\nb\nc'))).toBe(
+            `org.example.long.key = a \\\n${indent}b \\\n${indent}c\n`
+        );
+    });
+
+    test('the result reparses as ONE property, not a property plus a comment', () => {
+        const nodes = parseCfgContent(toCfgFormat(prop('multi.key', 'first\nsecond')));
+
+        expect(nodes).toHaveLength(1);
+        expect(nodes[0].type.value).toBe('property');
+        expect(nodes[0].key.value).toBe('multi.key');
+    });
+
+    test('saving twice is stable — no extra backslash, no creeping indentation', () => {
+        const once = toCfgFormat(prop('multi.key', 'first\nsecond'));
+        const twice = toCfgFormat(parseCfgContent(once));
+
+        expect(twice).toBe(once);
+    });
+
+    test('an existing continuation is re-aligned rather than left as it was', () => {
+        // Deliberate: the editor owns the layout of what it writes, so a file saved from the visual
+        // editor comes out consistently aligned whatever indentation it arrived with. The VALUE is
+        // untouched — a properties reader discards a continuation line's leading whitespace.
+        const indent = ' '.repeat('multi.key = '.length);
+
+        expect(toCfgFormat(parseCfgContent('multi.key = first \\\n  second\n'))).toBe(
+            `multi.key = first \\\n${indent}second\n`
+        );
+    });
+
+    test('an already-aligned file round-trips byte-identically', () => {
+        const indent = ' '.repeat('multi.key = '.length);
+        const input = `multi.key = first \\\n${indent}second\n`;
+
+        expect(toCfgFormat(parseCfgContent(input))).toBe(input);
+    });
+
+    test('a line ending in an escaped backslash still gets a continuation', () => {
+        // "C:\\" is an escaped backslash, an EVEN count, so it is not a continuation marker:
+        // one must still be added, or the next line is orphaned.
+        const indent = ' '.repeat('win.path = '.length);
+
+        expect(toCfgFormat(prop('win.path', 'C:\\\\\nnext'))).toBe(
+            `win.path = C:\\\\ \\\n${indent}next\n`
+        );
+    });
+
+    test('a trailing newline does not leave a dangling continuation', () => {
+        expect(toCfgFormat(prop('trail.key', 'only\n'))).toBe('trail.key = only\n');
+    });
+
+    test('the object-tree path gets the same treatment', () => {
+        const indent = ' '.repeat('multi = '.length);
+        const tree: any = { _order: ['multi'], multi: { isLeaf: true, value: 'first\nsecond' } };
+
+        expect(toCfgFormat(tree)).toBe(`multi = first \\\n${indent}second\n`);
+    });
+
+    test('the separator is normalised to " = " whatever the file used', () => {
+        expect(toCfgFormat(parseCfgContent('a:1\n'))).toBe('a = 1\n');
+        expect(toCfgFormat(parseCfgContent('b=2\n'))).toBe('b = 2\n');
+        expect(toCfgFormat(parseCfgContent('c   =   3\n'))).toBe('c = 3\n');
+    });
+});
+
 describe('parseData <-> prepareDataForSave round-trip (object tree)', () => {
     test('nested object survives parse + prepare', async () => {
         const original = { a: '1', b: { c: '2' } };
