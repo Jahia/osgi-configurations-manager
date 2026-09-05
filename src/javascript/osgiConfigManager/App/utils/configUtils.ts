@@ -266,6 +266,56 @@ export const updateStateDeep = (obj: any, pathIdx: number, pathArray: (string | 
  * Converts the properties object back to a .cfg text format for display in Diff View.
  * It attempts to respect the _order if present, otherwise sorts alphabetically.
  */
+/**
+ * Count the backslashes ending a string. An ODD count means the last one escapes the line break,
+ * i.e. it is an active continuation marker; an EVEN count means they escape each other.
+ */
+const countTrailingBackslashes = (str: string): number => {
+    let count = 0;
+    let i = str.length - 1;
+    while (i >= 0 && str[i] === '\\') {
+        count++;
+        i--;
+    }
+    return count;
+};
+
+/**
+ * Give every continued line of a value its trailing "\" marker.
+ *
+ * A .cfg value cannot span raw lines. Without the marker the next line is read as a separate
+ * entry, and having no "=" separator, parseCfgContent classifies it as a comment — after which
+ * the next save prefixes it with "# " and the tail of the value is silently lost.
+ *
+ * Values PARSED FROM A FILE already carry their markers, because parseCfgContent keeps the
+ * backslash it saw. Those must come back out untouched, or the visual <-> raw round-trip stops
+ * being byte-identical. Values TYPED in the visual editor arrive as a bare "\n" and need one.
+ * Testing the marker rather than the origin covers both without having to tell them apart.
+ */
+const withLineContinuations = (value: any): any => {
+    if (typeof value !== 'string' || !value.includes('\n')) {
+        return value;
+    }
+
+    const lines = value.split('\n');
+    // A value ending in a newline has no following line to continue onto; emitting a marker there
+    // would dangle, and the parser would meet an empty line while still expecting a continuation.
+    while (lines.length > 1 && lines[lines.length - 1] === '') {
+        lines.pop();
+    }
+
+    return lines.map((line, index) => {
+        if (index === lines.length - 1) {
+            return line;
+        }
+        // On CRLF input the terminator is "\r\n", so the marker belongs before the "\r".
+        const hasCr = line.endsWith('\r');
+        const body = hasCr ? line.slice(0, -1) : line;
+        const marker = countTrailingBackslashes(body) % 2 === 1 ? '' : ' \\';
+        return body + marker + (hasCr ? '\r' : '');
+    }).join('\n');
+};
+
 export const toCfgFormat = (data: any): string => {
     if (!data) return '';
     if (Array.isArray(data)) {
@@ -286,7 +336,7 @@ export const toCfgFormat = (data: any): string => {
             }
             if (type === 'property') {
                 // Direct Encryption: Value IS the string.
-                return `${key} = ${value}`;
+                return `${key} = ${withLineContinuations(value)}`;
             }
             // Fallback for unknown types or mixed structures
             return '';
@@ -319,7 +369,7 @@ export const toCfgFormat = (data: any): string => {
     };
 
     const flatProps = flatten(data);
-    lines = flatProps.map(p => `${p.key} = ${p.value}`);
+    lines = flatProps.map(p => `${p.key} = ${withLineContinuations(p.value)}`);
     return lines.join('\n') + '\n';
 };
 // Basic deep equal
