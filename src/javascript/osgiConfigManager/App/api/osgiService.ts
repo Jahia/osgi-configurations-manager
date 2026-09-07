@@ -1,3 +1,5 @@
+import type { ContextJsParameters } from '@jahia/ui-extender';
+
 // Sent on every mutating POST. The server refuses POSTs without X-Requested-With (CSRF defense
 // in depth): a browser cannot set this header cross-origin without a CORS preflight.
 const JSON_POST_HEADERS = { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' };
@@ -82,11 +84,16 @@ interface OsgiPayload {
     rawContent?: string;
 }
 
+// @jahia/ui-extender declares window.contextJsParameters itself since 1.3.0. Restating it with a
+// different shape is rejected outright — "TS2717: Subsequent property declarations must have the
+// same type" — so this declares the SAME type by importing it, which TypeScript accepts.
+//
+// Dropping the block entirely does not work: the webpack build reads node_modules types and would
+// be fine, but Jest's narrower TypeScript config does not pick up ui-extender's global .d.ts, and
+// every suite that reaches this file fails with TS2339. Declaring it here satisfies both.
 declare global {
     interface Window {
-        contextJsParameters: {
-            contextPath: string;
-        };
+        contextJsParameters: ContextJsParameters;
     }
 }
 
