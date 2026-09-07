@@ -20,7 +20,7 @@ jobs:
       # brings a Lombok that no longer crashes the compiler with
       # "ExceptionInInitializerError: com.sun.tools.javac.code.TypeTag :: UNKNOWN".
       # maven-compiler-plugin still targets release 11, so the bytecode is unchanged.
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v6
         with:
           java-version: '17'
           distribution: temurin

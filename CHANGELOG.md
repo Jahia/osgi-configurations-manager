@@ -7,8 +7,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-This entry covers the full-review and hardening campaign. Every item below is on `main`; the
-pull-request numbers are the merged changes that carry them.
+## [1.0.5] - 2026-09-07
+
+This entry covers the full-review and hardening campaign, plus the multiline `.cfg` fixes that came
+out of running it on a live instance. The pull-request numbers are the merged changes that carry
+each item.
 
 ### Security
 
@@ -28,6 +31,26 @@ pull-request numbers are the merged changes that carry them.
 - **Filename filtering hardened** (#97). Blacklist matching is case-insensitive, so a blacklisted
   name cannot be slipped through by changing its case.
 - Zero open Dependabot alerts, down from 13 at the start of the campaign.
+
+### Fixed
+
+- **A multiline value written from the visual `.cfg` editor is no longer destroyed** (#115). The
+  editor deliberately allows newlines in a value, but the value was serialized verbatim — which a
+  `.cfg` cannot express. The continued line, having no `=` separator, was read back as a comment and
+  the next save prefixed it with `# `, silently losing the tail of the value. Every continued line
+  now carries its trailing `\`.
+- **Continued lines are lined up under the start of the value** (#115), and the separator is written
+  as `name = value` whatever the file used. The visual editor has no "format" button, so saving is
+  the only moment this layout can be applied. It is cosmetic: a properties reader discards a
+  continuation line's leading whitespace.
+- **A `#` opening a continued line is escaped** (#115). Karaf reads a `.cfg` with
+  `org.apache.felix.utils.properties`, which treats `#` or `!` as a comment marker whenever it is
+  the first non-whitespace character of a line — including mid-continuation — and discards that
+  whole line. Indenting does not protect it; escaping does. Note this differs from
+  `java.util.Properties`, which keeps the line in every such case.
+- **Wildcard filter patterns are matched case-insensitively** (#104), closing the other half of the
+  SUPPORT-646 bypass: exact names were already case-insensitive, so `filteredFiles = org.apache.*`
+  still let `ORG.APACHE.felix.cfg` through on a case-insensitive filesystem.
 
 ### Added
 
