@@ -21,7 +21,10 @@ A Jahia module to manage OSGi configurations directly from the Jahia Administrat
         -   Supports adding, modifying, and deleting properties.
         -   Drag-and-drop reordering of properties and comments, with a keyboard-accessible
             handle (focus a row's handle and use the arrow keys).
-        -   Multiline text support with adaptive hover overlay for long values.
+        -   Multiline text support with adaptive hover overlay for long values. A `.cfg` cannot
+            hold a raw line break inside a value, so on save the editor writes the continuations
+            the format needs — see [Multiline values](#multiline-values) for the rules it applies
+            and what to do when editing the same file by hand in raw mode.
         -   **Comment and Empty Line Controls**:
             -   Hidden by default to keep the visual editor focused on editable properties.
             -   Can be re-enabled through the OSGi module configuration with `visualFormattingControlsEnabled=true`.
@@ -113,6 +116,49 @@ When `allowedFiles` is defined:
 -   only the listed files are visible in the manager
 -   only the listed files can be read, edited, uploaded, created or toggled through the tool
 -   `filteredFiles` becomes effectively obsolete for the UI because the white list takes precedence
+
+## Multiline values
+
+A `.cfg` value cannot span raw lines: every continued line has to end with a backslash, or the
+line that follows is read as a separate entry. The visual editor lets you press Enter inside a
+value and handles this for you on save.
+
+Typing this in the value field:
+
+```
+first
+second
+third
+```
+
+writes this to the file:
+
+```properties
+my.key = first \
+         second \
+         third
+```
+
+Three rules are applied, and they matter if you also edit the file by hand:
+
+-   **A trailing `\` closes every continued line.** Without it the next line has no `=`
+    separator, so it comes back as a comment — and the following save prefixes it with `# `,
+    losing that part of the value.
+-   **Continued lines are lined up under the start of the value.** This is cosmetic only: a
+    properties reader discards a continuation line's leading whitespace, so what Karaf reads is
+    unchanged.
+-   **A `#` or `!` opening a continued line is escaped as `\#` or `\!`.** Those characters mark
+    a comment wherever they are the first non-whitespace character of a line, *including* inside a
+    continuation, and Karaf's reader drops the whole line. Indenting does not protect them.
+
+> [!NOTE]
+> Editing in **raw** mode leaves the text exactly as you type it — the editor applies none of the
+> above there. If you write a multiline value by hand, add the trailing `\` yourself, and escape a
+> leading `#` or `!`.
+
+Note also what the format cannot express: because leading whitespace is discarded, a continued
+line joins the previous one separated by a single space. `my.key` above is read as
+`first second third`, not as three lines.
 
 ## Using Encrypted Properties in Java
 
