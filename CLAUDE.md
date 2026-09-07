@@ -37,6 +37,26 @@ a change appears to require relaxing one, that comment is the thing to read firs
   legitimately see different configurations — that is by design, and a test asserting otherwise fails
   against the correct implementation.
 
+## What a green build does not prove
+
+Three checks pass on code that is broken in the browser, and each cost real time to learn:
+
+- **`ci.yml` never starts Cypress.** It runs Jest and `mvn verify`. A change touching `tests/`
+  or the compiled bundle can show a green tick and be completely broken. The e2e workflow is the
+  only check that means anything there: `gh workflow run e2e.yml --ref <branch>`.
+- **The bundle can fail only at runtime.** Babel 8's automatic JSX runtime compiled imports of
+  `react/jsx-runtime`, which Jahia's app-shell does not share, so the build succeeded and the app
+  died on first render. React version was irrelevant — the subpath is simply not shared.
+  `babel.config.js` pins `runtime: 'classic'` and `babel-config.test.js` guards it.
+- **A long e2e run means failures, not a hang.** This suite takes ~10 minutes. Failures cost
+  retries, screenshots and videos, so a broken run stretches to 20-45. Do not read 20 minutes as
+  "stuck"; read it as "specs are failing".
+
+Related trap: **a config change with no effect usually means a second config is winning.** The
+webpack rule used to declare inline `babel-loader` options that shadowed `babel.config.js`
+entirely. When an edit provably changes nothing, compare the built artefact against `main` before
+theorising — `unzip -p <jar> <chunk>` settled it in one command.
+
 ## Mutating requests
 
 State-changing POSTs must carry both an `X-Requested-With` header (any value) and an

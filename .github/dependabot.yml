@@ -64,27 +64,12 @@ updates:
       - dependency-name: "typescript"
         versions: [">=7"]
 
-      # Babel 8 changed @babel/preset-react's default `runtime` from "classic" to "automatic",
-      # which compiles JSX into calls on react/jsx-runtime and react/jsx-dev-runtime. Those
-      # entry points only exist from React 16.14; this module is on react ^16.10.2, held there
-      # because Jahia's app-shell owns the shared React (see above). The build still succeeds and
-      # Jest still passes — the bundle only dies in the browser, on first render:
-      #
-      #     TypeError: (0 , I.jsxDEV) is not a function
-      #
-      # which takes the whole admin app down and fails every UI spec (run 34093417898: 14 of 18
-      # specs failing, most with 0 passing). Only the e2e workflow catches it.
-      #
-      # Two ways out, both bigger than a bump: pin `runtime: "classic"` in the Babel config, or
-      # move the module to React 18 as jcontent has. Until then, hold the Babel 8 line.
-      - dependency-name: "@babel/core"
-        versions: [">=8"]
-      - dependency-name: "@babel/preset-env"
-        versions: [">=8"]
-      - dependency-name: "@babel/preset-react"
-        versions: [">=8"]
-      - dependency-name: "babel-loader"
-        versions: [">=9"]
+      # The Babel 8 line is no longer held: the module runs Babel 8 with the classic JSX runtime
+      # pinned in babel.config.js. Babel 8's automatic runtime compiles JSX into imports of
+      # react/jsx-runtime and react/jsx-dev-runtime, which Jahia's app-shell does not share, so
+      # the bundle died in the browser with "TypeError: (0 , I.jsxDEV) is not a function". React 18
+      # ships both entry points and did NOT fix it — the subpath is simply not shared. The classic
+      # runtime removes the cause, and babel-config.test.js keeps it that way.
 
       # ESLint 9 made flat config the default and 10 removed .eslintrc support entirely
       # ("ESLint couldn't find an eslint.config.* file"). This project lints with .eslintrc.json,
