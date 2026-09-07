@@ -110,6 +110,39 @@ describe('multiline values: continuation markers and alignment', () => {
         );
     });
 
+    test('a continued line opening with "#" is escaped so Karaf does not drop it', () => {
+        // Measured against org.apache.felix.utils.properties, which is what Karaf reads a .cfg
+        // with: a "#" or "!" as the first non-whitespace character of a line is a comment marker
+        // even mid-continuation, and the whole line is discarded. Indenting does not protect it.
+        const indent = ' '.repeat('toto = '.length);
+
+        expect(toCfgFormat(prop('toto', 'a\n#X\nb'))).toBe(
+            `toto = a \\\n${indent}\\#X \\\n${indent}b\n`
+        );
+    });
+
+    test('"!" is escaped for the same reason', () => {
+        const indent = ' '.repeat('toto = '.length);
+
+        expect(toCfgFormat(prop('toto', 'a\n!X'))).toBe(
+            `toto = a \\\n${indent}\\!X\n`
+        );
+    });
+
+    test('an already-escaped "#" is not escaped twice', () => {
+        const once = toCfgFormat(prop('toto', 'a\n#X\nb'));
+
+        expect(toCfgFormat(parseCfgContent(once))).toBe(once);
+    });
+
+    test('a "#" that is not opening a line needs no escaping', () => {
+        const indent = ' '.repeat('toto = '.length);
+
+        expect(toCfgFormat(prop('toto', 'a\nb #X'))).toBe(
+            `toto = a \\\n${indent}b #X\n`
+        );
+    });
+
     test('a trailing newline does not leave a dangling continuation', () => {
         expect(toCfgFormat(prop('trail.key', 'only\n'))).toBe('trail.key = only\n');
     });

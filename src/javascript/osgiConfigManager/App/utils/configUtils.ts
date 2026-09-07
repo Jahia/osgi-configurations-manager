@@ -323,7 +323,19 @@ const withLineContinuations = (key: string, value: any): any => {
         if (index > 0) {
             // Only ordinary indentation is stripped. A line starting with "\ " escapes a space the
             // author meant to keep, and does not begin with whitespace, so it is left alone.
-            body = indent + body.replace(/^[ \t]+/, '');
+            let stripped = body.replace(/^[ \t]+/, '');
+
+            // A "#" or "!" opening a line is a comment marker even in the middle of a continuation,
+            // and Karaf's properties reader (org.apache.felix.utils.properties) drops that whole
+            // line — indenting it does NOT protect it. Escaping does. Without this, a value line
+            // the user typed starting with "#" is silently lost on the server, and our own parser
+            // reads it back as a comment, breaking the property in two. An already-escaped line
+            // starts with "\", so this is idempotent.
+            if (/^[#!]/.test(stripped)) {
+                stripped = '\\' + stripped;
+            }
+
+            body = indent + stripped;
         }
 
         if (index < lines.length - 1) {
