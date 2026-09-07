@@ -52,12 +52,10 @@ updates:
       - dependency-name: "@jahia/ui-extender"
         versions: [">=2"]
 
-      # Coupled to the React version above: react-test-renderer must match React, and
-      # @testing-library/react 13+ requires React 18+. Revisit both if React moves.
-      - dependency-name: "react-test-renderer"
-        versions: [">=17"]
-      - dependency-name: "@testing-library/react"
-        versions: [">=13"]
+      # react-test-renderer must match React and @testing-library/react needs React 18+, so both
+      # were held while the module was on React 16. React is on 18.3.1 now, matching jcontent, so
+      # the holds are lifted: react-test-renderer is on 18.3.1 and @testing-library/react on 16.3.2
+      # (which also needs @testing-library/dom declared explicitly — v16 made it a peer).
 
       # --- Held because the surrounding tooling cannot take them yet ---
       # TypeScript 7 is the native rewrite and changes the internal API ts-loader reads: the
@@ -95,12 +93,15 @@ updates:
       - dependency-name: "eslint"
         versions: [">=9"]
 
-      # eslint-plugin-react-hooks 7 adds set-state-in-effect, preserve-manual-memoization and refs.
-      # They are legitimate and surface 7 real findings in Dialogs.jsx, CfgMetatypePropertyDialog,
-      # MonacoEditor and useOsgiConfigs — worth a focused pass rather than being rushed through, or
-      # silenced, inside a dependency bump.
+      # eslint-plugin-react-hooks 6 exports a flat-config structure that ESLint 8's eslintrc loader
+      # cannot read at all — it dies with "TypeError: Converting circular structure to JSON" on
+      # configs['flat/recommended'], so nothing lints. Version 7 loads but adds set-state-in-effect,
+      # preserve-manual-memoization and refs, which surface 7 real findings in Dialogs.jsx,
+      # CfgMetatypePropertyDialog, MonacoEditor and useOsgiConfigs — worth a focused pass rather
+      # than being rushed through or silenced inside a dependency bump. 4.6.2 is the last version
+      # this repo can load; lift the line together with the ESLint 9 / flat-config migration.
       - dependency-name: "eslint-plugin-react-hooks"
-        versions: [">=7"]
+        versions: [">=5"]
 
   # Cypress end-to-end suite, which has its own manifest.
   - package-ecosystem: "npm"
