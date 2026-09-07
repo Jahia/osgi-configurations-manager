@@ -23,7 +23,7 @@
 
     <groupId>org.jahia.community</groupId>
     <artifactId>osgi-configurations-manager</artifactId>
-    <version>1.0.5</version>
+    <version>1.0.6-SNAPSHOT</version>
     <packaging>bundle</packaging>
     <name>OSGi Configurations Manager</name>
     <description>Administration module to manage all OSGi configuration files (cfg, yaml) in Karaf /etc.</description>
@@ -218,6 +218,6 @@
         <connection>scm:git:git@github.com:Jahia/osgi-configurations-manager.git</connection>
         <developerConnection>scm:git:git@github.com:Jahia/osgi-configurations-manager.git</developerConnection>
         <url>scm:git:git@github.com:Jahia/osgi-configurations-manager.git</url>
-        <tag>1_0_5</tag>
+        <tag>HEAD</tag>
     </scm>
 </project>
