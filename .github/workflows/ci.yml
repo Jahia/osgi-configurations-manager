@@ -30,7 +30,9 @@ jobs:
       # the webpack build driven by frontend-maven-plugin agree.
       - uses: actions/setup-node@v7
         with:
-          node-version: '20.9.0'
+          # Kept in step with <nodeVersion> in pom.xml: frontend-maven-plugin downloads its own
+          # Node, and a mismatch means CI validates a different runtime than the build uses.
+          node-version: '22.22.0'
           cache: yarn
 
       - name: Install frontend dependencies
