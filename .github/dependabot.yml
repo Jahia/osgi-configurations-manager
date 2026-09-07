@@ -93,6 +93,34 @@ updates:
       tests-npm-major:
         patterns: ["*"]
         update-types: ["major"]
+    ignore:
+      # The ESLint toolchain here is pinned by @jahia/eslint-config 2.2.0, which *depends* on
+      # eslint ^8.39.0 (not merely peers it) and fixes eslint-plugin-jest ^27, eslint-plugin-n
+      # ^15||^16 and eslint-plugin-promise ^6. Verified: eslint 10 makes `yarn install` fail
+      # outright with "could not find a copy of eslint to link", and eslint-plugin-cypress 7
+      # exports a flat-config object that the eslintrc loader rejects ("Unexpected top-level
+      # property name"). Lift the whole family together, once that config offers a flat-config
+      # entry point and this repo migrates off .eslintrc.json.
+      - dependency-name: "eslint"
+        versions: [">=9"]
+      - dependency-name: "eslint-plugin-cypress"
+        versions: [">=3"]
+      - dependency-name: "eslint-plugin-jest"
+        versions: [">=28"]
+      - dependency-name: "eslint-plugin-n"
+        versions: [">=17"]
+      - dependency-name: "eslint-plugin-prettier"
+        versions: [">=5"]
+      - dependency-name: "eslint-plugin-promise"
+        versions: [">=7"]
+      - dependency-name: "eslint-plugin-react-hooks"
+        versions: [">=7"]
+
+      # Same wall as the module: typescript-eslint refuses TS 7 outright — "typescript-eslint does
+      # not support TS 7.0" — so linting the specs dies. TS 7 is the native rewrite; see
+      # typescript-eslint#10940. Lift when that lands.
+      - dependency-name: "typescript"
+        versions: [">=7"]
 
   - package-ecosystem: "maven"
     directory: "/"
