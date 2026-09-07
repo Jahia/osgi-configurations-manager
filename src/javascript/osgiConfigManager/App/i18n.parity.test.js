@@ -1,5 +1,5 @@
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
 // Guards against the locale drift found in review: every locale must expose the exact same key
 // set as the English reference, with no empty translations. Run by `yarn test`.

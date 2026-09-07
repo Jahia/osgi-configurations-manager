@@ -34,6 +34,52 @@ updates:
       - dependency-name: "monaco-editor"
         versions: [">=0.53.0"]
 
+      # --- Provided by Jahia's app-shell as SHARED SINGLETONS ---
+      # @jahia/webpack-config declares compatRanges react/react-dom = "16 - 18", and jcontent —
+      # Jahia's own module for 8.2.3.2 — ships react ^18.3.1, i18next ^20.6.1,
+      # react-i18next ^11.7.2 and @jahia/ui-extender ^1.1.1. The shell loads ONE instance of each
+      # for every module, so asking for a version it does not provide breaks module federation at
+      # load time, not at build time: CI stays green and the app fails in the browser. Raise these
+      # only when the platform does.
+      - dependency-name: "react"
+        versions: [">=19"]
+      - dependency-name: "react-dom"
+        versions: [">=19"]
+      - dependency-name: "i18next"
+        versions: [">=21"]
+      - dependency-name: "react-i18next"
+        versions: [">=13"]
+      - dependency-name: "@jahia/ui-extender"
+        versions: [">=2"]
+
+      # Coupled to the React version above: react-test-renderer must match React, and
+      # @testing-library/react 13+ requires React 18+. Revisit both if React moves.
+      - dependency-name: "react-test-renderer"
+        versions: [">=17"]
+      - dependency-name: "@testing-library/react"
+        versions: [">=13"]
+
+      # --- Held because the surrounding tooling cannot take them yet ---
+      # TypeScript 7 is the native rewrite and changes the internal API ts-loader reads: the
+      # webpack build dies with "Cannot read properties of undefined (reading 'fileExists')" in
+      # ts-loader's findConfigFile. Lift when ts-loader supports TS 7.
+      - dependency-name: "typescript"
+        versions: [">=7"]
+
+      # ESLint 9 made flat config the default and 10 removed .eslintrc support entirely
+      # ("ESLint couldn't find an eslint.config.* file"). This project lints with .eslintrc.json,
+      # and @jahia/eslint-config still ships eslintrc-style rules. Lift once that config offers a
+      # flat-config entry point and this repo migrates.
+      - dependency-name: "eslint"
+        versions: [">=9"]
+
+      # eslint-plugin-react-hooks 7 adds set-state-in-effect, preserve-manual-memoization and refs.
+      # They are legitimate and surface 7 real findings in Dialogs.jsx, CfgMetatypePropertyDialog,
+      # MonacoEditor and useOsgiConfigs — worth a focused pass rather than being rushed through, or
+      # silenced, inside a dependency bump.
+      - dependency-name: "eslint-plugin-react-hooks"
+        versions: [">=7"]
+
   # Cypress end-to-end suite, which has its own manifest.
   - package-ecosystem: "npm"
     directory: "/tests"
