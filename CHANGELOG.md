@@ -7,6 +7,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Documentation
+
+- **The `.cfg` multiline rules are documented** in a new README section. 1.0.5 made the visual
+  editor write valid continuations, but nothing told a reader what it writes or why — which
+  matters because raw mode applies none of it. The section covers the trailing `\`, the
+  alignment, the `\#` / `\!` escaping that keeps Karaf from dropping a line, and the fact that a
+  continued line is read back joined by a single space rather than as several lines.
+
 ## [1.0.5] - 2026-09-07
 
 This entry covers the full-review and hardening campaign, plus the multiline `.cfg` fixes that came
