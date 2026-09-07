@@ -66,6 +66,28 @@ updates:
       - dependency-name: "typescript"
         versions: [">=7"]
 
+      # Babel 8 changed @babel/preset-react's default `runtime` from "classic" to "automatic",
+      # which compiles JSX into calls on react/jsx-runtime and react/jsx-dev-runtime. Those
+      # entry points only exist from React 16.14; this module is on react ^16.10.2, held there
+      # because Jahia's app-shell owns the shared React (see above). The build still succeeds and
+      # Jest still passes — the bundle only dies in the browser, on first render:
+      #
+      #     TypeError: (0 , I.jsxDEV) is not a function
+      #
+      # which takes the whole admin app down and fails every UI spec (run 34093417898: 14 of 18
+      # specs failing, most with 0 passing). Only the e2e workflow catches it.
+      #
+      # Two ways out, both bigger than a bump: pin `runtime: "classic"` in the Babel config, or
+      # move the module to React 18 as jcontent has. Until then, hold the Babel 8 line.
+      - dependency-name: "@babel/core"
+        versions: [">=8"]
+      - dependency-name: "@babel/preset-env"
+        versions: [">=8"]
+      - dependency-name: "@babel/preset-react"
+        versions: [">=8"]
+      - dependency-name: "babel-loader"
+        versions: [">=9"]
+
       # ESLint 9 made flat config the default and 10 removed .eslintrc support entirely
       # ("ESLint couldn't find an eslint.config.* file"). This project lints with .eslintrc.json,
       # and @jahia/eslint-config still ships eslintrc-style rules. Lift once that config offers a
@@ -120,13 +142,14 @@ updates:
       # not support TS 7.0" — so linting the specs dies. TS 7 is the native rewrite; see
       # typescript-eslint#10940. Lift when that lands.
       #
-      # NOT held, but a warning for whoever picks up the next tests-npm-major group: with the
-      # Cypress-runtime majors applied (@cypress/webpack-preprocessor 8, babel-loader 10,
+      # NOT held: the Cypress-runtime majors (@cypress/webpack-preprocessor 8, babel-loader 10,
       # babel-plugin-istanbul 8, @cypress/code-coverage 4, cypress-multi-reporters 2, mocha 11,
-      # mochawesome 8), the e2e suite HUNG — 21 minutes into a run that normally takes 10, still
-      # inside "Provision and run Cypress", and killed by the 45-minute timeout (run 34093417898).
-      # Install and lint were clean, so nothing local catches it. The culprit is not identified;
-      # bisecting means one e2e run per candidate. Take that group one package at a time.
+      # mochawesome 8) were reverted once on a mistaken reading of run 34093417898 — the suite
+      # looked hung at 21 minutes against a 10-minute norm, but it was in fact running, slowly,
+      # because nearly every spec was FAILING and each failure costs a retry, a screenshot and a
+      # video. The real cause was @babel/preset-react 8 in the module (see the npm "/" section).
+      # These majors are therefore untested rather than guilty. Take them one at a time and run
+      # the e2e workflow — ci.yml never starts Cypress, so its green tick means nothing here.
       - dependency-name: "typescript"
         versions: [">=7"]
 
