@@ -47,7 +47,20 @@ module.exports = (env, argv) => {
                                     modules: false,
                                     targets: { chrome: '60', edge: '44', firefox: '54', safari: '12' }
                                 }],
-                                '@babel/preset-react'
+                                // Babel 8 changed preset-react's default runtime from "classic" to
+                                // "automatic", which compiles JSX into imports of
+                                // react/jsx-runtime and react/jsx-dev-runtime. Jahia's app-shell
+                                // shares React as a module-federation singleton and does not share
+                                // those subpaths, so the bundle dies in the browser on first render
+                                // with "TypeError: (0 , I.jsxDEV) is not a function" — the whole
+                                // admin app goes down. Pin the classic runtime: JSX becomes
+                                // React.createElement, which resolves against the shared React like
+                                // any other React API. This matches tsconfig's "jsx": "react", so
+                                // .tsx (ts-loader) and .jsx (here) now agree.
+                                //
+                                // These inline options SHADOW babel.config.js entirely, so setting
+                                // the runtime there has no effect on the bundle.
+                                ['@babel/preset-react', { runtime: 'classic' }]
                             ]
                         }
                     }
