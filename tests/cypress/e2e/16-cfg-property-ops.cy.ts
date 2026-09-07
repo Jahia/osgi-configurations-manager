@@ -47,6 +47,46 @@ describe('OSGi Configurations Manager - CFG property operations', () => {
             .and('not.contain', 'del.one');
     });
 
+    it('keeps a multiline value attached to its property instead of commenting the tail', () => {
+        // Regression: the visual editor deliberately allows newlines in a value (preventNewlines is
+        // set on the key field only), but toCfgFormat wrote them out raw. The continued line then
+        // had no "=" separator, so it came back as a comment — and the next save prefixed it with
+        // "# ", silently losing the tail of the value. A .cfg needs a trailing "\\" to continue.
+        cy.upsertOsgiFile(propsFile, 'multi.key = first\n');
+        cy.openOsgiConfigManager();
+        cy.openOsgiFile(propsFile);
+        cy.ensureVisualCfgMode();
+        cy.get('[data-cy="cfg-value-0"]', {timeout: 30000}).should('have.value', 'first');
+
+        // Act: add a second line to the value, exactly as a user would.
+        cy.get('[data-cy="cfg-value-0"]').clear();
+        cy.get('[data-cy="cfg-value-0"]').type('first{enter}second');
+
+        cy.get('[data-cy="save-config-button"] button').click();
+        cy.confirmDiffSave();
+        cy.assertToastContains('Configuration saved successfully');
+
+        // Assert (persistence): the marker is on disk, the tail was not commented out, and the
+        // continued line is lined up under the start of the value.
+        cy.readOsgiFile(propsFile).its('data.rawContent').then((raw: string) => {
+            const indent = ' '.repeat('multi.key = '.length);
+
+            expect(raw, 'the continued line must carry the trailing backslash')
+                .to.contain('multi.key = first \\');
+            expect(raw, 'the tail must still be there').to.contain('second');
+            expect(raw, 'the tail must NOT have become a comment').not.to.contain('# second');
+            expect(raw, 'the continued line must be aligned under the value')
+                .to.contain(`\n${indent}second`);
+        });
+
+        // Assert (reload): it comes back as one property, not a property followed by a comment.
+        cy.openOsgiConfigManager();
+        cy.openOsgiFile(propsFile);
+        cy.ensureVisualCfgMode();
+        cy.get('[data-cy="cfg-key-0"]', {timeout: 30000}).should('have.value', 'multi.key');
+        cy.get('[data-cy="cfg-key-1"]').should('not.exist');
+    });
+
     it('reorders property rows with the keyboard handle', () => {
         // Arrange
         cy.upsertOsgiFile(propsFile, 're.one = first\nre.two = second\n');
