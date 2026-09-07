@@ -119,6 +119,14 @@ updates:
       # Same wall as the module: typescript-eslint refuses TS 7 outright — "typescript-eslint does
       # not support TS 7.0" — so linting the specs dies. TS 7 is the native rewrite; see
       # typescript-eslint#10940. Lift when that lands.
+      #
+      # NOT held, but a warning for whoever picks up the next tests-npm-major group: with the
+      # Cypress-runtime majors applied (@cypress/webpack-preprocessor 8, babel-loader 10,
+      # babel-plugin-istanbul 8, @cypress/code-coverage 4, cypress-multi-reporters 2, mocha 11,
+      # mochawesome 8), the e2e suite HUNG — 21 minutes into a run that normally takes 10, still
+      # inside "Provision and run Cypress", and killed by the 45-minute timeout (run 34093417898).
+      # Install and lint were clean, so nothing local catches it. The culprit is not identified;
+      # bisecting means one e2e run per candidate. Take that group one package at a time.
       - dependency-name: "typescript"
         versions: [">=7"]
 
