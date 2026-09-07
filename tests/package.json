@@ -17,7 +17,7 @@
         "babel-plugin-istanbul": "^8.0.0",
         "compare-versions": "^6.1.1",
         "cross-fetch": "4.1.0",
-        "cypress": "15.20.1",
+        "cypress": "15.21.1",
         "cypress-file-upload": "^5.0.8",
         "cypress-iframe": "^1.0.1",
         "cypress-mailpit": "^2.0.0",
