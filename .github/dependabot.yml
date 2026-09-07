@@ -142,15 +142,18 @@ updates:
       # Same wall as the module: typescript-eslint refuses TS 7 outright — "typescript-eslint does
       # not support TS 7.0" — so linting the specs dies. TS 7 is the native rewrite; see
       # typescript-eslint#10940. Lift when that lands.
+
+      # Cypress 16 removed Cypress.env(), and @jahia/cypress 8.5.0 still calls it — its login
+      # helper reads SUPER_USER_PASSWORD that way. Every spec then dies before running:
       #
-      # NOT held: the Cypress-runtime majors (@cypress/webpack-preprocessor 8, babel-loader 10,
-      # babel-plugin-istanbul 8, @cypress/code-coverage 4, cypress-multi-reporters 2, mocha 11,
-      # mochawesome 8) were reverted once on a mistaken reading of run 34093417898 — the suite
-      # looked hung at 21 minutes against a 10-minute norm, but it was in fact running, slowly,
-      # because nearly every spec was FAILING and each failure costs a retry, a screenshot and a
-      # video. The real cause was @babel/preset-react 8 in the module (see the npm "/" section).
-      # These majors are therefore untested rather than guilty. Take them one at a time and run
-      # the e2e workflow — ci.yml never starts Cypress, so its green tick means nothing here.
+      #     `Cypress.env()` was removed in Cypress version 16.0.0.
+      #     The key being accessed was: `SUPER_USER_PASSWORD`
+      #
+      # Nothing local catches this: install is clean, specs lint, and ci.yml never starts Cypress.
+      # Only the e2e workflow shows it (run 34106589098). Lift when @jahia/cypress supports
+      # Cypress 16 — the fix belongs in that package, not here.
+      - dependency-name: "cypress"
+        versions: [">=16"]
       - dependency-name: "typescript"
         versions: [">=7"]
 
