@@ -155,3 +155,26 @@ export const encryptTree = async (node: any, onError?: CryptoErrorHandler): Prom
 
     return next;
 };
+
+/**
+ * Number of encrypted leaves still holding an {@code ENC(...)} envelope after {@link decryptTree}:
+ * values the server could not decrypt (encrypted with another secret) or refused (not present in
+ * the saved file). The editor shows them as stored; callers use the count to tell the user.
+ */
+export const countUndecryptedLeaves = (node: any): number => {
+    if (Array.isArray(node)) {
+        return node.reduce((total, item) => total + countUndecryptedLeaves(item), 0);
+    }
+
+    if (!node || typeof node !== 'object') {
+        return 0;
+    }
+
+    if (isEncryptableLeaf(node)) {
+        return node.value.startsWith(ENC_PREFIX) ? 1 : 0;
+    }
+
+    return Object.entries(node)
+        .filter(([key]) => key !== '_order')
+        .reduce((total, [, value]) => total + countUndecryptedLeaves(value), 0);
+};

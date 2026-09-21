@@ -1,4 +1,4 @@
-import { decryptTree, encryptTree, forgetKnownPlaintexts, lookupKnownPlaintext, rememberPlaintext } from './cryptoTree';
+import { countUndecryptedLeaves, decryptTree, encryptTree, forgetKnownPlaintexts, lookupKnownPlaintext, rememberPlaintext } from './cryptoTree';
 import { osgiService } from '../api/osgiService';
 
 jest.mock('../api/osgiService');
@@ -180,6 +180,27 @@ describe('cryptoTree', () => {
             rememberPlaintext('same', 'same');
 
             expect(lookupKnownPlaintext('same')).toBeUndefined();
+        });
+    });
+
+    describe('countUndecryptedLeaves', () => {
+        it('counts the encrypted leaves still wrapped after decryption, wherever they sit', () => {
+            const tree = {
+                _order: ['a', 'group'],
+                a: { isLeaf: true, encrypted: true, value: 'ENC(unreadable)' },
+                plain: { isLeaf: true, encrypted: false, value: 'ENC(not flagged, not counted)' },
+                group: [
+                    { isLeaf: true, encrypted: true, value: 'decrypted' },
+                    { nested: { isLeaf: true, encrypted: true, value: 'ENC(other)' } }
+                ]
+            };
+
+            expect(countUndecryptedLeaves(tree)).toBe(2);
+        });
+
+        it('returns 0 for an empty or fully decrypted tree', () => {
+            expect(countUndecryptedLeaves({})).toBe(0);
+            expect(countUndecryptedLeaves([{ isLeaf: true, encrypted: true, value: 'plain' }])).toBe(0);
         });
     });
 });

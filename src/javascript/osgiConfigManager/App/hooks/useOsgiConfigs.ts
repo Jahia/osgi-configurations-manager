@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { parseData } from '../utils/configUtils';
-import { decryptTree, encryptTree } from '../utils/cryptoTree';
+import { countUndecryptedLeaves, decryptTree, encryptTree } from '../utils/cryptoTree';
 import { useFileActions } from './useFileActions';
 import { useTranslation } from 'react-i18next';
 import { OsgiAvailableMetatypeDefinition, OsgiMetatypeDefinition, osgiService } from '../api/osgiService';
@@ -55,7 +55,16 @@ export const detectConfigStateFromRawContent = (content: string): 'MODULE' | 'MO
 
 export const useOsgiConfigs = () => {
     const { t } = useTranslation('osgi-configurations-manager');
-    const { success, error: toastError } = useToast();
+    const { success, error: toastError, warning: toastWarning } = useToast();
+
+    // Values the server could not decrypt or refused stay as stored, and the eye button would show
+    // the ENC(...) envelope with no explanation: say so once per load or mode switch.
+    const warnAboutUndecryptedValues = useCallback((tree: any) => {
+        const count = countUndecryptedLeaves(tree);
+        if (count > 0) {
+            toastWarning(t('notification.undecryptableValues', { count }));
+        }
+    }, [t, toastWarning]);
     const [files, setFiles] = useState<OsgiFile[]>([]);
     const [selectedFile, setSelectedFile] = useState<OsgiFile | null>(null);
     const {
@@ -171,6 +180,7 @@ export const useOsgiConfigs = () => {
                 // Shared traversal (utils/cryptoTree): the same recursion used to be inlined here and
                 // in two more places, with the copies diverging on _order handling and error logging.
                 await decryptTree(parsed, filename, e => console.error('Decryption failed during load', e));
+                warnAboutUndecryptedValues(parsed);
 
                 resetProperties(parsed);
                 setOriginalProperties(JSON.parse(JSON.stringify(parsed)));
@@ -194,7 +204,7 @@ export const useOsgiConfigs = () => {
             fetchFiles();
         }
         setLoadingFile(false);
-    }, [fetchFiles, resetProperties]);
+    }, [fetchFiles, resetProperties, warnAboutUndecryptedValues]);
 
     const prevSearchInContent = useRef(searchInContent);
 
@@ -469,6 +479,7 @@ export const useOsgiConfigs = () => {
             // Same shared traversal as the load path; these copies previously swallowed decryption
             // errors entirely, so a refusal left the value unchanged with no trace at all.
             await decryptTree(parsed, selectedFile.name, e => console.error('Decryption failed', e));
+            warnAboutUndecryptedValues(parsed);
 
             resetProperties(parsed);
 
@@ -507,7 +518,7 @@ export const useOsgiConfigs = () => {
             }
         }
         setIsRawMode(newMode);
-    }, [hasUnsaved, isRawMode, rawContent, encryptRecursive, properties, resetProperties]);
+    }, [hasUnsaved, isRawMode, rawContent, encryptRecursive, properties, resetProperties, warnAboutUndecryptedValues]);
 
     const handleSetEditorMode = useCallback(async (mode: 'raw' | 'visual') => {
         const shouldBeRaw = mode === 'raw';

@@ -16,8 +16,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   of the secret (the server logged `Encrypted value does not belong to <file>`). A decrypted leaf
   now keeps the ciphertext it came from and writes it back unchanged while its plaintext is
   unchanged, and the page remembers every ciphertext/plaintext pair it has produced, so a value
-  encrypted in the visual editor and not saved yet, or decrypted from the raw editor's context
-  menu, stays readable across mode switches without a server round trip.
+  encrypted in the visual editor and not saved yet, or produced by the raw editor's *Encrypt*
+  button, stays readable across mode switches and through the raw editor's *Decrypt* button
+  without a server round trip. Both buttons now say when they do nothing: no `ENC(...)` on the
+  current line, or a value the server refuses or cannot decrypt. Loading a file or switching to
+  visual mode warns how many values stayed encrypted (not in the saved file, or encrypted with
+  another secret) instead of silently showing their envelope.
 
 ### Documentation
 
