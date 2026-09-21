@@ -45,4 +45,27 @@ class OsgiConfigServiceTemplateTest {
         assertTrue(template.contains("# jira.token = "));
         assertFalse(template.contains("jira.user" + OsgiConfigService.PASSWORD_HINT_SUFFIX), "plain attributes carry no hint");
     }
+
+    @Test
+    @DisplayName("the manager's own cryptoSecret is flagged as the passphrase to keep in clear text, not as a value to encrypt")
+    void passphraseIsFlaggedAsClearText() {
+        AttributeDefinition secret = attribute("cryptoSecret", AttributeDefinition.PASSWORD);
+        AttributeDefinition[] optional = {secret};
+
+        ObjectClassDefinition ocd = mock(ObjectClassDefinition.class);
+        when(ocd.getName()).thenReturn("OSGi Configurations Manager");
+        when(ocd.getAttributeDefinitions(ObjectClassDefinition.REQUIRED)).thenReturn(null);
+        when(ocd.getAttributeDefinitions(ObjectClassDefinition.OPTIONAL)).thenReturn(optional);
+
+        String own = new OsgiConfigService().buildCfgTemplate(OsgiConfigService.SELF_CONFIG_PID, ocd, null);
+        assertTrue(own.contains(OsgiConfigService.PASSWORD_HINT_PREFIX + "cryptoSecret" + OsgiConfigService.PASSPHRASE_HINT_SUFFIX),
+                "the passphrase hint names the attribute");
+        assertFalse(own.contains("cryptoSecret" + OsgiConfigService.PASSWORD_HINT_SUFFIX), "no invitation to encrypt the key itself");
+        assertTrue(own.contains("# cryptoSecret = "));
+
+        // The same attribute name under any other PID is an ordinary secret.
+        String other = new OsgiConfigService().buildCfgTemplate("org.acme.other", ocd, null);
+        assertTrue(other.contains("cryptoSecret" + OsgiConfigService.PASSWORD_HINT_SUFFIX));
+        assertFalse(other.contains(OsgiConfigService.PASSPHRASE_HINT_SUFFIX));
+    }
 }

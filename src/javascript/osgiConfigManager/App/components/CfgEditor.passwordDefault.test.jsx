@@ -16,6 +16,8 @@ jest.mock('./CfgMetatypePropertyDialog', () => ({
                 onClick={() => onSelectMetatypeProperty({id: 'jira.token', type: 'password', defaultValues: []})}>pick password</button>
             <button type="button" data-testid="pick-string"
                 onClick={() => onSelectMetatypeProperty({id: 'jira.user', type: 'string', defaultValues: ['bot']})}>pick string</button>
+            <button type="button" data-testid="pick-passphrase"
+                onClick={() => onSelectMetatypeProperty({id: 'cryptoSecret', type: 'password', defaultValues: []})}>pick passphrase</button>
         </div>
     )
 }));
@@ -57,5 +59,28 @@ describe('CfgEditor - Password attributes are encrypted by default', () => {
 
         const [entry] = handleAddCfgEntry.mock.calls[0];
         expect(entry).toMatchObject({type: 'property', key: 'jira.user', value: 'bot', encrypted: false});
+    });
+
+    it("inserts the manager's own cryptoSecret in clear text although it is a Password attribute", () => {
+        // It is the passphrase ENC(...) values are encrypted with: encrypting it would leave nothing
+        // to decrypt it with, and the server refuses to save it wrapped.
+        const handleAddCfgEntry = jest.fn();
+        render(<CfgEditor {...baseProps} handleAddCfgEntry={handleAddCfgEntry}
+            metatypeDefinition={{pid: 'org.jahia.modules.osgiconfigmanager', properties: []}}/>);
+
+        fireEvent.click(screen.getByTestId('pick-passphrase'));
+
+        const [entry] = handleAddCfgEntry.mock.calls[0];
+        expect(entry).toMatchObject({type: 'property', key: 'cryptoSecret', encrypted: false});
+    });
+
+    it('still encrypts a Password attribute named cryptoSecret that belongs to another PID', () => {
+        const handleAddCfgEntry = jest.fn();
+        render(<CfgEditor {...baseProps} handleAddCfgEntry={handleAddCfgEntry}/>);
+
+        fireEvent.click(screen.getByTestId('pick-passphrase'));
+
+        const [entry] = handleAddCfgEntry.mock.calls[0];
+        expect(entry).toMatchObject({type: 'property', key: 'cryptoSecret', encrypted: true});
     });
 });

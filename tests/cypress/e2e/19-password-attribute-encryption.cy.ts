@@ -56,7 +56,8 @@ describe('OSGi Configurations Manager - Password attributes are encrypted by def
                     expect($input.prop('checked'), 'encryption enabled by default').to.eq(true);
                 });
 
-                cy.get(`[data-cy="cfg-value-${index}"]`).clear().type(SECRET);
+                cy.get(`[data-cy="cfg-value-${index}"]`).clear();
+                cy.get(`[data-cy="cfg-value-${index}"]`).type(SECRET);
             });
 
         cy.get('[data-cy="save-config-button"] button').click();

@@ -261,6 +261,16 @@ than failing the page, and the plugin delivers it as stored.
 > the others. The manager's own `.cfg` is replicated like any other, so a `cryptoSecret` set there
 > reaches every node.
 
+> [!WARNING]
+> **`cryptoSecret` stays in clear text.** It is the passphrase the `ENC(...)` values are encrypted
+> with, so it is the one secret that cannot be encrypted: there would be nothing left to decrypt it
+> with. The attribute is declared as Password so the editor masks it, but the picker inserts it with
+> *Encrypted* unticked, the generated template says so, and a save of
+> `org.jahia.modules.osgiconfigmanager.cfg` with `cryptoSecret = ENC(...)` is refused. Should such a
+> value reach the file anyway (edited by hand, copied from elsewhere), the manager logs an `[AUDIT]`
+> error, ignores it and keeps the generated per-instance secret. Protect the file with its
+> permissions, as for any other Karaf configuration holding credentials.
+
 ## Installation
 
 1.  Build the module:

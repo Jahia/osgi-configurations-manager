@@ -17,6 +17,7 @@ const probeReports = (expected: Record<string, string>) =>
             if (!probe?.active) {
                 return false;
             }
+
             return Object.entries(expected).every(([key, shape]) => probe.delivered?.[key] === shape);
         }),
         {timeout: 90000, interval: 2000, errorMsg: `probe did not report ${JSON.stringify(expected)}`}

@@ -58,6 +58,21 @@ public class OsgiConfigService {
     private static final String ACTION_CREATE = "Create";
     static final String PASSWORD_HINT_PREFIX = "# ";
     static final String PASSWORD_HINT_SUFFIX = " is a secret: keep it encrypted (ENC(...)), use the Encrypted checkbox of the visual editor";
+
+    /**
+     * The manager's own passphrase. It is what {@code ENC(...)} values are encrypted with, so it is
+     * the one Password attribute that must NOT be encrypted: there would be nothing left to decrypt
+     * it with, and the plugin skips this PID on purpose. Stored as {@code ENC(...)}, the literal
+     * envelope would silently become the passphrase.
+     */
+    static final String CRYPTO_SECRET_KEY = "cryptoSecret";
+    static final String PASSPHRASE_HINT_SUFFIX = " is the encryption passphrase itself: keep it in clear text here,"
+            + " do NOT tick Encrypted for it (the file is protected by its permissions)";
+    static final String CRYPTO_SECRET_ENCRYPTED_MESSAGE = "Save denied: " + CRYPTO_SECRET_KEY
+            + " is the passphrase that ENC(...) values are encrypted with, so it cannot itself be stored as ENC(...)."
+            + " Untick Encrypted for this property and save again.";
+    private static final Pattern ENCRYPTED_PASSPHRASE_LINE =
+            Pattern.compile("(?m)^\\s*" + CRYPTO_SECRET_KEY + "\\s*[=:]\\s*ENC\\(");
     private File karafEtcDir;
     // Filtering state lives behind ConfigFileFilter, which publishes it as ONE immutable snapshot.
     // These were five separate mutable fields assigned one by one in updateConfig, none volatile:
@@ -147,9 +162,20 @@ public class OsgiConfigService {
     public void updateConfig(Map<String, Object> properties) {
         fileFilter.update(properties);
 
-        if (properties != null && properties.get("cryptoSecret") != null) {
-            String secret = String.valueOf(properties.get("cryptoSecret"));
-            CryptoEngine.configureSecret(secret.isEmpty() ? null : secret.toCharArray());
+        if (properties != null && properties.get(CRYPTO_SECRET_KEY) != null) {
+            String secret = String.valueOf(properties.get(CRYPTO_SECRET_KEY));
+            if (isEncryptedValue(secret)) {
+                // The plugin never processes this PID, so the literal ENC(...) envelope would become
+                // the passphrase: every value would then be encrypted with a key nobody chose, and
+                // the envelope itself is undecryptable (it was encrypted with the previous key).
+                // Refuse it loudly and keep the generated per-instance secret.
+                LOGGER.error("[AUDIT] {} in {} is stored as ENC(...). The passphrase is the key itself and cannot be"
+                        + " encrypted; it is IGNORED and the generated per-instance secret is used. Store it in clear text.",
+                        CRYPTO_SECRET_KEY, SELF_CONFIG);
+                CryptoEngine.configureSecret(null);
+            } else {
+                CryptoEngine.configureSecret(secret.isEmpty() ? null : secret.toCharArray());
+            }
         }
 
         LOGGER.info("Updated blacklist: {}", fileFilter.blacklist());
@@ -781,6 +807,7 @@ public class OsgiConfigService {
 
         String safeFilename = validateFilename(filename);
         ensureFilenameAllowed(safeFilename, isRootUser, "Save");
+        rejectEncryptedPassphrase(safeFilename, content);
 
         Path filePath = resolveConfigPath(safeFilename);
 
@@ -1192,16 +1219,16 @@ public class OsgiConfigService {
         builder.append('\n');
 
         appendDistinctAttributeDefinitions(objectClassDefinition.getAttributeDefinitions(ObjectClassDefinition.REQUIRED), seenAttributeIds,
-                definition -> appendTemplateDefinition(builder, definition));
+                definition -> appendTemplateDefinition(pid, builder, definition));
         builder.append('\n');
         appendDistinctAttributeDefinitions(objectClassDefinition.getAttributeDefinitions(ObjectClassDefinition.OPTIONAL), seenAttributeIds,
-                definition -> appendTemplateDefinition(builder, definition));
+                definition -> appendTemplateDefinition(pid, builder, definition));
         builder.append('\n');
 
         return builder.toString();
     }
 
-    private void appendTemplateDefinition(StringBuilder builder, AttributeDefinition definition) {
+    private void appendTemplateDefinition(String pid, StringBuilder builder, AttributeDefinition definition) {
         String defaultValue = "";
         String[] defaultValues = definition.getDefaultValue();
         if (defaultValues != null && defaultValues.length > 0) {
@@ -1210,7 +1237,10 @@ public class OsgiConfigService {
                     .collect(Collectors.joining(", "));
         }
 
-        if (definition.getType() == AttributeDefinition.PASSWORD) {
+        if (isEncryptionPassphrase(pid, definition.getID())) {
+            // Declared as Password so the editor masks it, but it is the key itself: never encrypt it.
+            builder.append(PASSWORD_HINT_PREFIX).append(definition.getID()).append(PASSPHRASE_HINT_SUFFIX).append('\n');
+        } else if (definition.getType() == AttributeDefinition.PASSWORD) {
             // A Password attribute is a secret by declaration. The visual editor enables encryption
             // by default when the property is added from the picker; the raw editor cannot, so the
             // template says it in words.
@@ -1292,6 +1322,47 @@ public class OsgiConfigService {
     // package-private seam for unit testing (SUPPORT-646)
     boolean isSelfConfigurationPid(String pid) {
         return SELF_CONFIG_PID.equals(pid);
+    }
+
+    /** True for the manager's own {@code cryptoSecret}: a Password attribute that must stay in clear text. */
+    boolean isEncryptionPassphrase(String pid, String attributeId) {
+        return isSelfConfigurationPid(pid) && CRYPTO_SECRET_KEY.equals(attributeId);
+    }
+
+    private static boolean isEncryptedValue(Object value) {
+        return value instanceof String && ((String) value).startsWith("ENC(");
+    }
+
+    /**
+     * Refuses to write the manager's own configuration when its {@code cryptoSecret} is wrapped in
+     * {@code ENC(...)}. Checked before anything touches the disk, so a refused save leaves the file
+     * (or its absence) exactly as it was.
+     */
+    private void rejectEncryptedPassphrase(String safeFilename, Map<String, Object> content) throws IOException {
+        if (!SELF_CONFIG.equals(safeFilename) && !(SELF_CONFIG + DISABLED_SUFFIX).equals(safeFilename)) {
+            return;
+        }
+
+        boolean encrypted = false;
+        Object rawContent = content.get("rawContent");
+        if (rawContent instanceof String) {
+            encrypted = ENCRYPTED_PASSPHRASE_LINE.matcher((String) rawContent).find();
+        }
+
+        Object properties = content.get(KEY_PROPERTIES);
+        if (properties instanceof Map) {
+            encrypted |= isEncryptedValue(((Map<?, ?>) properties).get(CRYPTO_SECRET_KEY));
+        } else if (properties instanceof List) {
+            for (Object entry : (List<?>) properties) {
+                if (entry instanceof Map && CRYPTO_SECRET_KEY.equals(((Map<?, ?>) entry).get("key"))) {
+                    encrypted |= isEncryptedValue(((Map<?, ?>) entry).get("value"));
+                }
+            }
+        }
+
+        if (encrypted) {
+            throw new IOException(CRYPTO_SECRET_ENCRYPTED_MESSAGE);
+        }
     }
 
 

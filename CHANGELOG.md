@@ -30,6 +30,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **The manager's own `cryptoSecret` can no longer be encrypted.** It is declared as Password so
+  the editor masks it, and the Password default of this release would have inserted it with
+  *Encrypted* ticked; stored as `ENC(...)`, the literal envelope silently became the passphrase
+  (the plugin skips the manager's PID on purpose), so every later value was encrypted with a key
+  nobody chose and the envelope itself was unreadable. The picker now inserts `cryptoSecret` in
+  clear text, the generated template says why, a save of `org.jahia.modules.osgiconfigmanager.cfg`
+  carrying `cryptoSecret = ENC(...)` is refused before anything touches the disk, and a value that
+  reaches the file anyway is ignored with an `[AUDIT]` error in favour of the generated
+  per-instance secret.
 - **A secret survives the raw/visual round trip.** Switching a `.cfg` to raw mode re-encrypted every
   in-memory plaintext, and a fresh IV made the resulting `ENC(...)` differ from the one on disk.
   Since 1.0.5 decryption is bound to the file the value comes from, so switching back to visual
