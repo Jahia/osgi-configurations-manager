@@ -56,6 +56,8 @@ public class OsgiConfigService {
     private static final String METATYPE_PID_NOT_FOUND_LOG = "Metatype PID {} not found in bundle {}";
     private static final String INVALID_FILENAME_MESSAGE = "Invalid configuration filename: ";
     private static final String ACTION_CREATE = "Create";
+    static final String PASSWORD_HINT_PREFIX = "# ";
+    static final String PASSWORD_HINT_SUFFIX = " is a secret: keep it encrypted (ENC(...)), use the Encrypted checkbox of the visual editor";
     private File karafEtcDir;
     // Filtering state lives behind ConfigFileFilter, which publishes it as ONE immutable snapshot.
     // These were five separate mutable fields assigned one by one in updateConfig, none volatile:
@@ -1175,7 +1177,8 @@ public class OsgiConfigService {
         return buildCfgTemplate(pid, objectClassDefinition, null);
     }
 
-    private String buildCfgTemplate(String pid, ObjectClassDefinition objectClassDefinition, String instanceIdentifier) {
+    // package-private seam for unit testing
+    String buildCfgTemplate(String pid, ObjectClassDefinition objectClassDefinition, String instanceIdentifier) {
         StringBuilder builder = new StringBuilder();
         Set<String> seenAttributeIds = new LinkedHashSet<>();
 
@@ -1207,6 +1210,12 @@ public class OsgiConfigService {
                     .collect(Collectors.joining(", "));
         }
 
+        if (definition.getType() == AttributeDefinition.PASSWORD) {
+            // A Password attribute is a secret by declaration. The visual editor enables encryption
+            // by default when the property is added from the picker; the raw editor cannot, so the
+            // template says it in words.
+            builder.append(PASSWORD_HINT_PREFIX).append(definition.getID()).append(PASSWORD_HINT_SUFFIX).append('\n');
+        }
         builder.append("# ")
                 .append(definition.getID())
                 .append(" = ")

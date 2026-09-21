@@ -32,6 +32,12 @@ a change appears to require relaxing one, that comment is the thing to read firs
   the raw representation, so dropping the recorded key order reorders or loses the user's lines on
   save.
 - **Saves are guarded**: content must be present, and raw content is capped at 5 MiB.
+- **The `ConfigurationPlugin` delivers an undecryptable value as stored and never processes the
+  manager's own PID.** Removing the key would disguise a wrong secret as a missing setting, and the
+  manager's configuration carries the secret everything else is decrypted with. It modifies only the
+  delivered copy, never the file.
+- **The decryption probe reports shapes, never values.** `?action=pluginProbe` says `plaintext` or
+  `encrypted` per key; echoing a value would turn the probe into a decryption oracle.
 - **`ConfigFileFilter` publishes one immutable snapshot behind a `volatile` reference.** This
   guarantees consistency *within* a single `isFilenameAllowed` call. Two successive calls may
   legitimately see different configurations — that is by design, and a test asserting otherwise fails

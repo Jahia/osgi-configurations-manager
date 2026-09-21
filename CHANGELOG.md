@@ -7,7 +7,32 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Consumers receive decrypted values without any crypto code.** The module now registers an
+  OSGi `ConfigurationPlugin` (`EncryptedValuesConfigurationPlugin`) that Configuration Admin
+  consults before delivering a configuration to its component, and that replaces every `ENC(...)`
+  string (or string-array element) by its plaintext in the delivered copy. The file on disk is not
+  modified. A value that cannot be decrypted is delivered as stored and an `[AUDIT]` error names the
+  PID and the key, so a component still starts and the log says why its secret is unusable. The
+  manager's own configuration is never processed. Consumers declare
+  `Jahia-Depends: osgi-configurations-manager` and receive their configuration through Declarative
+  Services; the README section *Consuming encrypted values from your module* replaces the previous
+  `decryptIfNeeded` recipe, which keeps working.
+- **A decryption probe** under the PID `org.jahia.modules.osgiconfigmanager.probe`
+  (`ConfigurationPolicy.REQUIRE`) and a `?action=pluginProbe` GET that reports, key by key, whether
+  the probe received `plaintext` or an `encrypted` envelope. Values are never returned. It exists so
+  an operator can prove on a given instance that the plugin applies to DS components.
+- **Metatype `Password` attributes are treated as secrets.** A `.cfg` created from a PID carries a
+  hint line next to each Password attribute, and the visual editor's property picker inserts such a
+  property with encryption already enabled, so the value typed next is written as `ENC(...)` on save
+  unless the user unticks the box.
+
 ### Documentation
+
+- **Cluster note**: the generated secret file is node-local while `.cfg` files are replicated, so
+  `cryptoSecret` must be set in the manager's configuration before the first value is encrypted on a
+  cluster.
 
 - **The `.cfg` multiline rules are documented** in a new README section. 1.0.5 made the visual
   editor write valid continuations, but nothing told a reader what it writes or why — which

@@ -342,6 +342,9 @@ export const CfgEditor = ({
         }, 100);
     };
 
+    const isPasswordProperty = propertyDefinition =>
+        Boolean(propertyDefinition) && String(propertyDefinition.type || '').toLowerCase() === 'password';
+
     const insertOrFocusProperty = (propertyName, propertyDefinition) => {
         if (!propertyName) {
             return;
@@ -363,7 +366,10 @@ export const CfgEditor = ({
         handleAddCfgEntry({
             type: 'property',
             key: propertyName,
-            value: propertyDefinition ? getSuggestedPropertyValue(propertyDefinition) : ''
+            value: propertyDefinition ? getSuggestedPropertyValue(propertyDefinition) : '',
+            // A Metatype attribute declared as Password is a secret: start the row encrypted so the
+            // value is wrapped in ENC(...) on save unless the user deliberately unticks it.
+            encrypted: isPasswordProperty(propertyDefinition)
         }, insertIndex);
         setSelectedIndex(insertIndex);
         focusEntryValue(insertIndex);
