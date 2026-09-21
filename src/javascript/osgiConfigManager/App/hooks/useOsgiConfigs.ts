@@ -67,6 +67,11 @@ export const useOsgiConfigs = () => {
     }, [t, toastWarning]);
     const [files, setFiles] = useState<OsgiFile[]>([]);
     const [selectedFile, setSelectedFile] = useState<OsgiFile | null>(null);
+    // The mode switch below is memoized on the editor state, not on the selection: a switch made
+    // right after opening a file used to read a stale null selection and crash before it could
+    // change the mode. The ref always carries the current selection.
+    const selectedFileRef = useRef<OsgiFile | null>(null);
+    selectedFileRef.current = selectedFile;
     const {
         properties,
         collapsedPaths,
@@ -472,13 +477,19 @@ export const useOsgiConfigs = () => {
 
         if (isRawMode) {
             // Switching TO Visual Mode
+            const currentFile = selectedFileRef.current;
+            if (!currentFile) {
+                console.error('Cannot switch to visual mode: no file is selected');
+                return;
+            }
+
             const { parseCfgContent } = await import('../utils/configUtils');
             const parsed = parseCfgContent(rawContent); // This will have ENC(...) values
 
             // Decrypt-in-Memory: Decrypt all ENC values
             // Same shared traversal as the load path; these copies previously swallowed decryption
             // errors entirely, so a refusal left the value unchanged with no trace at all.
-            await decryptTree(parsed, selectedFile.name, e => console.error('Decryption failed', e));
+            await decryptTree(parsed, currentFile.name, e => console.error('Decryption failed', e));
             warnAboutUndecryptedValues(parsed);
 
             resetProperties(parsed);
