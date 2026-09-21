@@ -22,7 +22,11 @@
         "deleteSuccess": "{{name}} supprimé",
         "createSuccess": "{{name}} créé",
         "markAsDefaultSuccess": "{{name}} est maintenant marqué comme configuration par défaut",
-        "uploadSuccess": "{{name}} téléchargé"
+        "uploadSuccess": "{{name}} téléchargé",
+        "decryptNoValue": "Placez le curseur sur une ligne contenant une valeur ENC(...)",
+        "decryptRefused": "Cette valeur ne peut pas être déchiffrée ici : elle n'est pas dans le fichier enregistré, ou elle a été chiffrée avec un autre secret",
+        "encryptFailed": "La valeur n'a pas pu être chiffrée",
+        "undecryptableValues": "{{count}} valeur(s) chiffrée(s) n'ont pas pu être déchiffrées et sont affichées telles que stockées : absentes du fichier enregistré, ou chiffrées avec un autre secret"
     },
     "modal": {
         "cancel": "Annuler",

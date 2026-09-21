@@ -22,7 +22,11 @@
         "deleteSuccess": "{{name}} gelöscht",
         "createSuccess": "{{name}} erstellt",
         "uploadSuccess": "{{name}} hochgeladen",
-        "markAsDefaultSuccess": "{{name}} ist jetzt als Standardkonfiguration markiert"
+        "markAsDefaultSuccess": "{{name}} ist jetzt als Standardkonfiguration markiert",
+        "decryptNoValue": "Setzen Sie den Cursor auf eine Zeile mit einem ENC(...)-Wert",
+        "decryptRefused": "Dieser Wert kann hier nicht entschlüsselt werden: er ist nicht in der gespeicherten Datei oder wurde mit einem anderen Geheimnis verschlüsselt",
+        "encryptFailed": "Der Wert konnte nicht verschlüsselt werden",
+        "undecryptableValues": "{{count}} verschlüsselte(r) Wert(e) konnte(n) nicht entschlüsselt werden und werden wie gespeichert angezeigt: nicht in der gespeicherten Datei oder mit einem anderen Geheimnis verschlüsselt"
     },
     "modal": {
         "cancel": "Abbrechen",

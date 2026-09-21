@@ -22,7 +22,11 @@
         "deleteSuccess": "{{name}} excluído",
         "createSuccess": "{{name}} criado",
         "uploadSuccess": "{{name}} enviado",
-        "markAsDefaultSuccess": "{{name}} está agora marcado como configuração padrão"
+        "markAsDefaultSuccess": "{{name}} está agora marcado como configuração padrão",
+        "decryptNoValue": "Coloque o cursor em uma linha que contenha um valor ENC(...)",
+        "decryptRefused": "Este valor não pode ser descriptografado aqui: não está no arquivo salvo ou foi criptografado com outro segredo",
+        "encryptFailed": "Não foi possível criptografar o valor",
+        "undecryptableValues": "{{count}} valor(es) criptografado(s) não puderam ser descriptografados e são exibidos como armazenados: não estão no arquivo salvo ou foram criptografados com outro segredo"
     },
     "modal": {
         "cancel": "Cancelar",
