@@ -7,6 +7,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **A secret survives the raw/visual round trip.** Switching a `.cfg` to raw mode re-encrypted every
+  in-memory plaintext, and a fresh IV made the resulting `ENC(...)` differ from the one on disk.
+  Since 1.0.5 decryption is bound to the file the value comes from, so switching back to visual
+  mode could not decrypt that new ciphertext and the eye button showed the stored envelope instead
+  of the secret (the server logged `Encrypted value does not belong to <file>`). A decrypted leaf
+  now keeps the ciphertext it came from and writes it back unchanged while its plaintext is
+  unchanged, and the page remembers every ciphertext/plaintext pair it has produced, so a value
+  encrypted in the visual editor and not saved yet, or decrypted from the raw editor's context
+  menu, stays readable across mode switches without a server round trip.
+
 ### Documentation
 
 - **The `.cfg` multiline rules are documented** in a new README section. 1.0.5 made the visual

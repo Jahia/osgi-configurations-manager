@@ -5,6 +5,7 @@ import { Button, Input, Typography } from '@jahia/moonstone';
 import { Add, Undo, RotateRight, Code, Lock, Unlock } from '@jahia/moonstone';
 import { useTranslation } from 'react-i18next';
 import { osgiService } from '../api/osgiService';
+import { lookupKnownPlaintext } from '../utils/cryptoTree';
 import { buildPropertyDocumentation, findExactMetatypePropertyMatch, formatDefaultValue, getLocalizedTypeLabel, getPropertyLabel, matchesMetatypePropertyQuery } from '../utils/metatypeUtils';
 import { CHROME_TOKENS, PANEL_ACTIONS_STYLE } from './AppChrome';
 
@@ -1223,7 +1224,12 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
         );
 
         try {
-            const result = await osgiService.decrypt(textToDecrypt, filename);
+            // A ciphertext this page produced itself (encrypted but not saved yet) is not in the
+            // file, so the file-bound server call would refuse it; the page still knows its plaintext.
+            const known = lookupKnownPlaintext(textToDecrypt);
+            const result = known === undefined
+                ? await osgiService.decrypt(textToDecrypt, filename)
+                : { decryptedValue: known };
             if (result && result.decryptedValue) {
                 editor.executeEdits('source', [{
                     range: range,
