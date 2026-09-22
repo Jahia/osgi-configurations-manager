@@ -7,6 +7,8 @@ import org.jahia.services.content.JCRSessionWrapper;
 import org.jahia.services.render.RenderContext;
 import org.jahia.services.render.Resource;
 import org.jahia.services.render.URLResolver;
+import org.jahia.services.usermanager.JahiaUser;
+import org.jahia.services.usermanager.JahiaUserManagerService;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,12 +69,25 @@ public class OsgiConfigAction extends Action {
     public ActionResult doExecute(HttpServletRequest req, RenderContext renderContext, Resource resource,
             JCRSessionWrapper session, Map<String, List<String>> parameters, URLResolver urlResolver) throws Exception {
 
+        // SEC-138: a request carrying a valid form-token is promoted by Render to a system action,
+        // which skips the declarative requirements set in activate() and hands us a SYSTEM session
+        // on which hasPermission() always answers true. The permission check below is therefore only
+        // meaningful on the caller's own session, so refuse to run on anything else. The render
+        // context is not elevated by that promotion, which is why the caller identity is read there.
+        JahiaUser caller = renderContext.getUser();
+        if (session.isSystem() || JahiaUserManagerService.isGuest(caller)) {
+            LOGGER.warn("[AUDIT] Rejected osgiConfigManager {} from {} (user={}, systemSession={})",
+                    req.getMethod(), req.getRemoteAddr(), caller == null ? null : caller.getName(),
+                    session.isSystem());
+            return new ActionResult(HttpServletResponse.SC_FORBIDDEN);
+        }
+
         if (!session.getNode("/").hasPermission("canManageOsgiConfigurations")) {
             return new ActionResult(HttpServletResponse.SC_FORBIDDEN);
         }
 
         HttpServletResponse response = renderContext.getResponse();
-        boolean isRootUser = "root".equals(renderContext.getUser().getName());
+        boolean isRootUser = "root".equals(caller.getName());
 
         String method = req.getMethod();
         Map<String, Object> result = new LinkedHashMap<>();
