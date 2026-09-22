@@ -7,6 +7,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-09-22
+
 ### Security
 
 - **The action refuses to run on a system session or for the guest user (SEC-138).** A request
