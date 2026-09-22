@@ -75,10 +75,11 @@ public class OsgiConfigAction extends Action {
         // meaningful on the caller's own session, so refuse to run on anything else. The render
         // context is not elevated by that promotion, which is why the caller identity is read there.
         JahiaUser caller = renderContext.getUser();
-        if (session.isSystem() || JahiaUserManagerService.isGuest(caller)) {
+        boolean systemSession = session.isSystem();
+        if (systemSession || JahiaUserManagerService.isGuest(caller)) {
             LOGGER.warn("[AUDIT] Rejected osgiConfigManager {} from {} (user={}, systemSession={})",
                     req.getMethod(), req.getRemoteAddr(), caller == null ? null : caller.getName(),
-                    session.isSystem());
+                    systemSession);
             return new ActionResult(HttpServletResponse.SC_FORBIDDEN);
         }
 
