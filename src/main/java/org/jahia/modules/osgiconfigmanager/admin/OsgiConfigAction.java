@@ -43,11 +43,27 @@ public class OsgiConfigAction extends Action {
     private static final String GENERIC_ERROR_MESSAGE =
             "An internal error occurred while processing the request. See server logs for details.";
     private OsgiConfigService configService;
+    // The probe exists only while its configuration file does (ConfigurationPolicy.REQUIRE), so the
+    // reference is optional and dynamic: the action must keep working with no probe at all.
+    private volatile ConfigurationPluginProbe pluginProbe;
     private final ObjectMapper mapper = new ObjectMapper();
 
     @Reference(service = OsgiConfigService.class)
     public void setConfigService(OsgiConfigService configService) {
         this.configService = configService;
+    }
+
+    @Reference(service = ConfigurationPluginProbe.class,
+            cardinality = org.osgi.service.component.annotations.ReferenceCardinality.OPTIONAL,
+            policy = org.osgi.service.component.annotations.ReferencePolicy.DYNAMIC)
+    public void setPluginProbe(ConfigurationPluginProbe pluginProbe) {
+        this.pluginProbe = pluginProbe;
+    }
+
+    public void unsetPluginProbe(ConfigurationPluginProbe pluginProbe) {
+        if (this.pluginProbe == pluginProbe) {
+            this.pluginProbe = null;
+        }
     }
 
     @Activate
@@ -159,7 +175,28 @@ public class OsgiConfigAction extends Action {
         if ("getPreference".equals(action)) {
             return handleGetPreference(req, renderContext, session, response, result);
         }
+        if ("pluginProbe".equals(action)) {
+            result.put("probe", describePluginProbe());
+            return CONTINUE;
+        }
         return handleListFiles(req, isRootUser, result);
+    }
+
+    /**
+     * What the decryption probe received, by shape only. {@code active} is false while
+     * {@code org.jahia.modules.osgiconfigmanager.probe.cfg} does not exist. No configuration value
+     * ever leaves this method: a probe that echoed values would be a decryption oracle.
+     */
+    private Map<String, Object> describePluginProbe() {
+        Map<String, Object> probe = new LinkedHashMap<>();
+        ConfigurationPluginProbe current = pluginProbe;
+        probe.put("pid", ConfigurationPluginProbe.PID);
+        probe.put("active", current != null);
+        if (current != null) {
+            probe.put("receivedAt", current.receivedAt());
+            probe.put("delivered", current.deliveredShapes());
+        }
+        return probe;
     }
 
     private ActionResult handleGetPreference(HttpServletRequest req, RenderContext renderContext,

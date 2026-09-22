@@ -7,6 +7,52 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Consumers receive decrypted values without any crypto code.** The module now registers an
+  OSGi `ConfigurationPlugin` (`EncryptedValuesConfigurationPlugin`) that Configuration Admin
+  consults before delivering a configuration to its component, and that replaces every `ENC(...)`
+  string (or string-array element) by its plaintext in the delivered copy. The file on disk is not
+  modified. A value that cannot be decrypted is delivered as stored and an `[AUDIT]` error names the
+  PID and the key, so a component still starts and the log says why its secret is unusable. The
+  manager's own configuration is never processed. Consumers declare
+  `Jahia-Depends: osgi-configurations-manager` and receive their configuration through Declarative
+  Services; the README section *Consuming encrypted values from your module* replaces the previous
+  `decryptIfNeeded` recipe, which keeps working.
+- **A decryption probe** under the PID `org.jahia.modules.osgiconfigmanager.probe`
+  (`ConfigurationPolicy.REQUIRE`) and a `?action=pluginProbe` GET that reports, key by key, whether
+  the probe received `plaintext` or an `encrypted` envelope. Values are never returned. It exists so
+  an operator can prove on a given instance that the plugin applies to DS components.
+- **Metatype `Password` attributes are treated as secrets.** A `.cfg` created from a PID carries a
+  hint line next to each Password attribute, and the visual editor's property picker inserts such a
+  property with encryption already enabled, so the value typed next is written as `ENC(...)` on save
+  unless the user unticks the box.
+
+### Fixed
+
+- **The manager's own `cryptoSecret` can no longer be encrypted.** It is declared as Password so
+  the editor masks it, and the Password default of this release would have inserted it with
+  *Encrypted* ticked; stored as `ENC(...)`, the literal envelope silently became the passphrase
+  (the plugin skips the manager's PID on purpose), so every later value was encrypted with a key
+  nobody chose and the envelope itself was unreadable. The picker now inserts `cryptoSecret` in
+  clear text, the generated template says why, a save of `org.jahia.modules.osgiconfigmanager.cfg`
+  carrying `cryptoSecret = ENC(...)` is refused before anything touches the disk, and a value that
+  reaches the file anyway is ignored with an `[AUDIT]` error in favour of the generated
+  per-instance secret.
+- **A secret survives the raw/visual round trip.** Switching a `.cfg` to raw mode re-encrypted every
+  in-memory plaintext, and a fresh IV made the resulting `ENC(...)` differ from the one on disk.
+  Since 1.0.5 decryption is bound to the file the value comes from, so switching back to visual
+  mode could not decrypt that new ciphertext and the eye button showed the stored envelope instead
+  of the secret (the server logged `Encrypted value does not belong to <file>`). A decrypted leaf
+  now keeps the ciphertext it came from and writes it back unchanged while its plaintext is
+  unchanged, and the page remembers every ciphertext/plaintext pair it has produced, so a value
+  encrypted in the visual editor and not saved yet, or produced by the raw editor's *Encrypt*
+  button, stays readable across mode switches and through the raw editor's *Decrypt* button
+  without a server round trip. Both buttons now say when they do nothing: no `ENC(...)` on the
+  current line, or a value the server refuses or cannot decrypt. Loading a file or switching to
+  visual mode warns how many values stayed encrypted (not in the saved file, or encrypted with
+  another secret) instead of silently showing their envelope.
+
 ## [1.0.6] - 2026-09-22
 
 ### Security
@@ -24,6 +70,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `form-token`, or anonymously. The admin UI does neither, and no upgrade step is needed.
 
 ### Documentation
+
+- **Cluster note**: the generated secret file is node-local while `.cfg` files are replicated, so
+  `cryptoSecret` must be set in the manager's configuration before the first value is encrypted on a
+  cluster.
 
 - **The `.cfg` multiline rules are documented** in a new README section. 1.0.5 made the visual
   editor write valid continuations, but nothing told a reader what it writes or why — which

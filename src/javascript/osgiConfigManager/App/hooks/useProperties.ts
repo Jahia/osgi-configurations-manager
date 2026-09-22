@@ -73,10 +73,17 @@ export const useProperties = () => {
     const handleAddCfgEntry = useCallback((entry: any, index: number) => {
         setProperties((prev: any) => {
             if (Array.isArray(prev)) {
+                // `encrypted` is a flag on the value leaf, not a column of the entry: a property
+                // added from a Metatype attribute of type Password starts encrypted, so the
+                // plaintext typed next is wrapped in ENC(...) on save without a manual toggle.
+                const { encrypted, ...fields } = entry;
                 const newEntry: any = {};
-                Object.keys(entry).forEach(k => {
-                    newEntry[k] = { value: entry[k], isLeaf: true };
+                Object.keys(fields).forEach(k => {
+                    newEntry[k] = { value: fields[k], isLeaf: true };
                 });
+                if (encrypted === true && newEntry.value) {
+                    newEntry.value.encrypted = true;
+                }
 
                 const newArr = [...prev];
                 if (typeof index === 'number' && index >= 0 && index <= newArr.length) {

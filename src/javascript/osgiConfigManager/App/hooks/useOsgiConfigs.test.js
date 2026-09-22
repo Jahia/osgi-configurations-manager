@@ -7,7 +7,8 @@ jest.mock('../api/osgiService');
 jest.mock('./useToast', () => ({
     useToast: () => ({
         success: jest.fn(),
-        error: jest.fn()
+        error: jest.fn(),
+        warning: jest.fn()
     })
 }));
 jest.mock('react-i18next', () => ({

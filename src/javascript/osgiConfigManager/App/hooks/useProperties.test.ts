@@ -70,3 +70,27 @@ describe('useProperties', () => {
         expect(result.current.properties[0].value.value).toBe('# inserted');
     });
 });
+
+describe('useProperties - encrypted-by-default cfg entries', () => {
+    test('handleAddCfgEntry marks the value leaf encrypted when the entry asks for it', () => {
+        const { result } = renderHook(() => useProperties());
+        act(() => result.current.resetProperties([]));
+
+        act(() => result.current.handleAddCfgEntry({ type: 'property', key: 'db.password', value: '', encrypted: true }, 0));
+
+        const entry = result.current.properties[0];
+        expect(entry.value.encrypted).toBe(true);
+        expect(entry.key.value).toBe('db.password');
+        expect(entry.encrypted).toBeUndefined(); // a flag on the leaf, never a column of the row
+    });
+
+    test('handleAddCfgEntry leaves the value leaf unflagged by default', () => {
+        const { result } = renderHook(() => useProperties());
+        act(() => result.current.resetProperties([]));
+
+        act(() => result.current.handleAddCfgEntry({ type: 'property', key: 'db.host', value: 'localhost' }, 0));
+
+        expect(result.current.properties[0].value.encrypted).toBeUndefined();
+        expect(result.current.properties[0].value.value).toBe('localhost');
+    });
+});

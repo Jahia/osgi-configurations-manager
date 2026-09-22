@@ -22,7 +22,11 @@
         "deleteSuccess": "Deleted {{name}}",
         "createSuccess": "Created {{name}}",
         "markAsDefaultSuccess": "{{name}} is now marked as default configuration",
-        "uploadSuccess": "Uploaded {{name}}"
+        "uploadSuccess": "Uploaded {{name}}",
+        "decryptNoValue": "Place the cursor on a line holding an ENC(...) value",
+        "decryptRefused": "This value cannot be decrypted here: it is not in the saved file, or it was encrypted with another secret",
+        "encryptFailed": "The value could not be encrypted",
+        "undecryptableValues": "{{count}} encrypted value(s) could not be decrypted and are shown as stored: not in the saved file, or encrypted with another secret"
     },
     "modal": {
         "cancel": "Cancel",

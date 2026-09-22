@@ -22,7 +22,11 @@
         "deleteSuccess": "{{name}} eliminado",
         "createSuccess": "{{name}} creado",
         "uploadSuccess": "{{name}} subido",
-        "markAsDefaultSuccess": "{{name}} ahora está marcado como configuración predeterminada"
+        "markAsDefaultSuccess": "{{name}} ahora está marcado como configuración predeterminada",
+        "decryptNoValue": "Coloque el cursor en una línea que contenga un valor ENC(...)",
+        "decryptRefused": "Este valor no se puede descifrar aquí: no está en el archivo guardado o se cifró con otro secreto",
+        "encryptFailed": "No se pudo cifrar el valor",
+        "undecryptableValues": "{{count}} valor(es) cifrado(s) no se pudieron descifrar y se muestran tal como están almacenados: no están en el archivo guardado o se cifraron con otro secreto"
     },
     "modal": {
         "cancel": "Cancelar",
