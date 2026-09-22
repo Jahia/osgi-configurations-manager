@@ -17,6 +17,11 @@ Project guidance for Claude Code and other AI agents.
 Each of these closed a real defect. The code carries a comment at each site explaining the case; if
 a change appears to require relaxing one, that comment is the thing to read first.
 
+- **The action never runs on a system session or for guest.** A `form-token` promotes the request
+  to a system action, which skips the declarative requirements and hands `doExecute` a system session
+  on which `hasPermission` is always true. So `OsgiConfigAction.doExecute` rejects `session.isSystem()`
+  and a guest caller before anything else. Read the caller identity from `renderContext.getUser()`,
+  which the promotion does not elevate, never from the passed session.
 - **Encryption fails closed.** `CryptoEngine.encryptString` throws rather than returning its input,
   because returning the input on error meant persisting a secret in clear.
 - **Decryption degrades on read, but only in the service.** `OsgiConfigService.decrypt` hands the

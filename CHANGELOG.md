@@ -7,6 +7,22 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-09-22
+
+### Security
+
+- **The action refuses to run on a system session or for the guest user (SEC-138).** A request
+  carrying a valid Jahia `form-token` is promoted to a system action, which skips the action's
+  declared requirements (authenticated user, `admin` permission) and passes it a system JCR session.
+  On that session the `canManageOsgiConfigurations` check always succeeds. So an anonymous caller
+  could get past every authorization gate, and 1.0.5's Content-Type and `X-Requested-With` checks
+  did not help, because the attacker sets those headers itself. The action now answers 403, with an
+  `[AUDIT] Rejected osgiConfigManager …` line, whenever its session is a system session or the caller
+  is `guest`. It does this before reading or writing anything, for GET and POST alike.
+
+  **Am I impacted by the change?** Only if something calls `*.osgiConfigManager.do` with a
+  `form-token`, or anonymously. The admin UI does neither, and no upgrade step is needed.
+
 ### Documentation
 
 - **The `.cfg` multiline rules are documented** in a new README section. 1.0.5 made the visual
