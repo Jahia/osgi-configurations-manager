@@ -100,6 +100,59 @@ class OsgiConfigActionTest {
     }
 
     @Test
+    @DisplayName("SEC-138: returns 403 on a system session even though it reports the permission")
+    void doExecute_systemSession_returnsForbiddenWithoutSideEffect() throws Exception {
+        // The form-token promotion hands doExecute a system session, on which hasPermission is
+        // always true. The permission stub above is left granted on purpose: that is exactly what a
+        // system session answers, and the guard must not rely on it.
+        when(session.isSystem()).thenReturn(true);
+        stubPost("{\"action\":\"save\",\"filename\":\"org.jahia.modules.api.cfg\",\"rawContent\":\"x=1\"}");
+
+        ActionResult result = execute();
+
+        assertEquals(HttpServletResponse.SC_FORBIDDEN, result.getResultCode());
+        verify(configService, never()).saveFile(any(), any(), anyBoolean());
+    }
+
+    @Test
+    @DisplayName("SEC-138: returns 403 on a system session for reads too")
+    void doExecute_systemSessionGet_returnsForbiddenWithoutReading() throws Exception {
+        when(session.isSystem()).thenReturn(true);
+        when(req.getMethod()).thenReturn("GET");
+
+        ActionResult result = execute();
+
+        assertEquals(HttpServletResponse.SC_FORBIDDEN, result.getResultCode());
+        verify(configService, never()).listFiles(anyBoolean());
+    }
+
+    @Test
+    @DisplayName("SEC-138: returns 403 for the guest user even when the session reports the permission")
+    void doExecute_guestCaller_returnsForbiddenWithoutSideEffect() throws Exception {
+        JahiaUser guest = mock(JahiaUser.class);
+        when(guest.getName()).thenReturn("guest");
+        when(renderContext.getUser()).thenReturn(guest);
+        stubPost("{\"action\":\"save\",\"filename\":\"org.jahia.modules.api.cfg\",\"rawContent\":\"x=1\"}");
+
+        ActionResult result = execute();
+
+        assertEquals(HttpServletResponse.SC_FORBIDDEN, result.getResultCode());
+        verify(configService, never()).saveFile(any(), any(), anyBoolean());
+    }
+
+    @Test
+    @DisplayName("SEC-138: returns 403 when the render context carries no user")
+    void doExecute_noCaller_returnsForbidden() throws Exception {
+        when(renderContext.getUser()).thenReturn(null);
+        when(req.getMethod()).thenReturn("GET");
+
+        ActionResult result = execute();
+
+        assertEquals(HttpServletResponse.SC_FORBIDDEN, result.getResultCode());
+        verify(configService, never()).listFiles(anyBoolean());
+    }
+
+    @Test
     @DisplayName("rejects a POST without the CSRF header")
     void doExecute_postWithoutCsrfHeader_returns403() throws Exception {
         when(req.getMethod()).thenReturn("POST");
