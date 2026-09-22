@@ -105,10 +105,17 @@ jobs:
           MANIFEST: provisioning-manifest-snapshot.yml
         run: ./env.run.sh
 
+      # Compose validates the whole project before it will print logs, so this step needs the
+      # same variables as "Start Jahia". Without them it fails on "service jahia has neither an
+      # image nor a build context" and the one log that explains a failed boot is never shown.
       - name: Jahia log
         if: failure()
         working-directory: tests
-        run: docker compose logs --tail 400 jahia
+        env:
+          JAHIA_IMAGE: jahia/jahia-ee:8.2.3.2
+        run: |
+          source ./set-env.sh
+          docker compose logs --tail 400 jahia
 
       - name: Upload screenshots and videos
         if: always()
