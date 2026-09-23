@@ -7,6 +7,57 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+Target: **1.1.0**.
+
+### Changed
+
+- **The module's API moved from the `osgiConfigManager.do` Action to GraphQL.** The admin app now
+  calls `/modules/graphql`, under one namespace, `Query.osgiConfigManager` and
+  `Mutation.osgiConfigManager`, with every former action nested under it (see "Calling the API
+  directly" in the README). The Action's request path was the one SEC-138 went through: a valid
+  `form-token` made Render promote it to a system action on a system session.
+- **Access is decided once, in the namespace field, on the caller's own session.** Guest and system
+  sessions are refused; `canManageOsgiConfigurations` on `/` and `admin` on `/sites/systemsite`,
+  the Action's two requirements, are both kept.
+- **Mutations keep their CSRF defences.** `/modules/graphql` is not CSRF-safe on its own, so a
+  mutation without `X-Requested-With`, or whose parsed media type is not `application/json`, is
+  refused before anything is read or written.
+- **Errors carry a code instead of an HTTP status.** They come back as HTTP 200 with
+  `errors[0].extensions.code` set to `NOT_FOUND`, `CONFLICT`, `FORBIDDEN`, `BAD_REQUEST`,
+  `UNSUPPORTED_MEDIA_TYPE` or `INTERNAL`. Messages are still stripped of server paths.
+- The module now depends on `graphql-dxm-provider`, which every Jahia 8.2 ships.
+
+### Removed
+
+- **`/cms/render/*/sites/systemsite.osgiConfigManager.do`**, together with the CSRFGuard whitelist
+  (`org.jahia.modules.jahiacsrfguard-osgi-configurations-manager.cfg`) that exempted it.
+
+  **Am I impacted?** Only if you call that URL yourself: a script, a CI job or another module. The
+  admin UI is updated with the module and needs nothing. If you do, move each call to the
+  corresponding field and check `errors[0].extensions.code` instead of the HTTP status:
+
+  | Old request | GraphQL |
+  |---|---|
+  | `GET …do` / `?search=` | `query { osgiConfigManager { files(search:) { … } uiConfig { … } } }` |
+  | `GET …do?filename=` | `file(name:)` |
+  | `GET …do?action=availableMetatypes` | `availableMetatypes` |
+  | `GET …do?action=getPreference&key=` | `preference(key:)` |
+  | `POST {action: save / toggle / delete / markAsDefault / create, filename}` | `mutation { osgiConfigManager { save(name:, rawContent:) … } }` |
+  | `POST {action: createFromMetatype, pid, instanceIdentifier}` | `createFromMetatype(pid:, instanceIdentifier:)` |
+  | `POST {action: encrypt / decrypt, value, filename}` | `encrypt(value:)`, `decrypt(name:, value:)` |
+  | `POST {action: setPreference, key, value}` | `setPreference(key:, value:)` |
+
+  Keep sending `X-Requested-With` and `Content-Type: application/json` on mutations. A deployed
+  `karaf/etc/org.jahia.modules.jahiacsrfguard-osgi-configurations-manager.cfg` left over from an
+  earlier version is harmless (the URL it whitelists no longer exists) and can be deleted.
+
+### Fixed (development)
+
+- **`jest --coverage` ran again.** The global `minimatch` 3.1.4 resolution was forced onto consumers
+  that need 9.x/10.x, so every suite failed under coverage. It is now pinned per consumer, each on a
+  patched release of its own major.
+- `coverage/` is no longer tracked, and the Cypress project lints clean.
+
 ## [1.0.6] - 2026-09-22
 
 ### Security
