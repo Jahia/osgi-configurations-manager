@@ -25,7 +25,11 @@ Target: **1.1.0**.
 - **Errors carry a code instead of an HTTP status.** They come back as HTTP 200 with
   `errors[0].extensions.code` set to `NOT_FOUND`, `CONFLICT`, `FORBIDDEN`, `BAD_REQUEST`,
   `UNSUPPORTED_MEDIA_TYPE` or `INTERNAL`. Messages are still stripped of server paths.
-- The module now depends on `graphql-dxm-provider`, which every Jahia 8.2 ships.
+- The module now depends on `graphql-dxm-provider`, which every Jahia 8.2 ships, and ships a
+  security-filter scope, `karaf/etc/org.jahia.bundles.api.authorization-osgi-configurations-manager.yml`.
+  Jahia denies every API no scope grants, so this grants the `osgiConfigManager` namespace and the
+  module's own types, and nothing else, to privileged users on same-origin requests. The module's
+  own permission checks still apply on top of it.
 
 ### Removed
 

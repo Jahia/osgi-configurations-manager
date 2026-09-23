@@ -42,6 +42,7 @@ public class OsgiConfigManagerMutation {
     }
 
     @GraphQLField
+    @GraphQLName("save")
     @GraphQLDescription("Replace a file's content")
     public Boolean save(@GraphQLName("name") @GraphQLNonNull String name,
                         @GraphQLName("rawContent") @GraphQLNonNull String rawContent) {
@@ -52,6 +53,7 @@ public class OsgiConfigManagerMutation {
     }
 
     @GraphQLField
+    @GraphQLName("toggle")
     @GraphQLDescription("Enable or disable a file by adding or removing its .disabled suffix")
     public Boolean toggle(@GraphQLName("name") @GraphQLNonNull String name) {
         return audited("toggle", name, () -> {
@@ -61,6 +63,7 @@ public class OsgiConfigManagerMutation {
     }
 
     @GraphQLField
+    @GraphQLName("delete")
     @GraphQLDescription("Delete a file")
     public Boolean delete(@GraphQLName("name") @GraphQLNonNull String name) {
         return audited("delete", name, () -> {
@@ -70,6 +73,7 @@ public class OsgiConfigManagerMutation {
     }
 
     @GraphQLField
+    @GraphQLName("markAsDefault")
     @GraphQLDescription("Mark a file as the module's default configuration")
     public Boolean markAsDefault(@GraphQLName("name") @GraphQLNonNull String name) {
         return audited("markAsDefault", name, () -> {
@@ -79,6 +83,7 @@ public class OsgiConfigManagerMutation {
     }
 
     @GraphQLField
+    @GraphQLName("create")
     @GraphQLDescription("Create an empty file")
     public Boolean create(@GraphQLName("name") @GraphQLNonNull String name) {
         return audited("create", name, () -> {
@@ -88,6 +93,7 @@ public class OsgiConfigManagerMutation {
     }
 
     @GraphQLField
+    @GraphQLName("createFromMetatype")
     @GraphQLDescription("Create a file from a metatype definition and return its name")
     public String createFromMetatype(@GraphQLName("pid") @GraphQLNonNull String pid,
                                      @GraphQLName("instanceIdentifier") String instanceIdentifier) {
@@ -98,12 +104,14 @@ public class OsgiConfigManagerMutation {
     }
 
     @GraphQLField
+    @GraphQLName("encrypt")
     @GraphQLDescription("Encrypt a value into an ENC(...) wrapper")
     public String encrypt(@GraphQLName("value") @GraphQLNonNull String value) {
         return audited("encrypt", null, () -> service.encrypt(value));
     }
 
     @GraphQLField
+    @GraphQLName("decrypt")
     @GraphQLDescription("Decrypt a value, which must occur in the named file")
     public String decrypt(@GraphQLName("name") @GraphQLNonNull String name,
                           @GraphQLName("value") @GraphQLNonNull String value) {
@@ -113,6 +121,7 @@ public class OsgiConfigManagerMutation {
     }
 
     @GraphQLField
+    @GraphQLName("setPreference")
     @GraphQLDescription("Store one of the caller's UI preferences; false when there is no user node to store it on")
     public Boolean setPreference(@GraphQLName("key") @GraphQLNonNull String key,
                                  @GraphQLName("value") String value) {

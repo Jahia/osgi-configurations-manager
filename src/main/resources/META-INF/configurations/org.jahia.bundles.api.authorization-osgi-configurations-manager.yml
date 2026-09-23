@@ -1,0 +1,16 @@
+# default configuration - won't be overridden
+# Jahia's security filter denies every API that no scope grants, so without this the module's
+# GraphQL fields answer "Permission denied" to everyone, root included. The grant covers only the
+# osgiConfigManager namespace and the module's own types; access to the files themselves is still
+# decided by the module (canManageOsgiConfigurations on /, admin on /sites/systemsite).
+osgi-configurations-manager:
+  description: OSGi Configurations Manager GraphQL API, for privileged users of the Jahia UI
+  metadata:
+    visible: false
+  auto_apply:
+    - origin: hosted
+  constraints:
+    - privileged_user: true
+  grants:
+    - api: graphql.Query.osgiConfigManager, graphql.Mutation.osgiConfigManager, graphql.OsgiConfigManagerQuery, graphql.OsgiConfigManagerMutation, graphql.OsgiConfigFile, graphql.OsgiConfigFileContent, graphql.OsgiConfigUiConfig
+      node: none

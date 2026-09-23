@@ -17,6 +17,7 @@ public class GqlUiConfig {
     }
 
     @GraphQLField
+    @GraphQLName("visualFormattingControlsEnabled")
     @GraphQLDescription("Whether the visual editor offers its formatting controls")
     public Boolean getVisualFormattingControlsEnabled() {
         return (Boolean) config.get("visualFormattingControlsEnabled");

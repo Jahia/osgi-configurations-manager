@@ -23,30 +23,35 @@ public class GqlConfigFileContent {
     }
 
     @GraphQLField
+    @GraphQLName("configState")
     @GraphQLDescription("MODULE, MODULE_DEFAULT or USER")
     public String getConfigState() {
         return configState;
     }
 
     @GraphQLField
+    @GraphQLName("rawContent")
     @GraphQLDescription("The file exactly as it is on disk")
     public String getRawContent() {
         return rawContent;
     }
 
     @GraphQLField
+    @GraphQLName("pid")
     @GraphQLDescription("The PID the file configures, when it can be derived")
     public String getPid() {
         return pid;
     }
 
     @GraphQLField
+    @GraphQLName("properties")
     @GraphQLDescription("Parsed properties as a JSON object, in file order. YAML values may nest.")
     public String getProperties() {
         return properties;
     }
 
     @GraphQLField
+    @GraphQLName("metatype")
     @GraphQLDescription("The PID's metatype definition as a JSON object, when one is registered")
     public String getMetatype() {
         return metatype;

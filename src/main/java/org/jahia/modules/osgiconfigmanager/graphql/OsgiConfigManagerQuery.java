@@ -33,6 +33,7 @@ public class OsgiConfigManagerQuery {
     }
 
     @GraphQLField
+    @GraphQLName("files")
     @GraphQLDescription("Configuration files in karaf/etc, optionally filtered on name or content")
     public List<GqlConfigFile> files(@GraphQLName("search") String search) {
         try {
@@ -44,6 +45,7 @@ public class OsgiConfigManagerQuery {
     }
 
     @GraphQLField
+    @GraphQLName("uiConfig")
     @GraphQLDescription("UI settings for the admin app")
     public GqlUiConfig uiConfig() {
         try {
@@ -54,6 +56,7 @@ public class OsgiConfigManagerQuery {
     }
 
     @GraphQLField
+    @GraphQLName("file")
     @GraphQLDescription("Read one configuration file")
     public GqlConfigFileContent file(@GraphQLName("name") @GraphQLNonNull String name) {
         // Attributed at INFO so reads, which can expose ENC values, are auditable in production.
@@ -68,6 +71,7 @@ public class OsgiConfigManagerQuery {
     }
 
     @GraphQLField
+    @GraphQLName("availableMetatypes")
     @GraphQLDescription("Metatype definitions a new file can be created from, as a JSON array")
     public String availableMetatypes() {
         try {
@@ -78,6 +82,7 @@ public class OsgiConfigManagerQuery {
     }
 
     @GraphQLField
+    @GraphQLName("preference")
     @GraphQLDescription("One of the caller's stored UI preferences, or null when unset")
     public String preference(@GraphQLName("key") @GraphQLNonNull String key) {
         if (!PreferenceKeys.isAllowed(key)) {

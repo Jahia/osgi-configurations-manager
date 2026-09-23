@@ -147,6 +147,24 @@ class OsgiConfigManagerNamespaceTest {
     }
 
     @Test
+    @DisplayName("every field names itself: the annotation library would turn setPreference() into 'preference'")
+    void everyField_hasAnExplicitName() {
+        for (Class<?> type : new Class<?>[]{OsgiConfigManagerQuery.class, OsgiConfigManagerMutation.class,
+                GqlConfigFile.class, GqlUiConfig.class, GqlConfigFileContent.class}) {
+            java.util.Arrays.stream(type.getMethods())
+                    .filter(m -> m.getAnnotation(graphql.annotations.annotationTypes.GraphQLField.class) != null)
+                    .forEach(m -> {
+                        GraphQLName name = m.getAnnotation(GraphQLName.class);
+                        assertNotNull(name, type.getSimpleName() + "." + m.getName() + " has no @GraphQLName");
+                        String expected = m.getName().startsWith("get")
+                                ? Character.toLowerCase(m.getName().charAt(3)) + m.getName().substring(4)
+                                : m.getName();
+                        assertEquals(expected, name.value(), type.getSimpleName() + "." + m.getName());
+                    });
+        }
+    }
+
+    @Test
     @DisplayName("both root fields live in ONE osgiConfigManager namespace, each declaring the permission")
     void rootFields_areOneNamespaceWithPermission() throws Exception {
         for (Class<?> extension : new Class<?>[]{OsgiConfigManagerQueryExtension.class,
