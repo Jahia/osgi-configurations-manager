@@ -6,6 +6,7 @@ import org.jahia.modules.graphql.provider.dxm.util.ContextUtil;
 import org.jahia.modules.osgiconfigmanager.admin.ConfigAccessDeniedException;
 import org.jahia.modules.osgiconfigmanager.admin.ConfigConflictException;
 import org.jahia.modules.osgiconfigmanager.admin.ConfigNotFoundException;
+import org.jahia.modules.osgiconfigmanager.admin.ConfigurationPluginProbe;
 import org.jahia.modules.osgiconfigmanager.admin.OsgiConfigService;
 import org.jahia.osgi.BundleUtils;
 import org.jahia.services.content.JCRSessionFactory;
@@ -181,6 +182,11 @@ final class OsgiConfigGqlSupport {
      */
     static String auditValue(String value) {
         return value == null ? null : CONTROL_CHARACTERS.matcher(value).replaceAll("_");
+    }
+
+    /** The decryption probe, or null while its configuration file does not exist. */
+    static ConfigurationPluginProbe pluginProbe() {
+        return BundleUtils.getOsgiService(ConfigurationPluginProbe.class, null);
     }
 
     static void audit(GqlCaller caller, String action, String filename) {

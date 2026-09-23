@@ -32,6 +32,6 @@ public class OsgiConfigManagerQueryExtension {
         HttpServletRequest request = OsgiConfigGqlSupport.request(environment);
         GqlCaller caller = OsgiConfigGqlSupport.authorize(JCRSessionFactory.getInstance(),
                 OsgiConfigGqlSupport.locale(request));
-        return new OsgiConfigManagerQuery(OsgiConfigGqlSupport.service(), caller);
+        return new OsgiConfigManagerQuery(OsgiConfigGqlSupport.service(), caller, OsgiConfigGqlSupport.pluginProbe());
     }
 }

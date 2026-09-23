@@ -23,6 +23,9 @@ import { CfgMetatypeInfoTooltip, CfgMetatypePropertyDialog } from './CfgMetatype
 import { getSuggestedPropertyValue } from '../utils/metatypeUtils';
 import {CHROME_TOKENS, FLOATING_TOOLTIP_STYLE, PANEL_ACTIONS_STYLE} from './AppChrome';
 
+const MANAGER_SELF_PID = 'org.jahia.modules.osgiconfigmanager';
+const MANAGER_PASSPHRASE_KEY = 'cryptoSecret';
+
 const CFG_COLUMN_WIDTHS = {
     drag: {flex: '0 0 48px', minWidth: '48px'},
     type: {flex: '0 0 40px', minWidth: '40px'},
@@ -342,6 +345,15 @@ export const CfgEditor = ({
         }, 100);
     };
 
+    const isPasswordProperty = propertyDefinition =>
+        Boolean(propertyDefinition) && String(propertyDefinition.type || '').toLowerCase() === 'password';
+
+    // The manager's own cryptoSecret is declared as Password so it is masked, but it is the
+    // passphrase ENC(...) values are encrypted with: encrypting it would leave nothing to decrypt
+    // it with, and the server refuses to save it wrapped. It starts, and must stay, in clear text.
+    const isEncryptionPassphrase = propertyName =>
+        metatypeDefinition?.pid === MANAGER_SELF_PID && propertyName === MANAGER_PASSPHRASE_KEY;
+
     const insertOrFocusProperty = (propertyName, propertyDefinition) => {
         if (!propertyName) {
             return;
@@ -363,7 +375,10 @@ export const CfgEditor = ({
         handleAddCfgEntry({
             type: 'property',
             key: propertyName,
-            value: propertyDefinition ? getSuggestedPropertyValue(propertyDefinition) : ''
+            value: propertyDefinition ? getSuggestedPropertyValue(propertyDefinition) : '',
+            // A Metatype attribute declared as Password is a secret: start the row encrypted so the
+            // value is wrapped in ENC(...) on save unless the user deliberately unticks it.
+            encrypted: isPasswordProperty(propertyDefinition) && !isEncryptionPassphrase(propertyName)
         }, insertIndex);
         setSelectedIndex(insertIndex);
         focusEntryValue(insertIndex);

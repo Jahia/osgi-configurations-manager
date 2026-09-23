@@ -3,6 +3,9 @@
 export interface ConfigNode {
     value?: string;
     encrypted?: boolean;
+    /** Ciphertext an encrypted leaf was decrypted from; reused on save while the plaintext is unchanged. */
+    cipherValue?: string;
+    /** Plaintext that ciphertext decrypted to, to tell an unchanged value from an edited one. */
     decryptedValue?: string;
     isLeaf?: boolean;
     _order?: string[];

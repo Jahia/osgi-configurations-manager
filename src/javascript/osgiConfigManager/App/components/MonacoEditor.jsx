@@ -5,6 +5,8 @@ import { Button, Input, Typography } from '@jahia/moonstone';
 import { Add, Undo, RotateRight, Code, Lock, Unlock } from '@jahia/moonstone';
 import { useTranslation } from 'react-i18next';
 import { osgiService } from '../api/osgiService';
+import { lookupKnownPlaintext, rememberPlaintext } from '../utils/cryptoTree';
+import { useToast } from '../hooks/useToast';
 import { buildPropertyDocumentation, findExactMetatypePropertyMatch, formatDefaultValue, getLocalizedTypeLabel, getPropertyLabel, matchesMetatypePropertyQuery } from '../utils/metatypeUtils';
 import { CHROME_TOKENS, PANEL_ACTIONS_STYLE } from './AppChrome';
 
@@ -653,6 +655,7 @@ const getYamlValueSuggestions = (property, t) => (
 );
 
 export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', metatypeDefinition, filename }) => {
+    const { error: toastError, warning: toastWarning } = useToast();
     const { t } = useTranslation('osgi-configurations-manager');
     const containerRef = useRef(null);
     const editorRef = useRef(null);
@@ -1188,6 +1191,10 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
         try {
             const result = await osgiService.encrypt(valueTrimmed);
             if (result && result.encryptedValue) {
+                // The new ciphertext is not in the saved file, so the file-bound server decryption
+                // would refuse it until the file is saved. Remember the pair so the Decrypt button
+                // and the switch back to visual mode can still show the value.
+                rememberPlaintext(result.encryptedValue, valueTrimmed);
                 editor.executeEdits('source', [{
                     range: range,
                     text: result.encryptedValue
@@ -1195,6 +1202,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
             }
         } catch (e) {
             console.error("Encryption failed", e);
+            toastError(t('notification.encryptFailed'));
         }
     };
 
@@ -1210,7 +1218,10 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
         const encStart = lineContent.indexOf('ENC(');
         const encEnd = lineContent.lastIndexOf(')');
 
-        if (encStart === -1 || encEnd === -1 || encEnd <= encStart) return;
+        if (encStart === -1 || encEnd === -1 || encEnd <= encStart) {
+            toastWarning(t('notification.decryptNoValue'));
+            return;
+        }
 
         // Extract the ENC string
         const textToDecrypt = lineContent.substring(encStart, encEnd + 1);
@@ -1223,15 +1234,29 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
         );
 
         try {
-            const result = await osgiService.decrypt(textToDecrypt, filename);
-            if (result && result.decryptedValue) {
-                editor.executeEdits('source', [{
-                    range: range,
-                    text: result.decryptedValue
-                }]);
+            // A ciphertext this page produced itself (encrypted but not saved yet) is not in the
+            // file, so the file-bound server call would refuse it; the page still knows its plaintext.
+            const known = lookupKnownPlaintext(textToDecrypt);
+            const result = known === undefined
+                ? await osgiService.decrypt(textToDecrypt, filename)
+                : { decryptedValue: known };
+            const decryptedValue = result?.decryptedValue;
+            if (!decryptedValue || decryptedValue === textToDecrypt) {
+                // The server hands an undecryptable value back unchanged (encrypted with another
+                // instance's secret) rather than failing the request.
+                toastError(t('notification.decryptRefused'));
+                return;
             }
+
+            rememberPlaintext(textToDecrypt, decryptedValue);
+            editor.executeEdits('source', [{
+                range: range,
+                text: decryptedValue
+            }]);
         } catch (e) {
+            // Refused by the server: the ciphertext is not in the saved file (or not readable).
             console.error("Decryption failed", e);
+            toastError(t('notification.decryptRefused'));
         }
     };
 

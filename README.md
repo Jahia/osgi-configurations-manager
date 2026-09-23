@@ -56,7 +56,11 @@ A Jahia module to manage OSGi configurations directly from the Jahia Administrat
 
 -   **Security & Traceability**:
     -   **Encryption**: Support for encrypted values using a custom CryptoEngine.
-    -   Toggle encryption on properties directly from the UI.
+    -   Toggle encryption on properties directly from the UI. Properties declared as `Password` in
+        Metatype are inserted with encryption already enabled.
+    -   **Transparent decryption for consumers**: an OSGi `ConfigurationPlugin` hands modules their
+        `ENC(...)` values decrypted, so a consumer needs no crypto code (see *Consuming encrypted
+        values from your module*).
     -   Decryption for viewing is authorized per file: a value is only decrypted for a user who may
         read the file it actually appears in.
     -   **Review before save**: saving shows the raw diff of what is about to be written and requires
@@ -160,16 +164,15 @@ Note also what the format cannot express: because leading whitespace is discarde
 line joins the previous one separated by a single space. `my.key` above is read as
 `first second third`, not as three lines.
 
-## Using Encrypted Properties in Java
+## Consuming encrypted values from your module
 
-When you encrypt a property in the UI, it is stored in the `.cfg` or `.yml` file with the prefix `ENC(...)`. To use these properties in your OSGi services, you need to decrypt them.
+When you encrypt a property in the UI, it is stored in the `.cfg` or `.yml` file as `ENC(...)`.
+**Your module does not decrypt it.** The manager registers an OSGi `ConfigurationPlugin` that
+Configuration Admin consults right before delivering a configuration to its component, and that
+plugin replaces every `ENC(...)` value by its plaintext in the delivered copy. The file on disk
+keeps the envelope; your `@Activate` receives the secret in clear.
 
-> [!IMPORTANT]
-> `CryptoEngine.decryptString` **fails closed**: it throws `IllegalStateException` rather than handing
-> back a value that might still be ciphertext. Handle that — an uncaught throw inside `@Activate`
-> leaves your component unable to start. It also throws on a `null` argument.
-
-### Example
+### What a consumer looks like
 
 ```java
 package org.my.module;
@@ -177,47 +180,97 @@ package org.my.module;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Modified;
-import org.jahia.modules.osgiconfigmanager.admin.CryptoEngine;
-import java.util.Map;
+import org.osgi.service.metatype.annotations.AttributeDefinition;
+import org.osgi.service.metatype.annotations.AttributeType;
+import org.osgi.service.metatype.annotations.Designate;
+import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 
 @Component(service = MyService.class, immediate = true, configurationPid = "org.my.config")
+@Designate(ocd = MyService.Config.class)
 public class MyService {
+
+    @ObjectClassDefinition(name = "My service")
+    public @interface Config {
+        @AttributeDefinition(name = "API secret", type = AttributeType.PASSWORD,
+                description = "Encrypt this value with the OSGi Configurations Manager.")
+        String apiSecret();
+    }
 
     private String apiSecret;
 
     @Activate
     @Modified
-    public void update(Map<String, Object> properties) {
-        this.apiSecret = decryptIfNeeded((String) properties.get("apiSecret"));
-    }
-
-    private String decryptIfNeeded(String value) {
-        if (value == null || !value.startsWith("ENC(") || !value.endsWith(")")) {
-            return value;
-        }
-        String cipherText = value.substring(4, value.length() - 1);
-        try {
-            return CryptoEngine.decryptString(cipherText);
-        } catch (IllegalStateException e) {
-            // Decide what your component should do with an unusable secret. Refusing to start, as
-            // here, is usually safer than running with a half-configured service.
-            throw new IllegalStateException("Could not decrypt apiSecret for org.my.config", e);
-        }
+    public void update(Config config) {
+        this.apiSecret = config.apiSecret(); // already decrypted
     }
 }
 ```
 
-> [!NOTE]
-> Ensure your module has access to the `org.jahia.modules.osgiconfigmanager.admin` package to use `CryptoEngine`.
+Two things the consumer must do:
+
+- **Declare the dependency** in its manifest, `Jahia-Depends: osgi-configurations-manager`.
+  Plugins are consulted at delivery time only: a component that started before this module
+  received its `ENC(...)` values raw and is not re-delivered when the plugin appears.
+- **Receive the configuration through Declarative Services** (or a `ManagedService`). A direct
+  `ConfigurationAdmin.getConfiguration(pid).getProperties()` returns the stored properties and
+  bypasses plugins.
+
+Declare secrets with `AttributeType.PASSWORD`. The manager then writes a hint next to them in a
+file created from the PID, and the visual editor's property picker inserts them with encryption
+already enabled.
+
+### When a value cannot be decrypted
+
+The plugin leaves the `ENC(...)` value exactly as stored and logs an error naming the PID and the
+key. The component starts with an unusable secret, its connection fails, and the log says why. The
+usual cause is a `.cfg` copied from another instance, whose secret differs; re-enter the value on
+the target instance, or give both instances the same `cryptoSecret`.
+
+### Checking that it works on an instance
+
+The module ships a probe consumer under the PID `org.jahia.modules.osgiconfigmanager.probe`. Create
+that file from the manager (`New` > from PID), enter any value for `probe.secret`, save, then run
+this query (see "Calling the API directly" below):
+
+```graphql
+query { osgiConfigManager { pluginProbe } }
+```
+
+The answer says, key by key, whether the probe received `plaintext` or an `encrypted` envelope. No
+value is ever returned. Delete the probe file afterwards.
+
+### Legacy consumers (before 1.1.0)
+
+Modules written against earlier versions decrypt by themselves with
+`org.jahia.modules.osgiconfigmanager.admin.CryptoEngine.decryptString`, which throws
+`IllegalStateException` on an undecryptable value. That still works and the package stays exported,
+but new consumers should rely on the plugin: a value decrypted twice is not a problem, since a
+plaintext is not an envelope, so both styles coexist during a migration.
 
 ### Portability between instances
 
-New values are encrypted with a **per-instance** secret — either operator-provided through the
-module's own OSGi configuration, or generated and persisted on first use. A `.cfg` copied from one
-instance to another therefore cannot be decrypted on arrival. The manager handles this by showing the
-value still wrapped in `ENC(...)` rather than failing the page, but a consumer module reading it will
-hit the throw above. Re-enter such secrets on the target instance, or set the same operator-provided
-secret on both.
+New values are encrypted with a **per-instance** secret, either operator-provided through the
+module's own OSGi configuration (`cryptoSecret`), or generated on first use and persisted in
+`karaf/etc/.osgi-config-manager.secret`. A `.cfg` copied from one instance to another therefore
+cannot be decrypted on arrival. The manager shows such a value still wrapped in `ENC(...)` rather
+than failing the page, and the plugin delivers it as stored.
+
+> [!IMPORTANT]
+> **On a cluster, set `cryptoSecret` before encrypting anything.** Jahia replicates `.cfg` edits to
+> every node, but the generated secret file is not a `.cfg` and stays node-local, so each node
+> would otherwise derive a different key and a value encrypted on one node would be unreadable on
+> the others. The manager's own `.cfg` is replicated like any other, so a `cryptoSecret` set there
+> reaches every node.
+
+> [!WARNING]
+> **`cryptoSecret` stays in clear text.** It is the passphrase the `ENC(...)` values are encrypted
+> with, so it is the one secret that cannot be encrypted: there would be nothing left to decrypt it
+> with. The attribute is declared as Password so the editor masks it, but the picker inserts it with
+> *Encrypted* unticked, the generated template says so, and a save of
+> `org.jahia.modules.osgiconfigmanager.cfg` with `cryptoSecret = ENC(...)` is refused. Should such a
+> value reach the file anyway (edited by hand, copied from elsewhere), the manager logs an `[AUDIT]`
+> error, ignores it and keeps the generated per-instance secret. Protect the file with its
+> permissions, as for any other Karaf configuration holding credentials.
 
 ## Installation
 
@@ -261,6 +314,7 @@ namespace: `Query.osgiConfigManager` and `Mutation.osgiConfigManager`. (The earl
 | `file(name: String!)` | `configState`, `rawContent`, `pid`, and `properties` / `metatype` as JSON strings, in file order |
 | `availableMetatypes` | a JSON array of the metatype definitions a file can be created from |
 | `preference(key: String!)` | one of the caller's stored UI preferences |
+| `pluginProbe` | what the decryption probe received, by shape only, as a JSON object |
 
 | Mutation | Returns |
 |---|---|

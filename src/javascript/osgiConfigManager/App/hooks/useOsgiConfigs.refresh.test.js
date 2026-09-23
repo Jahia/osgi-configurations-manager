@@ -9,7 +9,7 @@ import { osgiService } from '../api/osgiService';
 
 jest.mock('../api/osgiService');
 jest.mock('./useToast', () => ({
-    useToast: () => ({ success: jest.fn(), error: jest.fn() })
+    useToast: () => ({ success: jest.fn(), error: jest.fn(), warning: jest.fn() })
 }));
 jest.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key) => key })

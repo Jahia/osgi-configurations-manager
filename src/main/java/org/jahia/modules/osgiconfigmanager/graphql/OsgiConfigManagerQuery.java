@@ -6,10 +6,12 @@ import graphql.annotations.annotationTypes.GraphQLDescription;
 import graphql.annotations.annotationTypes.GraphQLField;
 import graphql.annotations.annotationTypes.GraphQLName;
 import graphql.annotations.annotationTypes.GraphQLNonNull;
+import org.jahia.modules.osgiconfigmanager.admin.ConfigurationPluginProbe;
 import org.jahia.modules.osgiconfigmanager.admin.OsgiConfigService;
 import org.jahia.modules.osgiconfigmanager.admin.PreferenceKeys;
 import org.jahia.modules.osgiconfigmanager.admin.UserPreferenceService;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -26,10 +28,17 @@ public class OsgiConfigManagerQuery {
 
     private final OsgiConfigService service;
     private final GqlCaller caller;
+    // Optional: the probe exists only while its configuration file does (ConfigurationPolicy.REQUIRE).
+    private final ConfigurationPluginProbe pluginProbe;
 
     OsgiConfigManagerQuery(OsgiConfigService service, GqlCaller caller) {
+        this(service, caller, null);
+    }
+
+    OsgiConfigManagerQuery(OsgiConfigService service, GqlCaller caller, ConfigurationPluginProbe pluginProbe) {
         this.service = service;
         this.caller = caller;
+        this.pluginProbe = pluginProbe;
     }
 
     @GraphQLField
@@ -90,6 +99,30 @@ public class OsgiConfigManagerQuery {
         }
         try {
             return UserPreferenceService.read(caller.getSession(), caller.getUser(), key).orElse(null);
+        } catch (Exception e) {
+            throw OsgiConfigGqlSupport.translate(e);
+        }
+    }
+
+    /**
+     * What the decryption probe received, by shape only, as JSON: {@code pid}, {@code active} (false
+     * while its configuration file does not exist), and when active {@code receivedAt} and
+     * {@code delivered} (key to "plaintext" or "encrypted"). No configuration value ever leaves
+     * this field: a probe that echoed values would be a decryption oracle.
+     */
+    @GraphQLField
+    @GraphQLName("pluginProbe")
+    @GraphQLDescription("What the ConfigurationPlugin decryption probe received, by shape only, as a JSON object")
+    public String pluginProbe() {
+        Map<String, Object> probe = new LinkedHashMap<>();
+        probe.put("pid", ConfigurationPluginProbe.PID);
+        probe.put("active", pluginProbe != null);
+        if (pluginProbe != null) {
+            probe.put("receivedAt", pluginProbe.receivedAt());
+            probe.put("delivered", pluginProbe.deliveredShapes());
+        }
+        try {
+            return toJson(probe);
         } catch (Exception e) {
             throw OsgiConfigGqlSupport.translate(e);
         }

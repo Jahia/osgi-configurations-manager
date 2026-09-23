@@ -5,6 +5,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jahia.modules.osgiconfigmanager.admin.ConfigNotFoundException;
+import org.jahia.modules.osgiconfigmanager.admin.ConfigurationPluginProbe;
 import org.jahia.modules.osgiconfigmanager.admin.OsgiConfigService;
 import org.jahia.services.content.JCRNodeWrapper;
 import org.jahia.services.content.JCRPropertyWrapper;
@@ -22,6 +23,7 @@ import java.util.Locale;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -29,6 +31,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class OsgiConfigManagerQueryTest {
@@ -207,5 +210,38 @@ class OsgiConfigManagerQueryTest {
         OsgiConfigGqlException e = assertThrows(OsgiConfigGqlException.class, () -> query.files(null));
 
         assertEquals("INTERNAL", e.getExtensions().get("code"));
+    }
+
+    // ---- pluginProbe: shapes only, and a well-formed answer with no probe at all ----
+
+    private OsgiConfigManagerQuery queryWithProbe(ConfigurationPluginProbe probe) {
+        JahiaUser user = mock(JahiaUser.class);
+        when(user.getName()).thenReturn("root");
+        return new OsgiConfigManagerQuery(service, new GqlCaller(user, session, Locale.FRENCH), probe);
+    }
+
+    @Test
+    @DisplayName("without a probe component pluginProbe answers active=false and touches no file")
+    void pluginProbe_inactiveWithoutProbe() throws Exception {
+        Map<?, ?> probe = new ObjectMapper().readValue(queryWithProbe(null).pluginProbe(), Map.class);
+
+        assertEquals(Boolean.FALSE, probe.get("active"));
+        assertEquals(ConfigurationPluginProbe.PID, probe.get("pid"));
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    @DisplayName("with a probe component pluginProbe reports the delivered shapes and never a value")
+    void pluginProbe_reportsShapes() {
+        ConfigurationPluginProbe probe = mock(ConfigurationPluginProbe.class);
+        when(probe.deliveredShapes()).thenReturn(Map.of("probe.secret", "plaintext", "probe.plain", "plaintext"));
+        when(probe.receivedAt()).thenReturn("2026-09-21T10:00:00Z");
+
+        String json = queryWithProbe(probe).pluginProbe();
+
+        assertTrue(json.contains("\"active\":true"), json);
+        assertTrue(json.contains("\"probe.secret\":\"plaintext\""), json);
+        assertTrue(json.contains("2026-09-21T10:00:00Z"), json);
+        assertFalse(json.contains("ENC("), "no envelope, hence no value, is ever echoed");
     }
 }

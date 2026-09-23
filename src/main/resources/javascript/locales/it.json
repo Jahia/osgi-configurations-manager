@@ -22,7 +22,11 @@
         "deleteSuccess": "{{name}} eliminato",
         "createSuccess": "{{name}} creato",
         "uploadSuccess": "{{name}} caricato",
-        "markAsDefaultSuccess": "{{name}} è ora contrassegnato come configurazione predefinita"
+        "markAsDefaultSuccess": "{{name}} è ora contrassegnato come configurazione predefinita",
+        "decryptNoValue": "Posiziona il cursore su una riga contenente un valore ENC(...)",
+        "decryptRefused": "Questo valore non può essere decifrato qui: non è nel file salvato oppure è stato cifrato con un altro segreto",
+        "encryptFailed": "Impossibile cifrare il valore",
+        "undecryptableValues": "{{count}} valore/i cifrato/i non decifrabile/i, mostrato/i come memorizzato/i: non presente/i nel file salvato oppure cifrato/i con un altro segreto"
     },
     "modal": {
         "cancel": "Annulla",
