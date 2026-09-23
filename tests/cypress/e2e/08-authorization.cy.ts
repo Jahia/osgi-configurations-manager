@@ -45,7 +45,8 @@ const expectDenied = (label: string) => (res: Cypress.OsgiGqlResult) => {
 
 const expectForeignCiphertextRefused = (dec: Cypress.OsgiGqlResult) => {
     expect(dec.code, 'a foreign ciphertext is refused').to.eq('BAD_REQUEST');
-    expect(dec.data, 'nothing is decrypted').to.be.null;
+    // A nullable field in error is nulled on its own; the namespace object around it survives.
+    expect(dec.data?.decrypt ?? null, 'nothing is decrypted').to.be.null;
 };
 
 const expectNothingWritten = (label: string) => (res: Cypress.Response<Cypress.GraphQLBody>) => {

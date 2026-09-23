@@ -20,7 +20,8 @@ const readFile = (name: string) => cy.osgiQuery('file(name: $name) { rawContent 
 const saveFile = (name: string) => cy.osgiMutation('save(name: $name, rawContent: "x=1")', NAME, {name});
 
 const expectReadRejected = (name: string) => (res: Cypress.OsgiGqlResult) => {
-    expect(res.data, `read ${name} returns nothing`).to.be.null;
+    // A nullable field in error is nulled on its own; the namespace object around it survives.
+    expect(res.data?.file ?? null, `read ${name} returns nothing`).to.be.null;
     expect(res.code, `read ${name} must be rejected`).to.be.oneOf(['BAD_REQUEST', 'NOT_FOUND', 'FORBIDDEN']);
     expect(String(res.error), `no escape for ${name}`).to.match(/invalid|not found|denied/i);
 };
