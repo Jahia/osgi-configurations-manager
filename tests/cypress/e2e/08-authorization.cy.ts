@@ -25,7 +25,7 @@ const STATE_CHANGING = [
     {action: 'markAsDefault', body: {action: 'markAsDefault', filename: 'authz-probe.cfg'}},
     {action: 'create', body: {action: 'create', filename: 'authz-probe.cfg'}},
     {action: 'encrypt', body: {action: 'encrypt', value: 'secret'}},
-    // deliberately no filename: the permission check runs before any dispatch, so this must be
+    // Deliberately no filename: the permission check runs before any dispatch, so this must be
     // refused as 403 rather than reaching the file-bound validation
     {action: 'decrypt', body: {action: 'decrypt', value: 'ENC(x)'}}
 ];
@@ -35,10 +35,10 @@ describe('OSGi Configurations Manager - Authorization', () => {
         cy.login();
         createUser(AUTHORIZED_USER, PASSWORD);
         createUser(NEGATIVE_USER, PASSWORD);
-        // both are server administrators (so both pass the Action's required "admin" permission)
+        // Both are server administrators (so both pass the Action's required "admin" permission)
         grantRoles('/', [SERVER_ADMIN_ROLE], AUTHORIZED_USER, 'USER');
         grantRoles('/', [SERVER_ADMIN_ROLE], NEGATIVE_USER, 'USER');
-        // only the authorized user additionally receives canManageOsgiConfigurations (module role)
+        // Only the authorized user additionally receives canManageOsgiConfigurations (module role)
         grantRoles('/', [MODULE_ROLE], AUTHORIZED_USER, 'USER');
     });
 
@@ -130,7 +130,7 @@ describe('OSGi Configurations Manager - Authorization', () => {
         });
 
         it('S28: rejects a POST missing the X-Requested-With header (403, no side effect)', () => {
-            // cy.request is not a browser fetch, so it CAN omit the header a forged cross-site
+            // A cy.request() is not a browser fetch, so it CAN omit the header a forged cross-site
             // request could never set — which is exactly what makes this simulation faithful.
             cy.osgiRequest({
                 method: 'POST',

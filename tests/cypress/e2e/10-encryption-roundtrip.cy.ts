@@ -22,20 +22,20 @@ describe('OSGi Configurations Manager - Encryption round-trip', () => {
     });
 
     it('wraps a saved value as ENC(...) on disk and decrypts back to plaintext', () => {
-        // encrypt via the backend
+        // Encrypt via the backend
         cy.osgiRequest({method: 'POST', body: {action: 'encrypt', value: secret}})
             .its('body.encryptedValue').then(encrypted => {
                 expect(encrypted, 'ENC envelope').to.match(/^ENC\(.+\)$/);
 
-                // save a config carrying the encrypted value
+                // Save a config carrying the encrypted value
                 cy.upsertOsgiFile(file, `password = ${encrypted}\n`);
 
-                // reading the file back shows the ENC(...) wrapper on disk (not the plaintext)
+                // Reading the file back shows the ENC(...) wrapper on disk (not the plaintext)
                 cy.osgiRequest({method: 'GET', url: `${ACTION_PATH}?filename=${file}`})
                     .its('body.data.rawContent').should('contain', encrypted)
                     .and('not.contain', secret);
 
-                // decrypt-on-view returns the original plaintext — naming the file the value was
+                // Decrypt-on-view returns the original plaintext — naming the file the value was
                 // just saved into, since decryption is file-bound
                 cy.osgiRequest({method: 'POST', body: {action: 'decrypt', value: encrypted, filename: file}})
                     .its('body.decryptedValue').should('eq', secret);

@@ -30,7 +30,8 @@ describe('OSGi Configurations Manager - Deep search, state badges & refresh', ()
         cy.openOsgiConfigManager();
 
         cy.get('[data-cy="deep-search-toggle-control"]').click();
-        cy.get('[data-cy="file-search-input"] input').clear().type(token);
+        cy.get('[data-cy="file-search-input"] input').clear();
+        cy.get('[data-cy="file-search-input"] input').type(token);
 
         cy.get(`[data-cy="file-row-${encodeURIComponent(contentFile)}"]`, {timeout: 30000})
             .should('be.visible');
@@ -51,7 +52,7 @@ describe('OSGi Configurations Manager - Deep search, state badges & refresh', ()
 
     it('F25: a clean Refresh reloads the file listing', () => {
         cy.openOsgiConfigManager();
-        // create a new file AFTER the initial load, via the API
+        // Create a new file AFTER the initial load, via the API
         cy.upsertOsgiFile(refreshFile, 'refresh.me = true\n');
 
         cy.get('[data-cy="refresh-files-button"]').click();
