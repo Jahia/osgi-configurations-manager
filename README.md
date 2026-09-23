@@ -282,8 +282,13 @@ either one cross-origin without a preflight. Failures come back as HTTP 200 with
 `FORBIDDEN`, `BAD_REQUEST` (a rejected value, such as an invalid name or a ciphertext from another
 file), `UNSUPPORTED_MEDIA_TYPE` or `INTERNAL`. Messages never contain server paths.
 
+Jahia's security filter applies the module's `osgi-configurations-manager` scope by itself only to
+same-origin calls, i.e. the admin UI. A script calling from elsewhere must authenticate with a
+[personal API token](https://academy.jahia.com/documentation/jahia/8.2/developer/authentication/personal-api-tokens)
+that carries that scope, created for a user who holds the two permissions above:
+
 ```bash
-curl -u root:"$PASSWORD" -H 'Content-Type: application/json' -H 'X-Requested-With: curl' \
+curl -H "Authorization: APIToken $TOKEN" -H 'Content-Type: application/json' -H 'X-Requested-With: curl' \
   -d '{"query":"mutation($n: String!, $c: String!) { osgiConfigManager { save(name: $n, rawContent: $c) } }",
        "variables":{"n":"org.acme.cfg","c":"key = value\n"}}' \
   https://jahia.example.com/modules/graphql

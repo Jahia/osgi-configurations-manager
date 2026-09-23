@@ -171,9 +171,13 @@ const OSGI_ADMIN_PATH = '/jahia/administration/osgi-configurations-manager';
  */
 Cypress.Commands.add('osgiGql', (query, variables = {}, options = {}) => {
     const {headers, ...requestOptions} = options;
+    // A browser on the Jahia page sends its Origin, which is what makes Jahia's security filter
+    // treat the call as same-origin ("hosted") and apply the module's scope. cy.request runs from
+    // Node and sends none, so without this every call would be refused as an external one.
     const mergedHeaders = {
         'Content-Type': 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
+        Origin: new URL(Cypress.config('baseUrl')).origin,
         ...(headers || {})
     };
     Object.keys(mergedHeaders).forEach(key => {
