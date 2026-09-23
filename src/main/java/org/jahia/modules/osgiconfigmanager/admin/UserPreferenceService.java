@@ -14,7 +14,7 @@ import java.util.Optional;
  * visibility) on the user's JCR node. Owns the {@link PreferenceKeys} allowlist so the rest of the
  * code cannot persist or read arbitrary JCR properties through this path.
  */
-final class UserPreferenceService {
+public final class UserPreferenceService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UserPreferenceService.class);
 
@@ -26,7 +26,7 @@ final class UserPreferenceService {
      * @return the stored preference value, or empty when the key is not on the allowlist or has not
      *         been set for this user.
      */
-    static Optional<String> read(JCRSessionWrapper session, JahiaUser user, String key) throws RepositoryException {
+    public static Optional<String> read(JCRSessionWrapper session, JahiaUser user, String key) throws RepositoryException {
         if (!PreferenceKeys.isAllowed(key)) {
             return Optional.empty();
         }
@@ -47,7 +47,7 @@ final class UserPreferenceService {
      *         both for a key outside the allowlist and when the caller has no user node — the
      *         caller must not report success in either case, since nothing was written.
      */
-    static boolean write(JCRSessionWrapper session, JahiaUser user, String key, String value) throws RepositoryException {
+    public static boolean write(JCRSessionWrapper session, JahiaUser user, String key, String value) throws RepositoryException {
         if (!PreferenceKeys.isAllowed(key)) {
             return false;
         }

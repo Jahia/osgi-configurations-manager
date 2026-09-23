@@ -1,0 +1,89 @@
+package org.jahia.modules.osgiconfigmanager.graphql;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import graphql.annotations.annotationTypes.GraphQLDescription;
+import graphql.annotations.annotationTypes.GraphQLField;
+import graphql.annotations.annotationTypes.GraphQLName;
+import graphql.annotations.annotationTypes.GraphQLNonNull;
+import org.jahia.modules.osgiconfigmanager.admin.OsgiConfigService;
+import org.jahia.modules.osgiconfigmanager.admin.PreferenceKeys;
+import org.jahia.modules.osgiconfigmanager.admin.UserPreferenceService;
+
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+/**
+ * Read operations. Only reachable through {@link OsgiConfigManagerQueryExtension}, which has
+ * already authorized {@link #caller}, so no field here re-checks access.
+ */
+@GraphQLName("OsgiConfigManagerQuery")
+@GraphQLDescription("OSGi Configurations Manager queries")
+public class OsgiConfigManagerQuery {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    private final OsgiConfigService service;
+    private final GqlCaller caller;
+
+    OsgiConfigManagerQuery(OsgiConfigService service, GqlCaller caller) {
+        this.service = service;
+        this.caller = caller;
+    }
+
+    @GraphQLField
+    @GraphQLDescription("Configuration files in karaf/etc, optionally filtered on name or content")
+    public List<GqlConfigFile> files(@GraphQLName("search") String search) {
+        return service.searchFiles(search == null ? "" : search, caller.getLocale(), caller.isRoot())
+                .stream().map(GqlConfigFile::new).collect(Collectors.toList());
+    }
+
+    @GraphQLField
+    @GraphQLDescription("UI settings for the admin app")
+    public GqlUiConfig uiConfig() {
+        return new GqlUiConfig(service.getUiConfig());
+    }
+
+    @GraphQLField
+    @GraphQLDescription("Read one configuration file")
+    public GqlConfigFileContent file(@GraphQLName("name") @GraphQLNonNull String name) {
+        // Attributed at INFO so reads, which can expose ENC values, are auditable in production.
+        OsgiConfigGqlSupport.audit(caller, "read", name);
+        try {
+            Map<String, Object> data = service.readFile(name, caller.getLocale(), caller.isRoot());
+            return new GqlConfigFileContent((String) data.get("configState"), (String) data.get("rawContent"),
+                    (String) data.get("pid"), toJson(data.get("properties")), toJson(data.get("metatype")));
+        } catch (Exception e) {
+            throw OsgiConfigGqlSupport.translate(e);
+        }
+    }
+
+    @GraphQLField
+    @GraphQLDescription("Metatype definitions a new file can be created from, as a JSON array")
+    public String availableMetatypes() {
+        try {
+            return toJson(service.listAvailableMetatypeConfigurations(caller.getLocale(), caller.isRoot()));
+        } catch (Exception e) {
+            throw OsgiConfigGqlSupport.translate(e);
+        }
+    }
+
+    @GraphQLField
+    @GraphQLDescription("One of the caller's stored UI preferences, or null when unset")
+    public String preference(@GraphQLName("key") @GraphQLNonNull String key) {
+        if (!PreferenceKeys.isAllowed(key)) {
+            throw new OsgiConfigGqlException(OsgiConfigGqlException.BAD_REQUEST, "Invalid preference key");
+        }
+        try {
+            return UserPreferenceService.read(caller.getSession(), caller.getUser(), key).orElse(null);
+        } catch (Exception e) {
+            throw OsgiConfigGqlSupport.translate(e);
+        }
+    }
+
+    /** Jackson keeps the LinkedHashMap order the service builds, so file order survives. */
+    private static String toJson(Object value) throws JsonProcessingException {
+        return value == null ? null : MAPPER.writeValueAsString(value);
+    }
+}

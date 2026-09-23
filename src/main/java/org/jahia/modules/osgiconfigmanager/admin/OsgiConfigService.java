@@ -210,6 +210,37 @@ public class OsgiConfigService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Filter the listing on file NAME or file CONTENT, case-insensitively. Matching on content
+     * means reading each candidate; a file that cannot be read is skipped rather than failing the
+     * whole search. An empty search is the plain listing.
+     */
+    public List<Map<String, Object>> searchFiles(String search, Locale locale, boolean isRootUser) {
+        List<Map<String, Object>> allFiles = listFiles(isRootUser);
+        if (search == null || search.isEmpty()) {
+            return allFiles;
+        }
+        LOGGER.debug("Deep Search: Requested search for term '{}'", search);
+        String lowerSearch = search.toLowerCase(Locale.ROOT);
+        List<Map<String, Object>> filteredFiles = new ArrayList<>();
+
+        for (Map<String, Object> file : allFiles) {
+            String name = (String) file.get("name");
+            try {
+                String raw = (String) readFile(name, locale, isRootUser).get("rawContent");
+                boolean nameMatch = name.toLowerCase(Locale.ROOT).contains(lowerSearch);
+                boolean contentMatch = raw != null && raw.toLowerCase(Locale.ROOT).contains(lowerSearch);
+                if (nameMatch || contentMatch) {
+                    filteredFiles.add(file);
+                }
+            } catch (Exception e) {
+                LOGGER.warn("Deep Search: Failed to read file {} during search", name, e);
+            }
+        }
+        LOGGER.debug("Deep Search: Found {} matching files", filteredFiles.size());
+        return filteredFiles;
+    }
+
     public List<Map<String, Object>> listAvailableMetatypeConfigurations(Locale locale) {
         return listAvailableMetatypeConfigurations(locale, true);
     }
