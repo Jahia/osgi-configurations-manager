@@ -7,13 +7,19 @@ import {cleanupFiles} from './osgiTestUtils';
  * nothing on this instance can decrypt must be delivered as stored, without stopping the component.
  * The probe reports shapes only, never values.
  */
-const ACTION_PATH = '/cms/render/default/en/sites/systemsite.osgiConfigManager.do';
 const PROBE_FILE = 'org.jahia.modules.osgiconfigmanager.probe.cfg';
+
+type ProbeReport = {pid: string; active: boolean; receivedAt?: string; delivered?: Record<string, string>};
+
+/** The probe's answer: a JSON object, carried as a string by the pluginProbe query. */
+const readProbe = () => cy.osgiQuery('pluginProbe').then(result => ({
+    raw: result.data?.pluginProbe as string,
+    probe: JSON.parse(result.data?.pluginProbe as string) as ProbeReport
+}));
 
 const probeReports = (expected: Record<string, string>) =>
     cy.waitUntil(
-        () => cy.osgiRequest({method: 'GET', url: `${ACTION_PATH}?action=pluginProbe`}).then(response => {
-            const probe = response.body?.probe;
+        () => readProbe().then(({probe}) => {
             if (!probe?.active) {
                 return false;
             }
@@ -34,8 +40,8 @@ describe('OSGi Configurations Manager - ConfigurationPlugin decrypts values for 
     });
 
     it('delivers an ENC(...) value decrypted to a DS component, leaving the file encrypted', () => {
-        cy.osgiRequest({method: 'POST', body: {action: 'encrypt', value: 'probe-secret-42'}})
-            .its('body.encryptedValue').then(encrypted => {
+        cy.osgiMutation('encrypt(value: $value)', '($value: String!)', {value: 'probe-secret-42'})
+            .its('data.encrypt').then((encrypted: string) => {
                 expect(encrypted, 'ENC envelope').to.match(/^ENC\(.+\)$/);
 
                 cy.upsertOsgiFile(PROBE_FILE, `probe.secret = ${encrypted}\nprobe.plain = hello\n`);
@@ -58,12 +64,11 @@ describe('OSGi Configurations Manager - ConfigurationPlugin decrypts values for 
     });
 
     it('reports the probe as inactive when its configuration does not exist', () => {
-        cy.osgiRequest({method: 'GET', url: `${ACTION_PATH}?action=pluginProbe`}).then(response => {
-            expect(response.status).to.eq(200);
-            expect(response.body.probe.pid).to.eq('org.jahia.modules.osgiconfigmanager.probe');
+        readProbe().then(({raw, probe}) => {
+            expect(probe.pid).to.eq('org.jahia.modules.osgiconfigmanager.probe');
             // Deactivation follows file deletion asynchronously; the only thing asserted here is
             // that no value is ever echoed back, active or not.
-            expect(JSON.stringify(response.body)).not.to.contain('probe-secret');
+            expect(raw).not.to.contain('probe-secret');
         });
     });
 });

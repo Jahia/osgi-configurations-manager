@@ -331,9 +331,6 @@ class OsgiConfigServiceFilesystemTest {
         assertFalse(Files.exists(etcDir.resolve("malformed.cfg")), "Malformed payload must not create a file");
     }
 
-    // #17's "deep search" cases drove service.searchFiles(query, isRootUser). There is no such
-    // method here by design: the deep search lives in OsgiConfigAction, which lists files and
-    // filters them on name or content, and 12-deep-search-and-badges covers it end to end.
-    // Reinstating these would mean moving that logic into the service — a design change, not a
-    // test salvage.
+    // The deep search moved into the service (searchFiles) with the GraphQL migration; its cases
+    // live in OsgiConfigServiceSearchTest, and 12-deep-search-and-badges covers it end to end.
 }

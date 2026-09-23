@@ -229,10 +229,11 @@ the target instance, or give both instances the same `cryptoSecret`.
 ### Checking that it works on an instance
 
 The module ships a probe consumer under the PID `org.jahia.modules.osgiconfigmanager.probe`. Create
-that file from the manager (`New` > from PID), enter any value for `probe.secret`, save, then call:
+that file from the manager (`New` > from PID), enter any value for `probe.secret`, save, then run
+this query (see "Calling the API directly" below):
 
-```
-GET /cms/render/default/en/sites/systemsite.osgiConfigManager.do?action=pluginProbe
+```graphql
+query { osgiConfigManager { pluginProbe } }
 ```
 
 The answer says, key by key, whether the probe received `plaintext` or an `encrypted` envelope. No
@@ -299,16 +300,53 @@ than failing the page, and the plugin delivers it as stored.
 4.  Deploy the generated JAR file from `target/` (`osgi-configurations-manager-<version>.jar`) to
     your Jahia instance.
 
-## Calling the endpoint directly
+## Calling the API directly
 
-If you script against the module instead of using the UI, state-changing `POST`s must carry both:
+Since 1.1.0 the module is driven through Jahia's GraphQL endpoint, `/modules/graphql`, under one
+namespace: `Query.osgiConfigManager` and `Mutation.osgiConfigManager`. (The earlier
+`…/systemsite.osgiConfigManager.do` Action is gone.) Every call needs a user holding
+`canManageOsgiConfigurations` **and** `admin` on `/sites/systemsite`.
 
--   an `X-Requested-With` header (any value), or the request is rejected with **403**
--   an `application/json` content type, or the request is rejected with **415**
+| Query | Returns |
+|---|---|
+| `files(search: String)` | `[OsgiConfigFile]`: `name`, `path` (absolute), `enabled`, `type`, `configState`. A `search` filters on name or content. |
+| `uiConfig` | `visualFormattingControlsEnabled` |
+| `file(name: String!)` | `configState`, `rawContent`, `pid`, and `properties` / `metatype` as JSON strings, in file order |
+| `availableMetatypes` | a JSON array of the metatype definitions a file can be created from |
+| `preference(key: String!)` | one of the caller's stored UI preferences |
+| `pluginProbe` | what the decryption probe received, by shape only, as a JSON object |
 
-Both are CSRF defences: a browser cannot attach a non-safelisted header to a forged cross-origin
-request. Beyond that, the endpoint answers **404** for a missing file, **409** for a conflict such as
-creating a file that already exists, and **403** when the caller may not touch the file.
+| Mutation | Returns |
+|---|---|
+| `save(name: String!, rawContent: String!)`, `toggle(name)`, `delete(name)`, `markAsDefault(name)`, `create(name)` | `true` |
+| `createFromMetatype(pid: String!, instanceIdentifier: String)` | the created file name |
+| `encrypt(value: String!)` | the `ENC(...)` value |
+| `decrypt(name: String!, value: String!)` | the plaintext; the value must occur in the named file |
+| `setPreference(key: String!, value: String)` | `false` when there was nowhere to store it |
+
+A mutation must carry both of the following, or it is refused before anything is read or written:
+
+-   an `X-Requested-With` header (any value), or it fails with `FORBIDDEN`
+-   an `application/json` content type, compared on its parsed media type, or it fails with
+    `UNSUPPORTED_MEDIA_TYPE` (`text/plain;application/json` is `text/plain`)
+
+Both are CSRF defences: `/modules/graphql` is not CSRF-safe on its own, and a browser cannot send
+either one cross-origin without a preflight. Failures come back as HTTP 200 with the outcome in
+`errors[0].extensions.code`: `NOT_FOUND`, `CONFLICT` (for example creating a file that exists),
+`FORBIDDEN`, `BAD_REQUEST` (a rejected value, such as an invalid name or a ciphertext from another
+file), `UNSUPPORTED_MEDIA_TYPE` or `INTERNAL`. Messages never contain server paths.
+
+Jahia's security filter applies the module's `osgi-configurations-manager` scope by itself only to
+same-origin calls, i.e. the admin UI. A script calling from elsewhere must authenticate with a
+[personal API token](https://academy.jahia.com/documentation/jahia/8.2/developer/authentication/personal-api-tokens)
+that carries that scope, created for a user who holds the two permissions above:
+
+```bash
+curl -H "Authorization: APIToken $TOKEN" -H 'Content-Type: application/json' -H 'X-Requested-With: curl' \
+  -d '{"query":"mutation($n: String!, $c: String!) { osgiConfigManager { save(name: $n, rawContent: $c) } }",
+       "variables":{"n":"org.acme.cfg","c":"key = value\n"}}' \
+  https://jahia.example.com/modules/graphql
+```
 
 ## Usage
 

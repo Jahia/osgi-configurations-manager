@@ -9,7 +9,7 @@ import java.util.Set;
  * authenticated user could read or overwrite arbitrary JCR properties on their own node
  * (e.g. {@code j:password}, {@code j:email}). Only the editor-UI preferences below are accepted.
  */
-final class PreferenceKeys {
+public final class PreferenceKeys {
 
     static final Set<String> ALLOWED = Set.of(
             "osgiEditorMode",
@@ -21,7 +21,7 @@ final class PreferenceKeys {
         // Utility class
     }
 
-    static boolean isAllowed(String key) {
+    public static boolean isAllowed(String key) {
         return key != null && ALLOWED.contains(key);
     }
 }

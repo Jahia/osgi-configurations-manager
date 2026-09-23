@@ -1,7 +1,8 @@
 import type { ContextJsParameters } from '@jahia/ui-extender';
 
-// Sent on every mutating POST. The server refuses POSTs without X-Requested-With (CSRF defense
-// in depth): a browser cannot set this header cross-origin without a CORS preflight.
+// Sent on every GraphQL call. /modules/graphql is not CSRF-safe on its own, so the server refuses
+// a mutation that lacks X-Requested-With or an application/json body: a browser cannot send either
+// cross-origin without a CORS preflight, which is never granted.
 const JSON_POST_HEADERS = { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' };
 
 interface OsgiFile {
@@ -97,117 +98,142 @@ declare global {
     }
 }
 
-const apiUrl = (window.contextJsParameters ? window.contextJsParameters.contextPath : '') + '/cms/render/default/en/sites/systemsite.osgiConfigManager.do';
+const graphqlUrl = (window.contextJsParameters ? window.contextJsParameters.contextPath : '') + '/modules/graphql';
 
-const handleResponse = async (res: Response): Promise<OsgiServiceResponse> => {
-    // The backend sometimes returns 500 with a JSON error, or plain text.
-    // We should try to parse JSON if possible, or throw text.
-    const isJson = res.headers.get('content-type')?.includes('application/json');
-    if (!res.ok) {
-        if (isJson) {
-            const err = await res.json();
-            throw new Error(err.error || res.statusText);
-        }
-        const text = await res.text();
-        throw new Error(text || res.statusText);
+type Variables = Record<string, unknown>;
+
+/** An error the server reported, with the machine-readable code it carried in extensions.code. */
+export class OsgiServiceError extends Error {
+    code?: string;
+
+    constructor(message: string, code?: string) {
+        super(message);
+        this.name = 'OsgiServiceError';
+        this.code = code;
     }
-    return res.json();
+}
+
+// Every call, query or mutation, is a JSON POST carrying X-Requested-With: the server refuses a
+// mutation without both, and sending the same headers on queries keeps one code path.
+const request = async (query: string, variables: Variables = {}): Promise<any> => {
+    const res = await fetch(graphqlUrl, {
+        method: 'POST',
+        headers: JSON_POST_HEADERS,
+        body: JSON.stringify({ query, variables })
+    });
+    let body: any = null;
+    try {
+        body = await res.json();
+    } catch {
+        // Not a GraphQL answer at all (a proxy error page, for instance): fall through to the status.
+    }
+    const firstError = body?.errors?.[0];
+    if (firstError) {
+        throw new OsgiServiceError(firstError.message, firstError.extensions?.code);
+    }
+    if (!res.ok || !body?.data) {
+        throw new OsgiServiceError(res.statusText || `HTTP ${res.status}`);
+    }
+    return body.data.osgiConfigManager;
 };
 
-export const osgiService = {
-    url: apiUrl, // Exposed for configUtils if needed
+const query = (fields: string, params = '', variables: Variables = {}) =>
+    request(`query${params} { osgiConfigManager { ${fields} } }`, variables);
 
+const mutation = (fields: string, params: string, variables: Variables) =>
+    request(`mutation${params} { osgiConfigManager { ${fields} } }`, variables);
+
+const parseJson = (value: string | null | undefined) => (value == null ? undefined : JSON.parse(value));
+
+/** Drop the keys the server returned as null, as the old endpoint simply left them out. */
+const withoutNulls = <T extends object>(value: T): T =>
+    Object.fromEntries(Object.entries(value).filter(([, v]) => v !== null && v !== undefined)) as T;
+
+const FILE_FIELDS = 'name path enabled type configState';
+
+export const osgiService = {
     getAll: async (search: string = '', deep: boolean = false): Promise<OsgiServiceResponse> => {
-        let url = apiUrl;
-        if (deep && search) {
-            url += `?search=${encodeURIComponent(search)}`;
-        }
-        return handleResponse(await fetch(url));
+        const result = deep && search
+            ? await query(`files(search: $search) { ${FILE_FIELDS} } uiConfig { visualFormattingControlsEnabled }`,
+                '($search: String)', { search })
+            : await query(`files { ${FILE_FIELDS} } uiConfig { visualFormattingControlsEnabled }`);
+        return { files: result.files, uiConfig: result.uiConfig };
     },
 
     read: async (filename: string): Promise<OsgiServiceResponse> => {
-        return handleResponse(await fetch(`${apiUrl}?filename=${encodeURIComponent(filename)}`));
+        const { file } = await query('file(name: $name) { configState rawContent pid properties metatype }',
+            '($name: String!)', { name: filename });
+        if (!file) {
+            throw new OsgiServiceError(`File not found: ${filename}`, 'NOT_FOUND');
+        }
+        return {
+            data: withoutNulls({
+                ...file,
+                properties: parseJson(file.properties),
+                metatype: parseJson(file.metatype)
+            })
+        };
     },
 
     getAvailableMetatypes: async (): Promise<OsgiServiceResponse> => {
-        return handleResponse(await fetch(`${apiUrl}?action=availableMetatypes`));
+        const { availableMetatypes } = await query('availableMetatypes');
+        return { metatypes: parseJson(availableMetatypes) ?? [] };
     },
 
     save: async (payload: OsgiPayload): Promise<OsgiServiceResponse> => {
-        return handleResponse(await fetch(apiUrl, {
-            method: 'POST',
-            headers: JSON_POST_HEADERS,
-            body: JSON.stringify(payload)
-        }));
+        await mutation('save(name: $name, rawContent: $rawContent)', '($name: String!, $rawContent: String!)',
+            { name: payload.filename, rawContent: payload.rawContent });
+        return { status: 'saved' };
     },
 
     toggle: async (filename: string): Promise<OsgiServiceResponse> => {
-        return handleResponse(await fetch(apiUrl, {
-            method: 'POST',
-            headers: JSON_POST_HEADERS,
-            body: JSON.stringify({ action: 'toggle', filename })
-        }));
+        await mutation('toggle(name: $name)', '($name: String!)', { name: filename });
+        return { status: 'toggled' };
     },
 
     markAsDefault: async (filename: string): Promise<OsgiServiceResponse> => {
-        return handleResponse(await fetch(apiUrl, {
-            method: 'POST',
-            headers: JSON_POST_HEADERS,
-            body: JSON.stringify({ action: 'markAsDefault', filename })
-        }));
+        await mutation('markAsDefault(name: $name)', '($name: String!)', { name: filename });
+        return { status: 'updated' };
     },
 
     delete: async (filename: string): Promise<OsgiServiceResponse> => {
-        return handleResponse(await fetch(apiUrl, {
-            method: 'POST',
-            headers: JSON_POST_HEADERS,
-            body: JSON.stringify({ action: 'delete', filename })
-        }));
+        await mutation('delete(name: $name)', '($name: String!)', { name: filename });
+        return { status: 'deleted' };
     },
 
     create: async (filename: string): Promise<OsgiServiceResponse> => {
-        return handleResponse(await fetch(apiUrl, {
-            method: 'POST',
-            headers: JSON_POST_HEADERS,
-            body: JSON.stringify({ action: 'create', filename })
-        }));
+        await mutation('create(name: $name)', '($name: String!)', { name: filename });
+        return { status: 'created' };
     },
 
     createFromMetatype: async (pid: string, instanceIdentifier?: string): Promise<OsgiServiceResponse> => {
-        return handleResponse(await fetch(apiUrl, {
-            method: 'POST',
-            headers: JSON_POST_HEADERS,
-            body: JSON.stringify({ action: 'createFromMetatype', pid, instanceIdentifier })
-        }));
+        const result = await mutation('createFromMetatype(pid: $pid, instanceIdentifier: $instanceIdentifier)',
+            '($pid: String!, $instanceIdentifier: String)', { pid, instanceIdentifier });
+        return { status: 'created', filename: result.createFromMetatype };
     },
 
     // filename is required: the server only decrypts a value that really belongs to a file the
     // caller may read, so it cannot be used as a decryption oracle for ciphertext found elsewhere.
     decrypt: async (value: string, filename: string): Promise<OsgiServiceResponse> => {
-        return handleResponse(await fetch(apiUrl, {
-            method: 'POST',
-            headers: JSON_POST_HEADERS,
-            body: JSON.stringify({ action: 'decrypt', value, filename })
-        }));
+        const result = await mutation('decrypt(name: $name, value: $value)', '($name: String!, $value: String!)',
+            { value, name: filename });
+        return { decryptedValue: result.decrypt };
     },
 
     encrypt: async (value: string): Promise<OsgiServiceResponse> => {
-        return handleResponse(await fetch(apiUrl, {
-            method: 'POST',
-            headers: JSON_POST_HEADERS,
-            body: JSON.stringify({ action: 'encrypt', value })
-        }));
+        const result = await mutation('encrypt(value: $value)', '($value: String!)', { value });
+        return { encryptedValue: result.encrypt };
     },
 
     getPreference: async (key: string): Promise<OsgiServiceResponse> => {
-        return handleResponse(await fetch(`${apiUrl}?action=getPreference&key=${encodeURIComponent(key)}`));
+        const { preference } = await query('preference(key: $key)', '($key: String!)', { key });
+        return preference == null ? {} : { value: preference };
     },
 
     setPreference: async (key: string, value: string): Promise<OsgiServiceResponse> => {
-        return handleResponse(await fetch(apiUrl, {
-            method: 'POST',
-            headers: JSON_POST_HEADERS,
-            body: JSON.stringify({ action: 'setPreference', key, value })
-        }));
+        const result = await mutation('setPreference(key: $key, value: $value)', '($key: String!, $value: String)',
+            { key, value });
+        // Only report success when something was actually stored: with no user node it is a no-op.
+        return result.setPreference ? { status: 'preferenceSaved' } : {};
     }
 };

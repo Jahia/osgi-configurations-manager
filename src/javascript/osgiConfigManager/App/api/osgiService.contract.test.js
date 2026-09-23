@@ -1,84 +1,73 @@
 import { osgiService } from './osgiService';
 
-// Locks the HTTP request shape (method, URL, body) of every osgiService method.
-// The upcoming CSRF work will add a token header to the mutating calls; these
-// tests ensure that change does not silently alter the existing payloads/URLs.
+// Locks the request every osgiService method sends: one POST to /modules/graphql, carrying the
+// headers the server requires of a mutation (X-Requested-With plus an application/json body are
+// its CSRF defence), an operation under the single osgiConfigManager namespace, and variables
+// rather than values spliced into the query text.
 
 global.fetch = jest.fn();
 
-const okJson = () => ({
+const okGraphQL = (osgiConfigManager = {}) => ({
     ok: true,
-    headers: { get: () => 'application/json' },
-    json: async () => ({})
+    json: async () => ({ data: { osgiConfigManager } })
 });
 
-const lastCall = () => fetch.mock.calls[fetch.mock.calls.length - 1];
+const lastRequest = () => {
+    const [url, init] = fetch.mock.calls[fetch.mock.calls.length - 1];
+    return { url, init, body: JSON.parse(init.body) };
+};
 
 describe('osgiService request contract', () => {
     beforeEach(() => {
         fetch.mockReset();
-        fetch.mockResolvedValue(okJson());
+        fetch.mockResolvedValue(okGraphQL());
     });
 
     it.each([
-        ['toggle', () => osgiService.toggle('conf.cfg'), '{"action":"toggle","filename":"conf.cfg"}'],
-        ['delete', () => osgiService.delete('conf.cfg'), '{"action":"delete","filename":"conf.cfg"}'],
-        ['markAsDefault', () => osgiService.markAsDefault('conf.cfg'), '{"action":"markAsDefault","filename":"conf.cfg"}'],
-        ['create', () => osgiService.create('conf.cfg'), '{"action":"create","filename":"conf.cfg"}'],
-        ['encrypt', () => osgiService.encrypt('sec'), '{"action":"encrypt","value":"sec"}'],
-        ['setPreference', () => osgiService.setPreference('k', 'v'), '{"action":"setPreference","key":"k","value":"v"}']
-    ])('%s issues a POST with the expected JSON body', async (_name, invoke, expectedBody) => {
-        await invoke();
+        ['getAll', () => osgiService.getAll(), 'query', {}],
+        ['getAll (deep)', () => osgiService.getAll('foo', true), 'query', { search: 'foo' }],
+        ['read', () => osgiService.read('conf.cfg'), 'query', { name: 'conf.cfg' }],
+        ['getAvailableMetatypes', () => osgiService.getAvailableMetatypes(), 'query', {}],
+        ['getPreference', () => osgiService.getPreference('osgiEditorMode'), 'query', { key: 'osgiEditorMode' }],
+        ['save', () => osgiService.save({ action: 'save', filename: 'conf.cfg', rawContent: 'a = 1\n' }),
+            'mutation', { name: 'conf.cfg', rawContent: 'a = 1\n' }],
+        ['toggle', () => osgiService.toggle('conf.cfg'), 'mutation', { name: 'conf.cfg' }],
+        ['delete', () => osgiService.delete('conf.cfg'), 'mutation', { name: 'conf.cfg' }],
+        ['markAsDefault', () => osgiService.markAsDefault('conf.cfg'), 'mutation', { name: 'conf.cfg' }],
+        ['create', () => osgiService.create('conf.cfg'), 'mutation', { name: 'conf.cfg' }],
+        ['createFromMetatype', () => osgiService.createFromMetatype('my.pid', 'inst1'),
+            'mutation', { pid: 'my.pid', instanceIdentifier: 'inst1' }],
+        ['encrypt', () => osgiService.encrypt('sec'), 'mutation', { value: 'sec' }],
+        ['decrypt', () => osgiService.decrypt('ENC(sec)', 'conf.cfg'), 'mutation', { value: 'ENC(sec)', name: 'conf.cfg' }],
+        ['setPreference', () => osgiService.setPreference('k', 'v'), 'mutation', { key: 'k', value: 'v' }]
+    ])('%s POSTs a GraphQL %s to /modules/graphql', async (_name, invoke, operation, variables) => {
+        // Only the request is under test here; the empty answer may legitimately be rejected.
+        await invoke().catch(() => undefined);
 
-        const [url, options] = lastCall();
-        expect(url).toEqual(expect.stringContaining('systemsite.osgiConfigManager.do'));
-        expect(options.method).toBe('POST');
-        // CSRF: every mutating POST carries the custom header alongside the JSON content type.
-        expect(options.headers).toEqual({ 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' });
-        expect(options.body).toBe(expectedBody);
+        const { url, init, body } = lastRequest();
+        expect(url).toMatch(/\/modules\/graphql$/);
+        expect(init.method).toBe('POST');
+        expect(init.headers).toEqual({ 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' });
+        expect(body.query.trim().startsWith(operation)).toBe(true);
+        expect(body.query).toContain('osgiConfigManager');
+        expect(body.variables).toEqual(variables);
     });
 
-    it('decrypt posts the value together with its file (file-bound, not an oracle)', async () => {
+    it('never splices a caller value into the query text', async () => {
+        await osgiService.save({ action: 'save', filename: 'x"){evil}', rawContent: '"}}' });
+
+        expect(lastRequest().body.query).not.toContain('evil');
+    });
+
+    it('decrypt names the file the value belongs to (file-bound, not an oracle)', async () => {
         await osgiService.decrypt('ENC(sec)', 'conf.cfg');
 
-        const [, options] = lastCall();
-        expect(options.method).toBe('POST');
-        expect(options.body).toBe('{"action":"decrypt","value":"ENC(sec)","filename":"conf.cfg"}');
+        expect(lastRequest().body.query).toMatch(/decrypt\(\s*name:\s*\$name/);
     });
 
-    it('createFromMetatype posts pid and instanceIdentifier', async () => {
-        await osgiService.createFromMetatype('my.pid', 'inst1');
+    it('does not send a search term unless a deep search was asked for', async () => {
+        await osgiService.getAll('foo', false);
 
-        const [, options] = lastCall();
-        expect(options.method).toBe('POST');
-        expect(options.body).toBe('{"action":"createFromMetatype","pid":"my.pid","instanceIdentifier":"inst1"}');
-    });
-
-    it('getPreference issues a GET with action and key in the query string', async () => {
-        await osgiService.getPreference('osgiEditorMode');
-
-        const [url, options] = lastCall();
-        expect(url).toEqual(expect.stringContaining('?action=getPreference&key=osgiEditorMode'));
-        // GET => no options object passed
-        expect(options).toBeUndefined();
-    });
-
-    it('getAvailableMetatypes issues a GET for availableMetatypes', async () => {
-        await osgiService.getAvailableMetatypes();
-
-        const [url] = lastCall();
-        expect(url).toEqual(expect.stringContaining('?action=availableMetatypes'));
-    });
-
-    it('throws the server-provided message for a JSON error response', async () => {
-        fetch.mockResolvedValueOnce({
-            ok: false,
-            statusText: 'Bad Request',
-            headers: { get: () => 'application/json' },
-            json: async () => ({ error: 'Access denied: conf.cfg is reserved' })
-        });
-
-        await expect(osgiService.save({ action: 'save', filename: 'conf.cfg' }))
-            .rejects.toThrow('Access denied: conf.cfg is reserved');
+        expect(lastRequest().body.variables).toEqual({});
     });
 });

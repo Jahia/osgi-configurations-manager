@@ -14,6 +14,8 @@ const SELF_PID = 'org.jahia.modules.osgiconfigmanager';
 const SELF_FILE = `${SELF_PID}.cfg`;
 const ENCRYPTED_PASSPHRASE_CONTENT = 'filteredFiles = org.apache.*, jmx.*\ncryptoSecret = ENC(v2:not-a-passphrase)\n';
 
+const SAVE = ['save(name: $name, rawContent: $rawContent)', '($name: String!, $rawContent: String!)'] as const;
+
 describe('OSGi Configurations Manager - cryptoSecret stays in clear text', () => {
     let createdForThisSpec = false;
     let contentBefore: string | null = null;
@@ -29,8 +31,8 @@ describe('OSGi Configurations Manager - cryptoSecret stays in clear text', () =>
                     contentBefore = String(rawContent);
                 });
             } else {
-                cy.osgiRequest({method: 'POST', body: {action: 'createFromMetatype', pid: SELF_PID}})
-                    .its('status').should('eq', 200);
+                cy.osgiMutation('createFromMetatype(pid: $pid)', '($pid: String!)', {pid: SELF_PID})
+                    .its('error').should('be.null');
                 createdForThisSpec = true;
             }
         });
@@ -50,12 +52,9 @@ describe('OSGi Configurations Manager - cryptoSecret stays in clear text', () =>
                     .to.include('# cryptoSecret is the encryption passphrase itself');
             }
 
-            cy.osgiRequest({
-                method: 'POST',
-                body: {action: 'save', filename: SELF_FILE, rawContent: ENCRYPTED_PASSPHRASE_CONTENT}
-            }).then(response => {
-                expect(response.status, 'refused').to.be.at.least(400);
-                expect(String(response.body?.error)).to.include('cryptoSecret');
+            cy.osgiMutation(...SAVE, {name: SELF_FILE, rawContent: ENCRYPTED_PASSPHRASE_CONTENT}).then(response => {
+                expect(response.code, 'refused').to.eq('BAD_REQUEST');
+                expect(String(response.error)).to.include('cryptoSecret');
             });
 
             cy.readOsgiFile(SELF_FILE).its('data.rawContent').should('eq', before);

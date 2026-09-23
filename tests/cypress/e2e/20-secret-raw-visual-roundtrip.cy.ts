@@ -25,6 +25,8 @@ const revealSecret = (index: number) => {
     return cy.get(`[data-cy="cfg-value-${index}"]`).should('have.attr', 'type', 'text');
 };
 
+const DECRYPT = ['decrypt(name: $name, value: $value)', '($name: String!, $value: String!)'] as const;
+
 describe('OSGi Configurations Manager - Secrets survive the raw/visual round trip', () => {
     let onDiskCiphertext: string;
 
@@ -32,8 +34,8 @@ describe('OSGi Configurations Manager - Secrets survive the raw/visual round tri
         cy.login();
         cleanupFiles([FILE]);
 
-        cy.osgiRequest({method: 'POST', body: {action: 'encrypt', value: SECRET}})
-            .its('body.encryptedValue').then(encrypted => {
+        cy.osgiMutation('encrypt(value: $value)', '($value: String!)', {value: SECRET})
+            .its('data.encrypt').then((encrypted: string) => {
                 expect(encrypted, 'ENC envelope').to.match(/^ENC\(.+\)$/);
                 onDiskCiphertext = encrypted;
                 cy.upsertOsgiFile(FILE, `password = ${encrypted}\n`).its('status').should('eq', 200);
@@ -121,8 +123,7 @@ describe('OSGi Configurations Manager - Secrets survive the raw/visual round tri
             expect(rawContent).not.to.include(EDITED_SECRET);
             expect(rawContent).not.to.include(onDiskCiphertext);
             const saved = String(rawContent).trim().replace('password = ', '');
-            cy.osgiRequest({method: 'POST', body: {action: 'decrypt', value: saved, filename: FILE}})
-                .its('body.decryptedValue').should('eq', EDITED_SECRET);
+            cy.osgiMutation(...DECRYPT, {name: FILE, value: saved}).its('data.decrypt').should('eq', EDITED_SECRET);
         });
     });
 });

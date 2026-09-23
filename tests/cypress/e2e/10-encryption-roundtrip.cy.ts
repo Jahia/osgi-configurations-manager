@@ -6,8 +6,6 @@ import {cleanupFiles} from './osgiTestUtils';
  * ENC(...) on disk, and decryptable back to the original plaintext for an authorized viewer.
  * (Cryptographic WEAKNESS is asserted separately in the JUnit CryptoEngine spec S1.)
  */
-const ACTION_PATH = '/cms/render/default/en/sites/systemsite.osgiConfigManager.do';
-
 describe('OSGi Configurations Manager - Encryption round-trip', () => {
     const file = 'org.jahia.modules.e2e-encryption-roundtrip.cfg';
     const secret = 'top-secret-value-42';
@@ -23,22 +21,23 @@ describe('OSGi Configurations Manager - Encryption round-trip', () => {
 
     it('wraps a saved value as ENC(...) on disk and decrypts back to plaintext', () => {
         // Encrypt via the backend
-        cy.osgiRequest({method: 'POST', body: {action: 'encrypt', value: secret}})
-            .its('body.encryptedValue').then(encrypted => {
+        cy.osgiMutation('encrypt(value: $value)', '($value: String!)', {value: secret})
+            .its('data.encrypt').then(encrypted => {
                 expect(encrypted, 'ENC envelope').to.match(/^ENC\(.+\)$/);
 
                 // Save a config carrying the encrypted value
                 cy.upsertOsgiFile(file, `password = ${encrypted}\n`);
 
                 // Reading the file back shows the ENC(...) wrapper on disk (not the plaintext)
-                cy.osgiRequest({method: 'GET', url: `${ACTION_PATH}?filename=${file}`})
-                    .its('body.data.rawContent').should('contain', encrypted)
+                cy.readOsgiFile(file)
+                    .its('data.rawContent').should('contain', encrypted)
                     .and('not.contain', secret);
 
                 // Decrypt-on-view returns the original plaintext — naming the file the value was
                 // just saved into, since decryption is file-bound
-                cy.osgiRequest({method: 'POST', body: {action: 'decrypt', value: encrypted, filename: file}})
-                    .its('body.decryptedValue').should('eq', secret);
+                const decryptFields = 'decrypt(name: $name, value: $value)';
+                cy.osgiMutation(decryptFields, '($name: String!, $value: String!)', {name: file, value: encrypted})
+                    .its('data.decrypt').should('eq', secret);
             });
     });
 });

@@ -17,11 +17,16 @@ Project guidance for Claude Code and other AI agents.
 Each of these closed a real defect. The code carries a comment at each site explaining the case; if
 a change appears to require relaxing one, that comment is the thing to read first.
 
-- **The action never runs on a system session or for guest.** A `form-token` promotes the request
-  to a system action, which skips the declarative requirements and hands `doExecute` a system session
-  on which `hasPermission` is always true. So `OsgiConfigAction.doExecute` rejects `session.isSystem()`
-  and a guest caller before anything else. Read the caller identity from `renderContext.getUser()`,
-  which the promotion does not elevate, never from the passed session.
+- **Access is decided once, in the GraphQL namespace field, on the caller's own session.**
+  `OsgiConfigGqlSupport.authorize` refuses guest and any system session (on which `hasPermission` is
+  always true: that is how SEC-138 bypassed the old `.do` Action), then requires
+  `canManageOsgiConfigurations` on `/` **and** `admin` on `/sites/systemsite`, the Action's two
+  requirements. The containers behind `Query.osgiConfigManager` / `Mutation.osgiConfigManager` trust
+  the `GqlCaller` they are given, so a new operation must be added *under* a namespace, never as a
+  root field or a separate endpoint.
+- **Only `OsgiConfigGqlException` reaches the client.** The provider renders any other exception
+  with its raw message, which here means absolute server paths, so every failure goes through
+  `OsgiConfigGqlSupport.translate`.
 - **Encryption fails closed.** `CryptoEngine.encryptString` throws rather than returning its input,
   because returning the input on error meant persisting a secret in clear.
 - **Decryption degrades on read, but only in the service.** `OsgiConfigService.decrypt` hands the
@@ -41,7 +46,7 @@ a change appears to require relaxing one, that comment is the thing to read firs
   manager's own PID.** Removing the key would disguise a wrong secret as a missing setting, and the
   manager's configuration carries the secret everything else is decrypted with. It modifies only the
   delivered copy, never the file.
-- **The decryption probe reports shapes, never values.** `?action=pluginProbe` says `plaintext` or
+- **The decryption probe reports shapes, never values.** The `pluginProbe` query says `plaintext` or
   `encrypted` per key; echoing a value would turn the probe into a decryption oracle.
 - **`ConfigFileFilter` publishes one immutable snapshot behind a `volatile` reference.** This
   guarantees consistency *within* a single `isFilenameAllowed` call. Two successive calls may
@@ -70,9 +75,12 @@ theorising — `unzip -p <jar> <chunk>` settled it in one command.
 
 ## Mutating requests
 
-State-changing POSTs must carry both an `X-Requested-With` header (any value) and an
-`application/json` content type. A missing header is a 403, a wrong media type a 415. Both are CSRF
-defences; keep them on any new mutating endpoint.
+The API is `/modules/graphql`, which is **not CSRF-safe on its own**: the servlet will parse the JSON
+inside a `text/plain` body, a type a cross-site form can send without a preflight. So the mutation
+namespace refuses, before touching the repository, any request without an `X-Requested-With` header
+(`FORBIDDEN`) or whose *parsed* media type is not `application/json` (`UNSUPPORTED_MEDIA_TYPE`).
+`text/plain;application/json` is text/plain. Both are CSRF defences; keep them on any new mutation.
+Errors come back as HTTP 200 with the outcome in `errors[0].extensions.code`, not as a status code.
 
 ## Code navigation
 

@@ -21,8 +21,8 @@ describe('OSGi Configurations Manager - Password attributes are encrypted by def
     });
 
     it('flags the Password attribute in the generated template', () => {
-        cy.osgiRequest({method: 'POST', body: {action: 'createFromMetatype', pid: PROBE_PID}})
-            .its('status').should('eq', 200);
+        cy.osgiMutation('createFromMetatype(pid: $pid)', '($pid: String!)', {pid: PROBE_PID})
+            .its('error').should('be.null');
 
         cy.readOsgiFile(PROBE_FILE).its('data.rawContent')
             .should('contain', `# PID: ${PROBE_PID}`)
@@ -31,8 +31,8 @@ describe('OSGi Configurations Manager - Password attributes are encrypted by def
     });
 
     it('adds a Password attribute from the picker already encrypted and saves it as ENC(...)', () => {
-        cy.osgiRequest({method: 'POST', body: {action: 'createFromMetatype', pid: PROBE_PID}})
-            .its('status').should('eq', 200);
+        cy.osgiMutation('createFromMetatype(pid: $pid)', '($pid: String!)', {pid: PROBE_PID})
+            .its('error').should('be.null');
 
         cy.openOsgiConfigManager();
         cy.openOsgiFile(PROBE_FILE);

@@ -682,7 +682,6 @@ export const useOsgiConfigs = () => {
         setModalConfig,
         diffConfig,
         setDiffConfig,
-        apiUrl: osgiService.url,
         isYamlValid,
         setIsYamlValid,
         searchInContent,

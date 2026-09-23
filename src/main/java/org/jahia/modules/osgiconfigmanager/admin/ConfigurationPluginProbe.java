@@ -31,7 +31,7 @@ import java.util.Map;
 @Designate(ocd = ConfigurationPluginProbe.Config.class)
 public class ConfigurationPluginProbe {
 
-    static final String PID = "org.jahia.modules.osgiconfigmanager.probe";
+    public static final String PID = "org.jahia.modules.osgiconfigmanager.probe";
     static final String SHAPE_PLAINTEXT = "plaintext";
     static final String SHAPE_ENCRYPTED = "encrypted";
 

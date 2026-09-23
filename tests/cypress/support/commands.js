@@ -160,20 +160,24 @@ Cypress.Commands.add('logLocalStorage', () => {
     });
 });
 
-const OSGI_ACTION_PATH = '/cms/render/default/en/sites/systemsite.osgiConfigManager.do';
+const GRAPHQL_PATH = '/modules/graphql';
 const OSGI_ADMIN_PATH = '/jahia/administration/osgi-configurations-manager';
 
 /**
- * Low-level helper around the module action endpoint.
- * Keeping it in one place makes the spec easier to read and update.
+ * Low-level helper around the module's GraphQL API. It sends what the real UI sends: a JSON POST
+ * carrying X-Requested-With, which the server requires of every mutation (CSRF defence).
+ * Callers can override a header, or strip it by passing it as null, and can replace the whole
+ * body (with `body`) to probe request shapes a browser would send.
  */
-Cypress.Commands.add('osgiRequest', (options = {}) => {
-    const {url, headers, ...requestOptions} = options;
-
-    // The action refuses POSTs without this custom header (CSRF defense), mirroring what the
-    // real UI sends. Callers can override it, or strip it by passing the header as null.
+Cypress.Commands.add('osgiGql', (query, variables = {}, options = {}) => {
+    const {headers, ...requestOptions} = options;
+    // A browser on the Jahia page sends its Origin, which is what makes Jahia's security filter
+    // treat the call as same-origin ("hosted") and apply the module's scope. cy.request runs from
+    // Node and sends none, so without this every call would be refused as an external one.
     const mergedHeaders = {
+        'Content-Type': 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
+        Origin: new URL(Cypress.config('baseUrl')).origin,
         ...(headers || {})
     };
     Object.keys(mergedHeaders).forEach(key => {
@@ -183,28 +187,62 @@ Cypress.Commands.add('osgiRequest', (options = {}) => {
     });
 
     return cy.request({
-        url: url || OSGI_ACTION_PATH,
+        method: 'POST',
+        url: GRAPHQL_PATH,
         failOnStatusCode: false,
+        body: {query, variables},
         ...requestOptions,
         headers: mergedHeaders
     });
 });
 
 /**
- * List files exposed by the OSGi configuration manager backend.
+ * Flatten a GraphQL answer to what a spec asserts on: the namespace data, and the first error's
+ * message and extensions.code.
  */
-Cypress.Commands.add('listOsgiFiles', () => {
-    return cy.osgiRequest({method: 'GET'}).its('body.files');
+const toOsgiResult = res => {
+    const firstError = res.body?.errors?.[0];
+    return {
+        status: res.status,
+        data: res.body?.data?.osgiConfigManager ?? null,
+        error: firstError?.message ?? null,
+        code: firstError?.extensions?.code ?? null
+    };
+};
+
+/**
+ * Run `fields` under Query.osgiConfigManager. `params` declares the variables, e.g. '($name: String!)'.
+ */
+Cypress.Commands.add('osgiQuery', (fields, params = '', variables = {}, options = {}) => {
+    return cy.osgiGql(`query${params} { osgiConfigManager { ${fields} } }`, variables, options).then(toOsgiResult);
 });
 
 /**
- * Read a single file from the backend API.
+ * Run `fields` under Mutation.osgiConfigManager.
+ */
+Cypress.Commands.add('osgiMutation', (fields, params = '', variables = {}, options = {}) => {
+    return cy.osgiGql(`mutation${params} { osgiConfigManager { ${fields} } }`, variables, options).then(toOsgiResult);
+});
+
+/**
+ * List files exposed by the OSGi configuration manager backend.
+ */
+Cypress.Commands.add('listOsgiFiles', () => {
+    return cy.osgiQuery('files { name path enabled type configState }').its('data.files');
+});
+
+/**
+ * Read a single file from the backend API, as {data: {rawContent, properties, ...}} or {error}.
  */
 Cypress.Commands.add('readOsgiFile', filename => {
-    return cy.osgiRequest({
-        method: 'GET',
-        url: `${OSGI_ACTION_PATH}?filename=${encodeURIComponent(filename)}`
-    }).its('body');
+    return cy.osgiQuery('file(name: $name) { configState rawContent pid properties }', '($name: String!)',
+        {name: filename}).then(result => {
+        if (result.error) {
+            return {error: result.error, code: result.code};
+        }
+        const file = result.data.file;
+        return {data: {...file, properties: file.properties ? JSON.parse(file.properties) : undefined}};
+    });
 });
 
 /**
@@ -212,28 +250,18 @@ Cypress.Commands.add('readOsgiFile', filename => {
  * This keeps the setup deterministic and reserves the UI interactions for the behavior we want to validate.
  */
 Cypress.Commands.add('upsertOsgiFile', (filename, rawContent = '') => {
-    return cy.osgiRequest({
-        method: 'POST',
-        body: {
-            action: 'create',
-            filename
-        }
-    }).then(response => {
-        if (![200, 500].includes(response.status)) {
-            throw new Error(`Unexpected status while creating ${filename}: ${response.status}`);
+    return cy.osgiMutation('create(name: $name)', '($name: String!)', {name: filename}).then(created => {
+        if (created.error && !/already exists/i.test(created.error)) {
+            throw new Error(`Unable to create ${filename}: ${created.error}`);
         }
 
-        if (response.status === 500 && !String(response.body?.error || '').includes('File already exists')) {
-            throw new Error(`Unable to create ${filename}: ${response.body?.error || response.status}`);
-        }
-
-        return cy.osgiRequest({
-            method: 'POST',
-            body: {
-                action: 'save',
-                filename,
-                rawContent
+        return cy.osgiMutation('save(name: $name, rawContent: $rawContent)', '($name: String!, $rawContent: String!)',
+            {name: filename, rawContent}).then(saved => {
+            if (saved.error) {
+                throw new Error(`Unable to save ${filename}: ${saved.error}`);
             }
+
+            return saved;
         });
     });
 });
@@ -251,13 +279,7 @@ Cypress.Commands.add('cleanupOsgiFile', filename => {
     }
 
     return cy.wrap(candidates).each(candidate => {
-        cy.osgiRequest({
-            method: 'POST',
-            body: {
-                action: 'delete',
-                filename: candidate
-            }
-        });
+        cy.osgiMutation('delete(name: $name)', '($name: String!)', {name: candidate});
     });
 });
 
@@ -368,10 +390,13 @@ Cypress.Commands.add('assertToastContains', message => {
  * Fetch the metatype catalog exposed by the backend.
  */
 Cypress.Commands.add('getAvailableMetatypes', () => {
-    return cy.osgiRequest({
-        method: 'GET',
-        url: '/cms/render/default/en/sites/systemsite.osgiConfigManager.do?action=availableMetatypes'
-    }).its('body.metatypes');
+    return cy.osgiQuery('availableMetatypes').then(result => {
+        if (result.error) {
+            throw new Error(`Unable to list metatypes: ${result.error}`);
+        }
+
+        return JSON.parse(result.data.availableMetatypes);
+    });
 });
 
 /**
