@@ -34,7 +34,9 @@ export default defineConfig({
                     }
                 }
             );
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
+
+            // The plugins file is CommonJS. typescript-eslint v8 renamed no-var-requires to this rule.
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
             return require('./cypress/plugins/index.js')(on, config);
         },
         excludeSpecPattern: '*.ignore.ts',
