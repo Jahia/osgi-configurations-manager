@@ -1,13 +1,20 @@
 package org.jahia.modules.osgiconfigmanager.graphql;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jahia.modules.osgiconfigmanager.admin.ConfigNotFoundException;
 import org.jahia.modules.osgiconfigmanager.admin.OsgiConfigService;
+import org.jahia.services.content.JCRNodeWrapper;
+import org.jahia.services.content.JCRPropertyWrapper;
 import org.jahia.services.content.JCRSessionWrapper;
 import org.jahia.services.usermanager.JahiaUser;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -27,14 +34,29 @@ import static org.mockito.Mockito.when;
 class OsgiConfigManagerQueryTest {
 
     private OsgiConfigService service;
+    private JCRSessionWrapper session;
     private OsgiConfigManagerQuery query;
+    private ListAppender<ILoggingEvent> audit;
+    private Logger supportLogger;
 
     @BeforeEach
     void setUp() {
         service = mock(OsgiConfigService.class);
+        session = mock(JCRSessionWrapper.class);
         JahiaUser user = mock(JahiaUser.class);
         when(user.getName()).thenReturn("root");
-        query = new OsgiConfigManagerQuery(service, new GqlCaller(user, mock(JCRSessionWrapper.class), Locale.FRENCH));
+        when(user.getLocalPath()).thenReturn("/users/root");
+        query = new OsgiConfigManagerQuery(service, new GqlCaller(user, session, Locale.FRENCH));
+
+        supportLogger = (Logger) LoggerFactory.getLogger(OsgiConfigGqlSupport.class);
+        audit = new ListAppender<>();
+        audit.start();
+        supportLogger.addAppender(audit);
+    }
+
+    @AfterEach
+    void tearDown() {
+        supportLogger.detachAppender(audit);
     }
 
     private static Map<String, Object> fileEntry(String name) {
@@ -132,5 +154,48 @@ class OsgiConfigManagerQueryTest {
 
         assertEquals("BAD_REQUEST", e.getExtensions().get("code"));
         verify(service, never()).listFiles(anyBoolean());
+    }
+
+    @Test
+    @DisplayName("a read is audited with the caller, since it can expose ENC values")
+    void file_isAudited() throws Exception {
+        when(service.readFile("a.cfg", Locale.FRENCH, true)).thenReturn(new LinkedHashMap<>());
+
+        query.file("a.cfg");
+
+        assertTrue(audit.list.stream().anyMatch(e ->
+                e.getFormattedMessage().equals("[AUDIT] User: root | Action: read | File: a.cfg")));
+    }
+
+    @Test
+    @DisplayName("an unexpected failure is reported generically")
+    void file_unexpectedFailure_isInternal() throws Exception {
+        when(service.readFile("a.cfg", Locale.FRENCH, true)).thenThrow(new IllegalStateException("detail /opt/x/y"));
+
+        OsgiConfigGqlException e = assertThrows(OsgiConfigGqlException.class, () -> query.file("a.cfg"));
+
+        assertEquals("INTERNAL", e.getExtensions().get("code"));
+    }
+
+    @Test
+    @DisplayName("preference reads the value stored on the caller's own user node")
+    void preference_allowedKey_readsCallerNode() throws Exception {
+        JCRNodeWrapper userNode = mock(JCRNodeWrapper.class);
+        JCRPropertyWrapper property = mock(JCRPropertyWrapper.class);
+        when(session.nodeExists("/users/root")).thenReturn(true);
+        when(session.getNode("/users/root")).thenReturn(userNode);
+        when(userNode.hasProperty("osgiEditorMode")).thenReturn(true);
+        when(userNode.getProperty("osgiEditorMode")).thenReturn(property);
+        when(property.getString()).thenReturn("raw");
+
+        assertEquals("raw", query.preference("osgiEditorMode"));
+    }
+
+    @Test
+    @DisplayName("preference is null when the caller never stored it")
+    void preference_unset_isNull() throws Exception {
+        when(session.nodeExists("/users/root")).thenReturn(false);
+
+        assertNull(query.preference("osgiEditorMode"));
     }
 }

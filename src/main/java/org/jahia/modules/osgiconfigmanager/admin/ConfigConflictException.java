@@ -4,7 +4,7 @@ import java.io.IOException;
 
 /**
  * Raised when an operation would collide with an existing file (create/rename target already
- * exists). Mapped to HTTP 409 by {@link OsgiConfigAction}.
+ * exists). Reported by the GraphQL API with the code {@code CONFLICT}.
  */
 public class ConfigConflictException extends IOException {
     public ConfigConflictException(String message) {

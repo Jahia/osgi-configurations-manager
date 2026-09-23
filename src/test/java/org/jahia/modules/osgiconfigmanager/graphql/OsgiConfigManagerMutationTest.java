@@ -5,6 +5,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import org.jahia.modules.osgiconfigmanager.admin.ConfigConflictException;
 import org.jahia.modules.osgiconfigmanager.admin.OsgiConfigService;
+import org.jahia.services.content.JCRNodeWrapper;
 import org.jahia.services.content.JCRSessionWrapper;
 import org.jahia.services.usermanager.JahiaUser;
 import org.junit.jupiter.api.AfterEach;
@@ -31,6 +32,7 @@ import static org.mockito.Mockito.when;
 class OsgiConfigManagerMutationTest {
 
     private OsgiConfigService service;
+    private JCRSessionWrapper session;
     private OsgiConfigManagerMutation mutation;
     private ListAppender<ILoggingEvent> audit;
     private Logger supportLogger;
@@ -40,8 +42,9 @@ class OsgiConfigManagerMutationTest {
         service = mock(OsgiConfigService.class);
         JahiaUser user = mock(JahiaUser.class);
         when(user.getName()).thenReturn("alice");
-        mutation = new OsgiConfigManagerMutation(service,
-                new GqlCaller(user, mock(JCRSessionWrapper.class), Locale.GERMAN));
+        when(user.getLocalPath()).thenReturn("/users/alice");
+        session = mock(JCRSessionWrapper.class);
+        mutation = new OsgiConfigManagerMutation(service, new GqlCaller(user, session, Locale.GERMAN));
 
         supportLogger = (Logger) LoggerFactory.getLogger(OsgiConfigGqlSupport.class);
         audit = new ListAppender<>();
@@ -132,5 +135,41 @@ class OsgiConfigManagerMutationTest {
 
         assertEquals("BAD_REQUEST", e.getExtensions().get("code"));
         verify(service, never()).saveFile(anyString(), any(), anyBoolean());
+    }
+
+    @Test
+    @DisplayName("encrypt, decrypt and setPreference are audited like every other mutation")
+    void secretTouchingOperations_areAudited() throws Exception {
+        when(session.nodeExists("/users/alice")).thenReturn(false);
+
+        mutation.encrypt("s");
+        mutation.decrypt("a.cfg", "ENC(x)");
+        mutation.setPreference("osgiEditorMode", "raw");
+
+        assertTrue(audited("encrypt", "null"));
+        assertTrue(audited("decrypt", "a.cfg"));
+        assertTrue(audited("setPreference", "null"));
+    }
+
+    @Test
+    @DisplayName("setPreference writes on the caller's own user node and saves")
+    void setPreference_writesCallerNode() throws Exception {
+        JCRNodeWrapper userNode = mock(JCRNodeWrapper.class);
+        when(session.nodeExists("/users/alice")).thenReturn(true);
+        when(session.getNode("/users/alice")).thenReturn(userNode);
+
+        assertTrue(mutation.setPreference("osgiEditorMode", "raw"));
+
+        verify(userNode).setProperty("osgiEditorMode", "raw");
+        verify(session).save();
+    }
+
+    @Test
+    @DisplayName("setPreference reports no success when the caller has no user node")
+    void setPreference_noUserNode_isFalse() throws Exception {
+        when(session.nodeExists("/users/alice")).thenReturn(false);
+
+        assertEquals(Boolean.FALSE, mutation.setPreference("osgiEditorMode", "raw"));
+        verify(session, never()).save();
     }
 }
