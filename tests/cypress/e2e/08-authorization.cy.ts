@@ -2,40 +2,62 @@ import {createUser, deleteUser, grantRoles} from '@jahia/cypress';
 import {cleanupFiles} from './osgiTestUtils';
 
 /**
- * S22 (G3) + S21e (G4) — authorization negatives and the CSRF JSON-content-type guard through the
- * REAL Jahia security filter + Action servlet.
+ * S22 (G3) + S21e (G4) — authorization negatives and the CSRF guards, through the REAL Jahia
+ * security filter and GraphQL servlet.
  *
- * D5 — the tool now ships src/main/import/roles.xml with the server-role
+ * D5 — the tool ships src/main/import/roles.xml with the server-role
  * `osgi-configurations-manager-administrator` (carries `canManageOsgiConfigurations`). The scoped
  * users are provisioned HERE, in a before() hook, because the module (and hence its roles.xml) is
  * installed AFTER the provisioning manifest runs — so the role only exists once tests start.
- *   - AUTHORIZED_USER: server-administrator (passes the Action's required "admin") + the module role.
- *   - NEGATIVE_USER:   server-administrator only — passes "admin" but WITHOUT canManageOsgiConfigurations.
+ *   - AUTHORIZED_USER: server-administrator (holds "admin" on systemsite) + the module role.
+ *   - NEGATIVE_USER:   server-administrator only — holds "admin" but NOT canManageOsgiConfigurations.
  */
 const AUTHORIZED_USER = 'osgiAuthorizedUser';
 const NEGATIVE_USER = 'osgiPlainAdminUser';
 const PASSWORD = 'OsgiPerm9PwdTest';
 const MODULE_ROLE = 'osgi-configurations-manager-administrator';
 const SERVER_ADMIN_ROLE = 'server-administrator';
+const PROBE = 'authz-probe.cfg';
+
+const NAME = '($name: String!)';
+const NAME_VALUE = '($name: String!, $value: String!)';
 
 const STATE_CHANGING = [
-    {action: 'save', body: {action: 'save', filename: 'authz-probe.cfg', rawContent: 'k=v'}},
-    {action: 'toggle', body: {action: 'toggle', filename: 'authz-probe.cfg'}},
-    {action: 'delete', body: {action: 'delete', filename: 'authz-probe.cfg'}},
-    {action: 'markAsDefault', body: {action: 'markAsDefault', filename: 'authz-probe.cfg'}},
-    {action: 'create', body: {action: 'create', filename: 'authz-probe.cfg'}},
-    {action: 'encrypt', body: {action: 'encrypt', value: 'secret'}},
-    // Deliberately no filename: the permission check runs before any dispatch, so this must be
-    // refused as 403 rather than reaching the file-bound validation
-    {action: 'decrypt', body: {action: 'decrypt', value: 'ENC(x)'}}
+    {action: 'save', fields: 'save(name: $name, rawContent: "k=v")', params: NAME},
+    {action: 'toggle', fields: 'toggle(name: $name)', params: NAME},
+    {action: 'delete', fields: 'delete(name: $name)', params: NAME},
+    {action: 'markAsDefault', fields: 'markAsDefault(name: $name)', params: NAME},
+    {action: 'create', fields: 'create(name: $name)', params: NAME},
+    {action: 'encrypt', fields: 'encrypt(value: "secret")', params: ''},
+    // The permission check runs in the namespace field, before any operation is dispatched, so a
+    // value that is in no file is refused as a denial rather than reaching the file-bound check.
+    {action: 'decrypt', fields: 'decrypt(name: $name, value: "ENC(x)")', params: NAME}
 ];
+
+const create = (name: string) => cy.osgiMutation('create(name: $name)', NAME, {name});
+const encrypt = (value: string) => cy.osgiMutation('encrypt(value: $value)', '($value: String!)', {value});
+const decrypt = (name: string, value: string) => cy.osgiMutation('decrypt(name: $name, value: $value)', NAME_VALUE, {name, value});
+
+const expectDenied = (label: string) => (res: Cypress.OsgiGqlResult) => {
+    expect(res.data, `${label} returns nothing`).to.be.null;
+    expect(res.error, `${label} must be refused`).to.match(/denied|permission/i);
+};
+
+const expectForeignCiphertextRefused = (dec: Cypress.OsgiGqlResult) => {
+    expect(dec.code, 'a foreign ciphertext is refused').to.eq('BAD_REQUEST');
+    expect(dec.data, 'nothing is decrypted').to.be.null;
+};
+
+const expectNothingWritten = (label: string) => (res: Cypress.Response<Cypress.GraphQLBody>) => {
+    expect(res.body?.data?.osgiConfigManager ?? null, `${label} does nothing`).to.be.null;
+};
 
 describe('OSGi Configurations Manager - Authorization', () => {
     before(() => {
         cy.login();
         createUser(AUTHORIZED_USER, PASSWORD);
         createUser(NEGATIVE_USER, PASSWORD);
-        // Both are server administrators (so both pass the Action's required "admin" permission)
+        // Both are server administrators, so both hold "admin" on systemsite
         grantRoles('/', [SERVER_ADMIN_ROLE], AUTHORIZED_USER, 'USER');
         grantRoles('/', [SERVER_ADMIN_ROLE], NEGATIVE_USER, 'USER');
         // Only the authorized user additionally receives canManageOsgiConfigurations (module role)
@@ -53,16 +75,17 @@ describe('OSGi Configurations Manager - Authorization', () => {
             cy.login(NEGATIVE_USER, PASSWORD);
         });
 
-        it('is denied the GET listing (403)', () => {
-            cy.osgiRequest({method: 'GET'}).its('status').should('eq', 403);
+        it('is denied the listing', () => {
+            cy.osgiQuery('files { name }').then(expectDenied('the listing'));
         });
 
-        it('is denied every state-changing action (403, no side effect)', () => {
-            STATE_CHANGING.forEach(({action, body}) => {
-                cy.osgiRequest({method: 'POST', body}).then(res => {
-                    expect(res.status, `action ${action} must be forbidden`).to.eq(403);
-                });
+        it('is denied every state-changing operation (no side effect)', () => {
+            STATE_CHANGING.forEach(({action, fields, params}) => {
+                // Only declare $name where it is used: GraphQL rejects an unused variable outright.
+                cy.osgiMutation(fields, params, params ? {name: PROBE} : {}).then(expectDenied(action));
             });
+            cy.login();
+            cy.readOsgiFile(PROBE).its('code').should('eq', 'NOT_FOUND');
         });
     });
 
@@ -79,82 +102,62 @@ describe('OSGi Configurations Manager - Authorization', () => {
         });
 
         it('can list, create, read, save, and decrypt a value from its own file (D4)', () => {
-            cy.osgiRequest({method: 'GET'}).its('status').should('eq', 200);
-            cy.osgiRequest({method: 'POST', body: {action: 'create', filename: probe}})
-                .its('status').should('eq', 200);
-            cy.osgiRequest({method: 'GET', url: `/cms/render/default/en/sites/systemsite.osgiConfigManager.do?filename=${probe}`})
-                .its('status').should('eq', 200);
+            cy.osgiQuery('files { name }').its('error').should('be.null');
+            create(probe).its('data.create').should('eq', true);
+            cy.readOsgiFile(probe).its('error').should('be.undefined');
 
             // Decryption is FILE-BOUND: the caller names the file the ciphertext came from, and the
             // service requires the value to actually be in it. Round-trip a REAL value — the engine
             // fails loudly on a malformed ENC(...) rather than returning it unchanged.
-            cy.osgiRequest({method: 'POST', body: {action: 'encrypt', value: 'probe-secret'}})
-                .then(res => {
-                    expect(res.status, 'authorized user may encrypt').to.eq(200);
-                    const wrapped = res.body.encryptedValue;
-
-                    // Store it in the probe file, so it genuinely belongs there.
-                    cy.osgiRequest({
-                        method: 'POST',
-                        body: {action: 'save', filename: probe, rawContent: `sample.value = ${wrapped}\n`}
-                    }).its('status').should('eq', 200);
-
-                    cy.osgiRequest({method: 'POST', body: {action: 'decrypt', value: wrapped, filename: probe}})
-                        .then(dec => {
-                            expect(dec.status, 'authorized user may decrypt a value from that file').to.eq(200);
-                            expect(dec.body.decryptedValue).to.eq('probe-secret');
-                        });
-                });
+            encrypt('probe-secret').its('data.encrypt').then((wrapped: string) => {
+                // Store it in the probe file, so it genuinely belongs there.
+                cy.upsertOsgiFile(probe, `sample.value = ${wrapped}\n`);
+                decrypt(probe, wrapped).its('data.decrypt').should('eq', 'probe-secret');
+            });
         });
 
         it('cannot decrypt a value that does not belong to the named file (no oracle)', () => {
             // The ciphertext is genuine and the caller is authorized, but it is not in this file.
-            // Before decryption was file-bound this succeeded, which made the action usable to
+            // Before decryption was file-bound this succeeded, which made the API usable to
             // decrypt any ENC(...) obtained elsewhere — a backup, a log, a git history.
-            cy.osgiRequest({method: 'POST', body: {action: 'create', filename: probe}})
-                .its('status').should('eq', 200);
-            cy.osgiRequest({method: 'POST', body: {action: 'save', filename: probe, rawContent: 'unrelated = 1\n'}})
-                .its('status').should('eq', 200);
+            cy.upsertOsgiFile(probe, 'unrelated = 1\n');
 
-            cy.osgiRequest({method: 'POST', body: {action: 'encrypt', value: 'elsewhere-secret'}})
-                .then(res => {
-                    expect(res.status).to.eq(200);
-                    cy.osgiRequest({
-                        method: 'POST',
-                        body: {action: 'decrypt', value: res.body.encryptedValue, filename: probe}
-                    }).then(dec => {
-                        expect(dec.status, 'a foreign ciphertext is refused').to.eq(500);
-                        expect(dec.body.decryptedValue, 'nothing is decrypted').to.be.undefined;
-                    });
-                });
+            encrypt('elsewhere-secret').its('data.encrypt').then((wrapped: string) => {
+                decrypt(probe, wrapped).then(expectForeignCiphertextRefused);
+            });
         });
 
-        it('S28: rejects a POST missing the X-Requested-With header (403, no side effect)', () => {
+        it('S28: refuses a mutation missing the X-Requested-With header (no side effect)', () => {
             // A cy.request() is not a browser fetch, so it CAN omit the header a forged cross-site
             // request could never set — which is exactly what makes this simulation faithful.
-            cy.osgiRequest({
-                method: 'POST',
-                headers: {'X-Requested-With': null},
-                body: {action: 'create', filename: 'csrf-probe.cfg'}
-            }).then(res => {
-                expect(res.status, 'missing header is refused').to.eq(403);
-            });
-            // No side effect: the refused create must not have written the file, so reading it
-            // now answers 404 (ConfigNotFoundException) instead of the blanket 500.
-            cy.osgiRequest({method: 'GET', url: '/cms/render/default/en/sites/systemsite.osgiConfigManager.do?filename=csrf-probe.cfg'})
-                .its('status').should('eq', 404);
+            cy.osgiMutation('create(name: $name)', NAME, {name: 'csrf-probe.cfg'}, {headers: {'X-Requested-With': null}})
+                .its('code').should('eq', 'FORBIDDEN');
+            cy.readOsgiFile('csrf-probe.cfg').its('code').should('eq', 'NOT_FOUND');
         });
 
-        it('S21e: rejects a form-encoded POST (415) but accepts the same JSON payload', () => {
-            cy.osgiRequest({
-                method: 'POST',
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: 'action=create&filename=' + probe,
-                form: false
-            }).its('status').should('eq', 415);
+        it('S21e: refuses the same mutation sent as a CORS-simple text/plain body, accepts it as JSON', () => {
+            // A text/plain body is what a cross-site form or a no-preflight fetch can send. The
+            // GraphQL servlet still parses the JSON inside it, so only the module's media-type
+            // check stops it — including the variant that merely CONTAINS "application/json".
+            const operation = JSON.stringify({
+                query: `mutation${NAME} { osgiConfigManager { create(name: $name) } }`,
+                variables: {name: probe}
+            });
+            ['text/plain', 'text/plain;application/json'].forEach(contentType => {
+                cy.osgiGql('', {}, {headers: {'Content-Type': contentType}, body: operation})
+                    .then(expectNothingWritten(contentType));
+            });
+            cy.readOsgiFile(probe).its('code').should('eq', 'NOT_FOUND');
 
-            cy.osgiRequest({method: 'POST', body: {action: 'create', filename: probe}})
-                .its('status').should('eq', 200);
+            create(probe).its('data.create').should('eq', true);
+        });
+
+        it('the legacy .do Action endpoint no longer serves the API', () => {
+            cy.request({url: '/cms/render/default/en/sites/systemsite.osgiConfigManager.do', failOnStatusCode: false})
+                .then(res => {
+                    expect(res.status, 'the Action is gone').to.not.eq(200);
+                    expect(JSON.stringify(res.body || '')).to.not.contain('"files"');
+                });
         });
     });
 });
