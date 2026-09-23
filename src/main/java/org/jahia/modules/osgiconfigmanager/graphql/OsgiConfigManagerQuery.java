@@ -35,14 +35,22 @@ public class OsgiConfigManagerQuery {
     @GraphQLField
     @GraphQLDescription("Configuration files in karaf/etc, optionally filtered on name or content")
     public List<GqlConfigFile> files(@GraphQLName("search") String search) {
-        return service.searchFiles(search == null ? "" : search, caller.getLocale(), caller.isRoot())
-                .stream().map(GqlConfigFile::new).collect(Collectors.toList());
+        try {
+            return service.searchFiles(search == null ? "" : search, caller.getLocale(), caller.isRoot())
+                    .stream().map(GqlConfigFile::new).collect(Collectors.toList());
+        } catch (Exception e) {
+            throw OsgiConfigGqlSupport.translate(e);
+        }
     }
 
     @GraphQLField
     @GraphQLDescription("UI settings for the admin app")
     public GqlUiConfig uiConfig() {
-        return new GqlUiConfig(service.getUiConfig());
+        try {
+            return new GqlUiConfig(service.getUiConfig());
+        } catch (Exception e) {
+            throw OsgiConfigGqlSupport.translate(e);
+        }
     }
 
     @GraphQLField

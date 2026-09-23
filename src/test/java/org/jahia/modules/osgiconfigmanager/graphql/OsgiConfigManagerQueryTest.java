@@ -198,4 +198,14 @@ class OsgiConfigManagerQueryTest {
 
         assertNull(query.preference("osgiEditorMode"));
     }
+
+    @Test
+    @DisplayName("the listing never lets a raw exception through")
+    void files_unexpectedFailure_isInternal() {
+        when(service.searchFiles("", Locale.FRENCH, true)).thenThrow(new IllegalStateException("/opt/secret/path"));
+
+        OsgiConfigGqlException e = assertThrows(OsgiConfigGqlException.class, () -> query.files(null));
+
+        assertEquals("INTERNAL", e.getExtensions().get("code"));
+    }
 }

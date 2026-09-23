@@ -1,5 +1,6 @@
 package org.jahia.modules.osgiconfigmanager.graphql;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import graphql.schema.DataFetchingEnvironment;
 import org.jahia.modules.graphql.provider.dxm.util.ContextUtil;
 import org.jahia.modules.osgiconfigmanager.admin.ConfigAccessDeniedException;
@@ -37,8 +38,10 @@ final class OsgiConfigGqlSupport {
     private static final String GENERIC_ERROR_MESSAGE =
             "An internal error occurred while processing the request. See server logs for details.";
 
-    // Absolute unix paths of >=2 segments (e.g. /opt/karaf/etc/x.cfg) and Windows paths (C:\...).
-    private static final Pattern ABSOLUTE_PATH = Pattern.compile("(?:/[\\w.\\-]+){2,}|[A-Za-z]:\\\\[^\\s\"]+");
+    // Absolute unix paths of >=2 segments (e.g. /opt/karaf/etc/x.cfg), whatever characters a segment
+    // uses (non-ASCII included), and Windows paths (C:\...).
+    private static final Pattern ABSOLUTE_PATH = Pattern.compile("(?:/[^/\\s\"'<>]+){2,}|[A-Za-z]:\\\\[^\\s\"]+");
+    private static final Pattern CONTROL_CHARACTERS = Pattern.compile("\\p{Cntrl}");
 
     private OsgiConfigGqlSupport() {
     }
@@ -68,7 +71,11 @@ final class OsgiConfigGqlSupport {
                 throw deny("missing " + ADMIN_PERMISSION + " on " + SYSTEM_SITE_PATH, user);
             }
             return new GqlCaller(user, session, locale != null ? locale : Locale.ENGLISH);
-        } catch (RepositoryException e) {
+        } catch (OsgiConfigGqlException e) {
+            throw e;
+        } catch (RepositoryException | RuntimeException e) {
+            // Fail closed: an error while checking access must never let the call through, nor
+            // reach the client with its raw message.
             LOGGER.warn("[AUDIT] osgiConfigManager authorization failed for {}", user.getName(), e);
             throw new OsgiConfigGqlException(OsgiConfigGqlException.FORBIDDEN, ACCESS_DENIED);
         }
@@ -134,7 +141,7 @@ final class OsgiConfigGqlSupport {
             LOGGER.warn("[AUDIT] Access denied: {}", e.getMessage());
             return new OsgiConfigGqlException(OsgiConfigGqlException.FORBIDDEN, sanitizePath(e.getMessage()));
         }
-        if (e instanceof IOException) {
+        if (e instanceof IOException && !(e instanceof JsonProcessingException)) {
             LOGGER.warn("[AUDIT] Request rejected: {}", e.getMessage());
             return new OsgiConfigGqlException(OsgiConfigGqlException.BAD_REQUEST, sanitizePath(e.getMessage()));
         }
@@ -168,7 +175,15 @@ final class OsgiConfigGqlSupport {
         return service;
     }
 
+    /**
+     * The file name and PID are the caller's own input, logged before the service validates them, so
+     * a line break in one could forge a whole [AUDIT] line. Control characters are replaced.
+     */
+    static String auditValue(String value) {
+        return value == null ? null : CONTROL_CHARACTERS.matcher(value).replaceAll("_");
+    }
+
     static void audit(GqlCaller caller, String action, String filename) {
-        LOGGER.info("[AUDIT] User: {} | Action: {} | File: {}", caller.getName(), action, filename);
+        LOGGER.info("[AUDIT] User: {} | Action: {} | File: {}", caller.getName(), action, auditValue(filename));
     }
 }

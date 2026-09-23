@@ -210,4 +210,38 @@ class OsgiConfigGqlSupportTest {
         assertEquals("INTERNAL", code(e));
         assertFalse(e.getMessage().contains("secret"));
     }
+
+    @Test
+    @DisplayName("authorize fails closed on an unexpected runtime error")
+    void authorize_runtimeError_isForbidden() throws Exception {
+        when(session.getNode("/")).thenThrow(new IllegalStateException("boom at /opt/jahia"));
+
+        OsgiConfigGqlException e = assertThrows(OsgiConfigGqlException.class,
+                () -> OsgiConfigGqlSupport.authorize(factory, Locale.ENGLISH));
+        assertEquals("FORBIDDEN", code(e));
+    }
+
+    @Test
+    @DisplayName("a JSON serialisation failure is internal, not a BAD_REQUEST echoing Jackson's detail")
+    void translate_jsonFailure_isInternal() {
+        OsgiConfigGqlException e = OsgiConfigGqlSupport.translate(
+                new com.fasterxml.jackson.core.JsonGenerationException("secret value 42", (com.fasterxml.jackson.core.JsonGenerator) null));
+
+        assertEquals("INTERNAL", code(e));
+        assertFalse(e.getMessage().contains("secret"));
+    }
+
+    @Test
+    @DisplayName("paths with non-ASCII segments are stripped too")
+    void sanitizePath_nonAscii() {
+        assertEquals("cannot read <path>", OsgiConfigGqlSupport.sanitizePath("cannot read /opt/jahiä/etc/x.cfg"));
+    }
+
+    @Test
+    @DisplayName("audit strips line breaks so a caller-chosen name cannot forge an [AUDIT] line")
+    void auditValue_stripsControlCharacters() {
+        assertEquals("a.cfg_[AUDIT] User: root", OsgiConfigGqlSupport.auditValue("a.cfg\n[AUDIT] User: root"));
+        assertEquals("x__y", OsgiConfigGqlSupport.auditValue("x\r\ty"), "one replacement per control character");
+        assertEquals(null, OsgiConfigGqlSupport.auditValue(null));
+    }
 }
