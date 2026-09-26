@@ -7,6 +7,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **`cryptoSecret` is applied before the first value is decrypted.** `OsgiConfigService`, which reads
+  it, was a delayed component: it activated only when the admin screen was used. Until then, after a
+  restart or on a cluster node nobody browsed, the ConfigurationPlugin decrypted with the node's
+  generated secret and every value encrypted with `cryptoSecret` was delivered as stored
+  (`[AUDIT] Could not decrypt property ...`), so the consumers' connections failed on that node only.
+  The service is now immediate and the plugin holds a mandatory reference to it, so it registers
+  only once the secret is in place.
+
 ## [1.1.0] - 2026-09-23
 
 ### Added
