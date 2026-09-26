@@ -16,6 +16,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (`[AUDIT] Could not decrypt property ...`), so the consumers' connections failed on that node only.
   The service is now immediate and the plugin holds a mandatory reference to it, so it registers
   only once the secret is in place.
+- **Configurations delivered before the plugin existed are delivered again through it.** A consumer
+  that starts before this bundle receives its `ENC(...)` values as stored, and Configuration Admin
+  never re-delivers them when the plugin appears. It is the usual order, not a race: after an update
+  of this module Felix restarts its dependents in bundle id order, and a consumer installed earlier
+  starts first; the same at every server restart. The consumer then used the envelope as its
+  password, with no decryption error in the log. Once the plugin is registered, every configuration
+  holding an envelope (the manager's own excepted) is re-delivered with `Configuration.update()`,
+  which changes neither the file nor the cluster copy.
 
 ## [1.1.0] - 2026-09-23
 
