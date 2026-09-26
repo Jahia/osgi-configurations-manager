@@ -2,28 +2,36 @@ package org.jahia.modules.osgiconfigmanager.admin;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.osgi.framework.dto.BundleDTO;
 import org.osgi.service.cm.Configuration;
 import org.osgi.service.cm.ConfigurationAdmin;
+import org.osgi.service.component.runtime.ServiceComponentRuntime;
+import org.osgi.service.component.runtime.dto.ComponentDescriptionDTO;
+import org.osgi.util.promise.Promise;
 
-import java.io.IOException;
+import java.util.Arrays;
 import java.util.Hashtable;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/** Configurations delivered before the plugin existed are delivered again, unchanged, through it. */
+/** Components that read ENC(...) values before the plugin existed are restarted to read them decrypted. */
 class EncryptedConfigurationsRedeliveryTest {
 
-    private static Configuration configuration(String pid, Object... keyValues) {
+    private static Configuration configuration(String pid, String factoryPid, Object... keyValues) {
         Configuration configuration = mock(Configuration.class);
         when(configuration.getPid()).thenReturn(pid);
+        when(configuration.getFactoryPid()).thenReturn(factoryPid);
         Hashtable<String, Object> properties = new Hashtable<>();
         for (int i = 0; i < keyValues.length; i += 2) {
             properties.put((String) keyValues[i], keyValues[i + 1]);
@@ -32,38 +40,64 @@ class EncryptedConfigurationsRedeliveryTest {
         return configuration;
     }
 
-    @Test
-    @DisplayName("only the configurations holding an envelope are delivered again, the manager's own excepted")
-    void redeliversEncryptedOnly() throws Exception {
-        Configuration jira = configuration("org.acme.jira", "jira.url", "https://jira", "jira.token", "ENC(abc)");
-        Configuration db = configuration("org.acme.database~licenses", "hosts", new String[] {"a", "ENC(def)"});
-        Configuration plain = configuration("org.acme.plain", "url", "https://x");
-        Configuration self = configuration(OsgiConfigService.SELF_CONFIG_PID, "cryptoSecret", "ENC(xyz)");
-        ConfigurationAdmin admin = mock(ConfigurationAdmin.class);
-        when(admin.listConfigurations(null)).thenReturn(new Configuration[] {jira, db, plain, self});
-
-        assertEquals(2, EncryptedConfigurationsRedelivery.redeliver(admin));
-
-        verify(jira).update();
-        verify(db).update();
-        verify(plain, never()).update();
-        verify(self, never()).update();
-        verify(jira, never()).update(any());
+    private static ComponentDescriptionDTO component(String name, long bundleId, String... pids) {
+        ComponentDescriptionDTO description = new ComponentDescriptionDTO();
+        description.name = name;
+        description.configurationPid = pids;
+        description.bundle = new BundleDTO();
+        description.bundle.id = bundleId;
+        return description;
     }
 
     @Test
-    @DisplayName("a failing update does not stop the others; nothing to list is not an error")
-    void resilient() throws Exception {
-        Configuration broken = configuration("org.acme.broken", "token", "ENC(a)");
-        doThrow(new IOException("store")).when(broken).update();
-        Configuration next = configuration("org.acme.next", "token", "ENC(b)");
+    @DisplayName("the PIDs and factory PIDs of configurations holding an envelope, the manager's own excepted")
+    void encryptedPids() throws Exception {
+        Configuration[] all = {
+                configuration("org.acme.jira", null, "jira.url", "https://jira", "jira.token", "ENC(abc)"),
+                configuration("org.acme.database~licenses", "org.acme.database", "hosts", new String[] {"a", "ENC(def)"}),
+                configuration("org.acme.plain", null, "url", "https://x"),
+                configuration(OsgiConfigService.SELF_CONFIG_PID, null, "cryptoSecret", "ENC(xyz)")};
         ConfigurationAdmin admin = mock(ConfigurationAdmin.class);
-        when(admin.listConfigurations(null)).thenReturn(new Configuration[] {broken, next});
-        assertEquals(1, EncryptedConfigurationsRedelivery.redeliver(admin));
-        verify(next).update();
+        when(admin.listConfigurations(null)).thenReturn(all);
 
-        ConfigurationAdmin empty = mock(ConfigurationAdmin.class);
-        assertEquals(0, EncryptedConfigurationsRedelivery.redeliver(empty));
+        assertEquals(new LinkedHashSet<>(Arrays.asList("org.acme.jira", "org.acme.database~licenses", "org.acme.database")),
+                EncryptedConfigurationsRedelivery.encryptedPids(admin));
+        assertTrue(EncryptedConfigurationsRedelivery.encryptedPids(mock(ConfigurationAdmin.class)).isEmpty(), "nothing listed");
+    }
+
+    @Test
+    @DisplayName("the consumers are the other bundles' components configured by one of those PIDs")
+    void consumers() {
+        Set<String> pids = new LinkedHashSet<>(Arrays.asList("org.acme.jira", "org.acme.database"));
+        ComponentDescriptionDTO jira = component("JiraServiceImpl", 260, "org.acme.jira");
+        ComponentDescriptionDTO database = component("DatabaseServiceImpl", 260, "org.acme.database");
+        ComponentDescriptionDTO slack = component("SlackServiceImpl", 260, "org.acme.slack");
+        ComponentDescriptionDTO own = component("OsgiConfigService", 265, "org.acme.jira");
+        List<ComponentDescriptionDTO> consumers = EncryptedConfigurationsRedelivery.consumersOf(
+                Arrays.asList(jira, database, slack, own), pids, 265);
+        assertEquals(Arrays.asList(jira, database), consumers);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    @DisplayName("each enabled consumer is disabled, then enabled once the disable is done")
+    void restartsEnabledOnes() {
+        ServiceComponentRuntime runtime = mock(ServiceComponentRuntime.class);
+        ComponentDescriptionDTO enabled = component("JiraServiceImpl", 260, "org.acme.jira");
+        ComponentDescriptionDTO disabled = component("HubspotServiceImpl", 260, "org.acme.hubspot");
+        when(runtime.isComponentEnabled(enabled)).thenReturn(true);
+        when(runtime.isComponentEnabled(disabled)).thenReturn(false);
+        Promise<Void> promise = mock(Promise.class);
+        when(runtime.disableComponent(enabled)).thenReturn(promise);
+
+        assertEquals(1, EncryptedConfigurationsRedelivery.restart(runtime, Arrays.asList(enabled, disabled)));
+
+        verify(runtime, never()).disableComponent(disabled);
+        verify(runtime, never()).enableComponent(any());
+        ArgumentCaptor<Runnable> callback = ArgumentCaptor.forClass(Runnable.class);
+        verify(promise).onResolve(callback.capture());
+        callback.getValue().run();
+        verify(runtime).enableComponent(enabled);
     }
 
     @Test
