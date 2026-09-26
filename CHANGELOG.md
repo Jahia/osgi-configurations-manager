@@ -7,6 +7,26 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **`cryptoSecret` is applied before the first value is decrypted.** `OsgiConfigService`, which reads
+  it, was a delayed component: it activated only when the admin screen was used. Until then, after a
+  restart or on a cluster node nobody browsed, the ConfigurationPlugin decrypted with the node's
+  generated secret and every value encrypted with `cryptoSecret` was delivered as stored
+  (`[AUDIT] Could not decrypt property ...`), so the consumers' connections failed on that node only.
+  The service is now immediate and the plugin holds a mandatory reference to it, so it registers
+  only once the secret is in place.
+- **Components that read `ENC(...)` values before the plugin existed are restarted.** A consumer
+  that starts before this bundle receives its `ENC(...)` values as stored, and Configuration Admin
+  never delivers them again when the plugin appears. It is the usual order, not a race: after an
+  update of this module Felix restarts its dependents in bundle id order, and a consumer installed
+  earlier starts first; the same at every server restart. The consumer then used the envelope as its
+  password, with no decryption error in the log. Once the plugin is registered, every component of
+  another bundle configured by a PID (or factory PID) holding an envelope is disabled and enabled
+  again through Service Component Runtime, so it reads its configuration anew, decrypted.
+  `Configuration.update()` without arguments was tried first and does not work: SCR ignores an
+  update that leaves the change count unchanged. Neither the file nor the cluster copy is touched.
+
 ## [1.1.0] - 2026-09-23
 
 ### Added

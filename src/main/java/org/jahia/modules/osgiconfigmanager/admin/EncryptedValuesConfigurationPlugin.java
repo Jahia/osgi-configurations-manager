@@ -4,6 +4,7 @@ import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.cm.ConfigurationPlugin;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,6 +34,13 @@ import java.util.Dictionary;
  *       misconfigured {@code cryptoSecret} must not be able to lock the manager out.</li>
  * </ul>
  *
+ * <p><b>The operator's {@code cryptoSecret} is loaded before the first value is decrypted.</b> It
+ * is read by {@link OsgiConfigService} when that component activates; as a delayed component it
+ * used to activate only when the admin screen was used, so until then (after a restart, or on a
+ * node nobody browsed) the plugin decrypted with the node's generated secret instead, and every
+ * value encrypted with {@code cryptoSecret} failed. The mandatory reference below activates it,
+ * with its configuration, before this plugin registers, and keeps it active while the plugin is.
+ *
  * <p>Plugins are only consulted at delivery time. A component that started before this bundle
  * received its {@code ENC(...)} values raw and is not re-delivered when the plugin appears, so a
  * consumer must declare {@code Jahia-Depends: osgi-configurations-manager}.
@@ -49,6 +57,10 @@ public class EncryptedValuesConfigurationPlugin implements ConfigurationPlugin {
      * decrypted too.
      */
     static final int RANKING = 900;
+
+    /** Held only for its activation: that is when the operator's {@code cryptoSecret} is applied. */
+    @Reference
+    private OsgiConfigService secretHolder;
 
     static final String ENC_PREFIX = "ENC(";
     static final String ENC_SUFFIX = ")";

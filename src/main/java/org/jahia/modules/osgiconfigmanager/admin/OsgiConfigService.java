@@ -34,7 +34,8 @@ import java.util.stream.Collectors;
 /**
  * Service to manage OSGi configuration files in karaf/etc
  */
-@Component(service = OsgiConfigService.class, configurationPid = OsgiConfigService.SELF_CONFIG_PID)
+// Immediate: its activation applies cryptoSecret, which the ConfigurationPlugin needs from the start.
+@Component(service = OsgiConfigService.class, configurationPid = OsgiConfigService.SELF_CONFIG_PID, immediate = true)
 @Designate(ocd = OsgiConfigService.Config.class)
 public class OsgiConfigService {
 
