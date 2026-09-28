@@ -283,9 +283,10 @@ export const useOsgiConfigs = () => {
     const showEmptyLines = visualFormattingControlsEnabled && showEmptyLinesPreference;
 
     // Helper to encrypt properties tree before saving/converting to raw
+    // Values are encrypted for the open file: the envelope decrypts in that configuration only.
     const encryptRecursive = useCallback(
-        (obj: any) => encryptTree(obj, e => console.error('Encryption failed', e)),
-        []
+        (obj: any) => encryptTree(obj, selectedFile?.name || '', e => console.error('Encryption failed', e)),
+        [selectedFile]
     );
 
     // handleSave re-enters itself through the diff modal's onConfirm (the confirm path passes the

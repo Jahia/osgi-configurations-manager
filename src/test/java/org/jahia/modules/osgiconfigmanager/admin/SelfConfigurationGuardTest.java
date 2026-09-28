@@ -53,7 +53,9 @@ class SelfConfigurationGuardTest {
         OsgiConfigService service = new OsgiConfigService();
         assertTrue(service.isSelfConfigurationPid(OsgiConfigService.SELF_CONFIG_PID));
         assertTrue(service.isSelfConfigurationPid(OsgiConfigService.SELF_CONFIG_PID + "~other"));
-        assertTrue(service.isSelfConfigurationPid(OsgiConfigService.SELF_CONFIG_PID + ".3f2a-uuid"));
+        assertTrue(service.isSelfConfigurationPid(OsgiConfigService.SELF_CONFIG_PID + ".3f2a9c10-1b2c-4d5e-8f90-a1b2c3d4e5f6"));
+        assertFalse(service.isSelfConfigurationPid(OsgiConfigService.SELF_CONFIG_PID + ".probe"),
+                "the probe the module ships is another PID");
         assertFalse(service.isSelfConfigurationPid("org.jahia.modules.osgiconfigmanagerx"));
         assertFalse(service.isSelfConfigurationPid(null));
     }

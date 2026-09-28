@@ -104,15 +104,14 @@ class OsgiConfigManagerMutationTest {
         when(service.decryptForFile("a.cfg", "ENC(x)", false)).thenReturn("plain");
 
         assertEquals("plain", mutation.decrypt("a.cfg", "ENC(x)"));
-        verify(service, never()).decrypt(anyString());
     }
 
     @Test
-    @DisplayName("encrypt returns the service's ciphertext")
+    @DisplayName("encrypt returns the service's ciphertext, bound to the named file with the caller's rights")
     void encrypt_returnsCiphertext() throws Exception {
-        when(service.encrypt("secret")).thenReturn("ENC(zz)");
+        when(service.encryptForFile("secret", "a.cfg", false)).thenReturn("ENC(zz)");
 
-        assertEquals("ENC(zz)", mutation.encrypt("secret"));
+        assertEquals("ENC(zz)", mutation.encrypt("secret", "a.cfg"));
     }
 
     @Test
@@ -142,11 +141,11 @@ class OsgiConfigManagerMutationTest {
     void secretTouchingOperations_areAudited() throws Exception {
         when(session.nodeExists("/users/alice")).thenReturn(false);
 
-        mutation.encrypt("s");
+        mutation.encrypt("s", "a.cfg");
         mutation.decrypt("a.cfg", "ENC(x)");
         mutation.setPreference("osgiEditorMode", "raw");
 
-        assertTrue(audited("encrypt", "null"));
+        assertTrue(audited("encrypt", "a.cfg"));
         assertTrue(audited("decrypt", "a.cfg"));
         assertTrue(audited("setPreference", "null"));
     }

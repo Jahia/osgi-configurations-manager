@@ -99,9 +99,9 @@ describe('cryptoTree', () => {
             mockedService.encrypt.mockResolvedValue({ encryptedValue: 'ENC(zzz)' } as any);
             const input = { p: { isLeaf: true, encrypted: true, value: 'secret' } };
 
-            const result = await encryptTree(input);
+            const result = await encryptTree(input, 'a.cfg');
 
-            expect(mockedService.encrypt).toHaveBeenCalledWith('secret');
+            expect(mockedService.encrypt).toHaveBeenCalledWith('secret', 'a.cfg');
             expect(result.p.value).toBe('ENC(zzz)');
             // Original input is untouched (immutability).
             expect(input.p.value).toBe('secret');
@@ -110,7 +110,7 @@ describe('cryptoTree', () => {
         it('does not re-encrypt values already in ENC(...) form', async () => {
             const input = { p: { isLeaf: true, encrypted: true, value: 'ENC(already)' } };
 
-            const result = await encryptTree(input);
+            const result = await encryptTree(input, 'a.cfg');
 
             expect(mockedService.encrypt).not.toHaveBeenCalled();
             expect(result.p.value).toBe('ENC(already)');
@@ -123,7 +123,7 @@ describe('cryptoTree', () => {
                 nested: { secret: { isLeaf: true, encrypted: true, value: 'top' } }
             };
 
-            const result = await encryptTree(input);
+            const result = await encryptTree(input, 'a.cfg');
 
             expect(result.plain.value).toBe('keepme');
             expect(result.nested.secret.value).toBe('ENC(s)');
@@ -134,7 +134,7 @@ describe('cryptoTree', () => {
             const onError = jest.fn();
             const input = { p: { isLeaf: true, encrypted: true, value: 'secret' } };
 
-            const result = await encryptTree(input, onError);
+            const result = await encryptTree(input, 'a.cfg', onError);
 
             expect(onError).toHaveBeenCalledTimes(1);
             expect(result.p.value).toBe('secret');
@@ -145,7 +145,7 @@ describe('cryptoTree', () => {
             // is not on disk, which the file-bound decryption then refuses.
             const input = { p: { isLeaf: true, encrypted: true, value: 'plain', cipherValue: 'ENC(disk)', decryptedValue: 'plain' } };
 
-            const result = await encryptTree(input);
+            const result = await encryptTree(input, 'a.cfg');
 
             expect(mockedService.encrypt).not.toHaveBeenCalled();
             expect(result.p.value).toBe('ENC(disk)');
@@ -155,9 +155,9 @@ describe('cryptoTree', () => {
             mockedService.encrypt.mockResolvedValue({ encryptedValue: 'ENC(new)' } as any);
             const input = { p: { isLeaf: true, encrypted: true, value: 'edited', cipherValue: 'ENC(disk)', decryptedValue: 'plain' } };
 
-            const result = await encryptTree(input);
+            const result = await encryptTree(input, 'a.cfg');
 
-            expect(mockedService.encrypt).toHaveBeenCalledWith('edited');
+            expect(mockedService.encrypt).toHaveBeenCalledWith('edited', 'a.cfg');
             expect(result.p.value).toBe('ENC(new)');
             expect(lookupKnownPlaintext('ENC(new)')).toBe('edited');
         });
@@ -166,7 +166,7 @@ describe('cryptoTree', () => {
             mockedService.encrypt.mockResolvedValue({ encryptedValue: 'ENC(fresh)' } as any);
             const visual = { p: { isLeaf: true, encrypted: true, value: 'typed' } };
 
-            const raw = await encryptTree(visual);
+            const raw = await encryptTree(visual, 'a.cfg');
             const parsedBack = { p: { isLeaf: true, encrypted: true, value: raw.p.value } };
             await decryptTree(parsedBack, 'f.cfg');
 

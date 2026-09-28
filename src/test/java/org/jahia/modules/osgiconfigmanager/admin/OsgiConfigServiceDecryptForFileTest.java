@@ -45,7 +45,7 @@ class OsgiConfigServiceDecryptForFileTest {
     /** Writes a .cfg holding one ENC(...) value and returns that wrapped value. */
     private String writeEncryptedFile(OsgiConfigService service, Path etc, String filename) throws IOException {
         CryptoEngine.configureSecret("test-instance-secret".toCharArray());
-        String wrapped = service.encrypt(PLAINTEXT);
+        String wrapped = service.encrypt(PLAINTEXT, filename);
         Files.write(etc.resolve(filename), ("sample.value = " + wrapped + "\n").getBytes(StandardCharsets.UTF_8));
         return wrapped;
     }

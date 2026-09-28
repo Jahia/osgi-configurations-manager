@@ -105,9 +105,11 @@ public class OsgiConfigManagerMutation {
 
     @GraphQLField
     @GraphQLName("encrypt")
-    @GraphQLDescription("Encrypt a value into an ENC(...) wrapper")
-    public String encrypt(@GraphQLName("value") @GraphQLNonNull String value) {
-        return audited("encrypt", null, () -> service.encrypt(value));
+    @GraphQLDescription("Encrypt a value into an ENC(...) wrapper bound to the configuration file `name`: "
+            + "the value decrypts in that configuration only")
+    public String encrypt(@GraphQLName("value") @GraphQLNonNull String value,
+                          @GraphQLName("name") @GraphQLNonNull String name) {
+        return audited("encrypt", name, () -> service.encryptForFile(value, name, caller.isRoot()));
     }
 
     @GraphQLField

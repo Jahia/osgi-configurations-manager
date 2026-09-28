@@ -48,7 +48,7 @@ class OsgiConfigServiceDecryptTest {
         // Not valid base64, so the engine cannot even parse the envelope.
         String corrupt = "ENC(!!!not-base64!!!)";
 
-        String result = assertDoesNotThrow(() -> service.decrypt(corrupt),
+        String result = assertDoesNotThrow(() -> service.decryptIn(corrupt, "a.cfg"),
                 "an undecryptable payload must not propagate out of the read path");
         assertEquals(corrupt, result, "the value must be handed back untouched");
     }
@@ -60,12 +60,12 @@ class OsgiConfigServiceDecryptTest {
 
         // Instance A encrypts...
         CryptoEngine.configureSecret(SECRET_A.toCharArray());
-        String encryptedOnA = service.encrypt("s3cr3t-value");
+        String encryptedOnA = service.encrypt("s3cr3t-value", "a.cfg");
 
         // ...and the config file is copied to instance B, which holds a different secret.
         CryptoEngine.configureSecret(SECRET_B.toCharArray());
 
-        String result = assertDoesNotThrow(() -> service.decrypt(encryptedOnA),
+        String result = assertDoesNotThrow(() -> service.decryptIn(encryptedOnA, "a.cfg"),
                 "a config copied between environments must not fail the request");
         assertEquals(encryptedOnA, result, "the still-encrypted value must be handed back as-is");
     }
@@ -76,9 +76,9 @@ class OsgiConfigServiceDecryptTest {
         OsgiConfigService service = newService(etc);
         CryptoEngine.configureSecret(SECRET_A.toCharArray());
 
-        String encrypted = service.encrypt("plaintext-value");
+        String encrypted = service.encrypt("plaintext-value", "a.cfg");
 
-        assertEquals("plaintext-value", service.decrypt(encrypted),
+        assertEquals("plaintext-value", service.decryptIn(encrypted, "a.cfg"),
                 "the graceful path must not mask a decryption that should succeed");
     }
 
@@ -87,8 +87,8 @@ class OsgiConfigServiceDecryptTest {
     void plainValuePassesThrough(@TempDir Path etc) {
         OsgiConfigService service = newService(etc);
 
-        assertEquals("just-a-value", service.decrypt("just-a-value"));
-        assertEquals("", service.decrypt(""));
+        assertEquals("just-a-value", service.decryptIn("just-a-value", "a.cfg"));
+        assertEquals("", service.decryptIn("", "a.cfg"));
     }
 
     @Test

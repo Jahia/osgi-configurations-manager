@@ -87,11 +87,13 @@ public class EncryptedValuesConfigurationPlugin implements ConfigurationPlugin {
             return 0;
         }
 
+        // SEC-603: a value decrypts only in the configuration it was encrypted for.
+        String binding = EnvelopeBinding.ofDelivered(properties);
         int decrypted = 0;
         for (String key : Collections.list(properties.keys())) {
             Object value = properties.get(key);
             if (value instanceof String) {
-                String plain = decryptOrKeep(pid, key, (String) value);
+                String plain = decryptOrKeep(pid, binding, key, (String) value);
                 if (plain != null) {
                     properties.put(key, plain);
                     decrypted++;
@@ -100,7 +102,7 @@ public class EncryptedValuesConfigurationPlugin implements ConfigurationPlugin {
                 String[] values = ((String[]) value).clone();
                 boolean changed = false;
                 for (int i = 0; i < values.length; i++) {
-                    String plain = decryptOrKeep(pid, key, values[i]);
+                    String plain = decryptOrKeep(pid, binding, key, values[i]);
                     if (plain != null) {
                         values[i] = plain;
                         changed = true;
@@ -125,13 +127,13 @@ public class EncryptedValuesConfigurationPlugin implements ConfigurationPlugin {
     }
 
     /** The plaintext when {@code value} is a decryptable envelope, {@code null} otherwise. */
-    private static String decryptOrKeep(String pid, String key, String value) {
+    private static String decryptOrKeep(String pid, String binding, String key, String value) {
         if (!isEnvelope(value)) {
             return null;
         }
         String cipherText = value.substring(ENC_PREFIX.length(), value.length() - ENC_SUFFIX.length());
         try {
-            return CryptoEngine.decryptString(cipherText);
+            return CryptoEngine.decryptBound(cipherText, binding);
         } catch (IllegalStateException e) {
             // Delivered as stored, on purpose: see the class comment. The value itself is never
             // logged, it is a secret even when we cannot read it.

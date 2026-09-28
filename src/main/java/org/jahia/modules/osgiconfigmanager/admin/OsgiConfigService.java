@@ -83,6 +83,8 @@ public class OsgiConfigService {
     private MetaTypeService metaTypeService;
 
     static final String SELF_CONFIG_PID = "org.jahia.modules.osgiconfigmanager";
+    private static final Pattern LEGACY_FACTORY_INSTANCE_OF_SELF = Pattern.compile(
+            Pattern.quote(SELF_CONFIG_PID) + "\\.[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
     private static final String SELF_CONFIG = SELF_CONFIG_PID + ".cfg";
 
     @org.osgi.service.metatype.annotations.ObjectClassDefinition(
@@ -1355,8 +1357,9 @@ public class OsgiConfigService {
         // The singleton PID and its factory instances: <pid>~<name> (Felix ConfigAdmin R7) or
         // <pid>.<uuid> (older naming). A factory configuration of this PID would activate another
         // instance of this component, and with it another cryptoSecret (SEC-525 variant).
+        // The <pid>.<uuid> form only: org.jahia.modules.osgiconfigmanager.probe is another PID.
         return pid != null && (SELF_CONFIG_PID.equals(pid) || pid.startsWith(SELF_CONFIG_PID + "~")
-                || pid.startsWith(SELF_CONFIG_PID + "."));
+                || LEGACY_FACTORY_INSTANCE_OF_SELF.matcher(pid).matches());
     }
 
     /** True for the manager's own {@code cryptoSecret}: a Password attribute that must stay in clear text. */
@@ -1431,16 +1434,24 @@ public class OsgiConfigService {
         return normalizedName;
     }
 
-    public String encrypt(String value) {
-        if (value == null)
+    /**
+     * Encrypts a value for the configuration file {@code filename} (SEC-603): the envelope is bound
+     * to that configuration and does not decrypt anywhere else. The caller must be allowed on the
+     * file, as for reading it.
+     */
+    public String encryptForFile(String value, String filename, boolean isRootUser) throws IOException {
+        if (value == null) {
             return null;
-        return "ENC(" + CryptoEngine.encryptString(value) + ")";
+        }
+        String safeFilename = validateFilename(filename);
+        ensureFilenameAllowed(safeFilename, isRootUser, "Access");
+        return "ENC(" + CryptoEngine.encryptBound(value, EnvelopeBinding.ofFile(safeFilename)) + ")";
     }
 
     /**
      * Decrypt a value that is known to belong to a given configuration file.
      *
-     * <p>{@link #decrypt(String)} will decrypt anything handed to it, which makes the action that
+     * <p>Decrypting anything handed to it would make the action that
      * exposes it a decryption oracle: a caller holding an {@code ENC(...)} string obtained anywhere
      * else — a backup, a git history, a log, a screenshot — could have it decrypted regardless of
      * whether they are allowed to see the file it came from. The blacklist/whitelist only gates
@@ -1449,6 +1460,11 @@ public class OsgiConfigService {
      * <p>This binds the two together. It runs the same authorization path as
      * {@link #readFile(String, java.util.Locale, boolean)} and then requires the ciphertext to
      * actually appear in that file, so a caller can only decrypt what they could already read.
+     *
+     * <p>SEC-603: that alone was not enough, since the caller may also write such a file and copy
+     * into it a value taken from a file hidden from them. The value must also have been made for
+     * this configuration: a v3 envelope is bound to it, and an unbound (v2, legacy) one is refused
+     * once the migration to v3 has run.
      */
     public String decryptForFile(String filename, String value, boolean isRootUser) throws IOException {
         if (value == null) {
@@ -1468,16 +1484,26 @@ public class OsgiConfigService {
             throw new IOException("Encrypted value does not belong to " + safeFilename);
         }
 
-        return decrypt(value);
+        return decrypt(value, EnvelopeBinding.ofFile(safeFilename));
     }
 
-    public String decrypt(String value) {
+    /** Test seam: a value encrypted for {@code filename}, without the authorization of {@link #encryptForFile}. */
+    String encrypt(String value, String filename) {
+        return "ENC(" + CryptoEngine.encryptBound(value, EnvelopeBinding.ofFile(filename)) + ")";
+    }
+
+    /** Test seam: decrypts a value found in {@code filename}, degrading like {@link #decryptForFile}. */
+    String decryptIn(String value, String filename) {
+        return decrypt(value, EnvelopeBinding.ofFile(filename));
+    }
+
+    private String decrypt(String value, String binding) {
         if (value == null)
             return null;
         if (value.startsWith("ENC(") && value.endsWith(")")) {
             String cipherText = value.substring(4, value.length() - 1);
             try {
-                return CryptoEngine.decryptString(cipherText);
+                return CryptoEngine.decryptBound(cipherText, binding);
             } catch (IllegalStateException e) {
                 // Decryption is a READ operation, so degrade gracefully: hand back the value
                 // untouched instead of failing the request. The SUPPORT-646 hardening made

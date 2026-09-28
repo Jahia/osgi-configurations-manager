@@ -74,7 +74,7 @@ describe('osgiService response mapping', () => {
 
     it('encrypt and decrypt return the transformed value', async () => {
         respond({ encrypt: 'ENC(x)' });
-        await expect(osgiService.encrypt('s')).resolves.toEqual({ encryptedValue: 'ENC(x)' });
+        await expect(osgiService.encrypt('s', 'a.cfg')).resolves.toEqual({ encryptedValue: 'ENC(x)' });
 
         respond({ decrypt: 's' });
         await expect(osgiService.decrypt('ENC(x)', 'a.cfg')).resolves.toEqual({ decryptedValue: 's' });

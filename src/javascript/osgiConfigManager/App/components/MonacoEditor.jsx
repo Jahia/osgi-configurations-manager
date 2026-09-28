@@ -1189,7 +1189,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
         );
 
         try {
-            const result = await osgiService.encrypt(valueTrimmed);
+            const result = await osgiService.encrypt(valueTrimmed, filename);
             if (result && result.encryptedValue) {
                 // The new ciphertext is not in the saved file, so the file-bound server decryption
                 // would refuse it until the file is saved. Remember the pair so the Decrypt button

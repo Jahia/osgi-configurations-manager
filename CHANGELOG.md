@@ -9,6 +9,31 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Security
 
+- **Encrypted values are bound to their configuration (SEC-603).** The per-file check of the
+  `decrypt` operation (SEC-365) did not stop a user who may write some configuration from copying
+  into it a value taken from a file hidden from them, then having it decrypted by the operation, or
+  by the ConfigurationPlugin into a component that sends it to a URL of that same file. New values
+  are `ENC(v3:...)` envelopes whose AES-GCM additional authenticated data is the configuration's
+  identity (file name without extension, `.disabled` or case); they decrypt in that configuration
+  only, on both paths.
+- **One-time migration, then unbound values are refused.** At its first start the manager encrypts
+  again, for their own configuration, the `ENC(v2:...)` and legacy values of every configuration
+  file of `karaf/etc` (only those values change, comments and layout are kept), writes the marker
+  `.osgi-config-manager.envelopes` and refuses unbound values from then on. This also ends the
+  decryption of the pre-1.0.5 hard-coded-key values (the SEC-177 residue).
+- **A malformed envelope no longer escapes as a `ProviderException`**: it fails like any other
+  undecryptable value.
+- The legacy factory form of the manager's own PID is recognised by its UUID suffix only, so the
+  shipped probe `org.jahia.modules.osgiconfigmanager.probe` is not reserved for root.
+
+### Changed
+
+- **GraphQL: `encrypt(value, name)`** now requires the configuration file the value is for, and the
+  caller must be allowed on it. `CryptoEngine.encryptString` and `decryptString` are deprecated: they
+  handle unbound values only.
+
+### Security
+
 - **The manager's own configuration is reserved for root in every spelling (SEC-525).** The guard
   compared the file name with two `.cfg` literals, while Karaf applies
   `org.jahia.modules.osgiconfigmanager.yml` to the same PID and the manager admits `.yml`: a

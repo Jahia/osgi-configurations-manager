@@ -45,7 +45,13 @@ public class EncryptedConfigurationsRedelivery {
 
     @Activate
     void activate() {
-        int redelivered = redeliver(configurationAdmin);
+        // First bind the unbound values to their configuration (once per instance, SEC-603). The
+        // rewritten files reach their consumers through FileInstall, so they are not written back
+        // below: that would put the old copy back.
+        String etc = System.getProperty("karaf.etc");
+        EnvelopeMigration.Result migration = EnvelopeMigration.runOnce(
+                etc == null || etc.isEmpty() ? null : java.nio.file.Paths.get(etc), OsgiConfigService.SELF_CONFIG_PID);
+        int redelivered = redeliver(configurationAdmin, migration.rewrittenFiles);
         if (redelivered > 0) {
             LOGGER.info("[AUDIT] Delivered again {} configuration(s) holding ENC(...) values (stored values unchanged),"
                     + " so their consumers read them decrypted now that the plugin is registered", redelivered);
@@ -57,6 +63,11 @@ public class EncryptedConfigurationsRedelivery {
      * Returns the number delivered again.
      */
     static int redeliver(ConfigurationAdmin configurationAdmin) {
+        return redeliver(configurationAdmin, Collections.emptySet());
+    }
+
+    /** As {@link #redeliver(ConfigurationAdmin)}, leaving out the configurations read from {@code skippedFiles}. */
+    static int redeliver(ConfigurationAdmin configurationAdmin, java.util.Set<String> skippedFiles) {
         Configuration[] configurations;
         try {
             configurations = configurationAdmin.listConfigurations(null);
@@ -73,6 +84,10 @@ public class EncryptedConfigurationsRedelivery {
             long changeCount = configuration.getChangeCount();
             Dictionary<String, Object> properties = configuration.getProperties();
             if (OsgiConfigService.SELF_CONFIG_PID.equals(pid) || !holdsEnvelope(properties)) {
+                continue;
+            }
+            Object file = properties.get(EnvelopeBinding.FILEINSTALL_FILENAME);
+            if (file != null && skippedFiles.contains(fileNameOf(String.valueOf(file)))) {
                 continue;
             }
             try {
@@ -92,6 +107,11 @@ public class EncryptedConfigurationsRedelivery {
             }
         }
         return redelivered;
+    }
+
+    private static String fileNameOf(String path) {
+        int slash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+        return slash >= 0 ? path.substring(slash + 1) : path;
     }
 
     /** Whether the configuration's change count moved, read again from Configuration Admin. */
