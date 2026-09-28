@@ -47,8 +47,9 @@ const addLineAtEnd = (line: string) => {
     cy.get('.monaco-editor .view-lines .view-line', {timeout: 30000}).should($lines => {
         const texts = rawLines($lines);
         const filled = texts.filter(text => text !== '');
+        // Only the last line is checked: Monaco does not always render the long ENC(...) line in
+        // the DOM, so its absence here proves nothing; the visual mode checks it afterwards.
         expect(filled[filled.length - 1], `raw editor lines: ${JSON.stringify(texts)}`).to.eq(line);
-        expect(filled.length, `raw editor lines: ${JSON.stringify(texts)}`).to.be.at.least(2);
     });
 };
 
