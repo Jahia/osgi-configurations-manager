@@ -21,7 +21,7 @@ describe('OSGi Configurations Manager - Encryption round-trip', () => {
 
     it('wraps a saved value as ENC(...) on disk and decrypts back to plaintext', () => {
         // Encrypt via the backend
-        cy.osgiMutation('encrypt(value: $value)', '($value: String!)', {value: secret})
+        cy.osgiMutation('encrypt(value: $value, name: $name)', '($value: String!, $name: String!)', {value: secret, name: file})
             .its('data.encrypt').then(encrypted => {
                 expect(encrypted, 'ENC envelope').to.match(/^ENC\(.+\)$/);
 

@@ -37,7 +37,7 @@ describe('osgiService request contract', () => {
         ['create', () => osgiService.create('conf.cfg'), 'mutation', { name: 'conf.cfg' }],
         ['createFromMetatype', () => osgiService.createFromMetatype('my.pid', 'inst1'),
             'mutation', { pid: 'my.pid', instanceIdentifier: 'inst1' }],
-        ['encrypt', () => osgiService.encrypt('sec'), 'mutation', { value: 'sec' }],
+        ['encrypt', () => osgiService.encrypt('sec', 'a.cfg'), 'mutation', { value: 'sec', name: 'a.cfg' }],
         ['decrypt', () => osgiService.decrypt('ENC(sec)', 'conf.cfg'), 'mutation', { value: 'ENC(sec)', name: 'conf.cfg' }],
         ['setPreference', () => osgiService.setPreference('k', 'v'), 'mutation', { key: 'k', value: 'v' }]
     ])('%s POSTs a GraphQL %s to /modules/graphql', async (_name, invoke, operation, variables) => {

@@ -220,8 +220,9 @@ export const osgiService = {
         return { decryptedValue: result.decrypt };
     },
 
-    encrypt: async (value: string): Promise<OsgiServiceResponse> => {
-        const result = await mutation('encrypt(value: $value)', '($value: String!)', { value });
+    // The envelope is bound to the configuration file it is made for (SEC-603): pass that file.
+    encrypt: async (value: string, filename: string): Promise<OsgiServiceResponse> => {
+        const result = await mutation('encrypt(value: $value, name: $name)', '($value: String!, $name: String!)', { value, name: filename });
         return { encryptedValue: result.encrypt };
     },
 

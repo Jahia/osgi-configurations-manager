@@ -69,7 +69,7 @@ describe('MonacoEditor', () => {
             fireEvent.click(encrypt);
 
             await waitFor(() => expect(editor.executeEdits).toHaveBeenCalledTimes(1));
-            expect(osgiService.encrypt).toHaveBeenCalledWith('clear-value');
+            expect(osgiService.encrypt).toHaveBeenCalledWith('clear-value', 'secrets.cfg');
             expect(editor.executeEdits.mock.calls[0][1][0].text).toBe('ENC(fresh)');
             expect(lookupKnownPlaintext('ENC(fresh)')).toBe('clear-value');
         });

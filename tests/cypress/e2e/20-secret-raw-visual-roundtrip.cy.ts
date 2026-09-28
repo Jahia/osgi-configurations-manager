@@ -34,7 +34,7 @@ describe('OSGi Configurations Manager - Secrets survive the raw/visual round tri
         cy.login();
         cleanupFiles([FILE]);
 
-        cy.osgiMutation('encrypt(value: $value)', '($value: String!)', {value: SECRET})
+        cy.osgiMutation('encrypt(value: $value, name: $name)', '($value: String!, $name: String!)', {value: SECRET, name: FILE})
             .its('data.encrypt').then((encrypted: string) => {
                 expect(encrypted, 'ENC envelope').to.match(/^ENC\(.+\)$/);
                 onDiskCiphertext = encrypted;

@@ -111,9 +111,9 @@ export const decryptTree = async (node: any, filename: string, onError?: CryptoE
  * Leaves that are already encrypted (value starts with {@code ENC(}) are left untouched, and a leaf
  * whose plaintext is the one it was decrypted from gets its original ciphertext back.
  */
-export const encryptTree = async (node: any, onError?: CryptoErrorHandler): Promise<any> => {
+export const encryptTree = async (node: any, filename: string, onError?: CryptoErrorHandler): Promise<any> => {
     if (Array.isArray(node)) {
-        return Promise.all(node.map(item => encryptTree(item, onError)));
+        return Promise.all(node.map(item => encryptTree(item, filename, onError)));
     }
 
     if (!node || typeof node !== 'object') {
@@ -134,7 +134,7 @@ export const encryptTree = async (node: any, onError?: CryptoErrorHandler): Prom
 
         try {
             const plaintext: string = next.value;
-            const encrypted = await osgiService.encrypt(plaintext);
+            const encrypted = await osgiService.encrypt(plaintext, filename);
             const ciphertext = encrypted.encryptedValue || plaintext;
             rememberPlaintext(ciphertext, plaintext);
             next.value = ciphertext;
@@ -149,7 +149,7 @@ export const encryptTree = async (node: any, onError?: CryptoErrorHandler): Prom
             if (key === '_order' || typeof next[key] !== 'object' || next[key] === null) {
                 return;
             }
-            next[key] = await encryptTree(next[key], onError);
+            next[key] = await encryptTree(next[key], filename, onError);
         })
     );
 

@@ -62,9 +62,8 @@ A Jahia module to manage OSGi configurations directly from the Jahia Administrat
         `ENC(...)` values decrypted, so a consumer needs no crypto code (see *Consuming encrypted
         values from your module*).
     -   Decryption for viewing is authorized per file: a value is only decrypted for a user who may
-        read the file it actually appears in. This does not make an `ENC(...)` value safe to share:
-        a user who may write some file can copy a value into it and have it decrypted (see
-        *Keep `ENC(...)` values private* below).
+        read the file it actually appears in, and only in the configuration it was encrypted for
+        (see *Encrypted values belong to their configuration* below).
     -   **Review before save**: saving shows the raw diff of what is about to be written and requires
         an explicit confirmation.
     -   Saves are capped at 5 MiB of raw content.
@@ -314,20 +313,36 @@ than failing the page, and the plugin delivers it as stored.
 > error, ignores it and keeps the generated per-instance secret. Protect the file with its
 > permissions, as for any other Karaf configuration holding credentials.
 
-### Keep `ENC(...)` values private
+### Encrypted values belong to their configuration
 
-An `ENC(...)` value is protected by the instance secret, not by the file it sits in. The manager only
-decrypts a value for a user who may read the file where it appears, and it delivers decrypted values
-to the component that owns each configuration. But the envelope does not record which configuration
-or which key it was made for. A user who may write some configuration can therefore copy a value
-taken from a file hidden from them (from a backup, an export, a support bundle, a log) into a file
-they may write, and have it decrypted, either by the `decrypt` operation or by a component that uses
-the value, such as a service that sends a token to a URL of that same file. This is tracked as
-SEC-603.
+Since 1.1.1 an encrypted value is bound to the configuration it was encrypted for. Its envelope,
+`ENC(v3:...)`, carries the configuration's identity (the file name without its extension,
+`.disabled` suffix or case) as authenticated data. The value decrypts in that configuration only:
 
-Until the envelope is bound to its configuration and key, treat `ENC(...)` values like the secrets
-they hold: do not paste them into tickets, chats or repositories, and give the manager's delegated
-role only to people you would trust with the plaintext.
+- copied into another configuration file, it is neither decrypted by the manager nor delivered
+  decrypted to the component that reads that file. The manager logs
+  `[AUDIT] Decryption failed for a stored value of ...` and hands it over as stored;
+- disabling, re-enabling, or switching the file between `.cfg` and `.yml` keeps it readable;
+- a configuration saved under another name needs its secrets entered again.
+
+This closes a decryption oracle (SEC-603): a user who may write some configuration could copy into
+it a value taken from a file hidden from them, from a backup, an export or a log, and have it
+decrypted, either by the `decrypt` operation or by a component that sends the secret to a URL of that
+same file.
+
+**Upgrading from 1.1.0 or earlier.** Values written before 1.1.1 (`ENC(v2:...)`, and the pre-1.0.5 format) are
+not bound. At its first start, the manager binds them once and for all: each configuration file of
+`karaf/etc` gets its `ENC(...)` values encrypted again for its own configuration. Only those values
+change; comments, order and layout are kept. The manager then writes the marker
+`karaf/etc/.osgi-config-manager.envelopes` and logs
+`[AUDIT] Encrypted values bound to their configuration (v3): ...`. From then on, an unbound value is
+refused wherever it appears (`[AUDIT] Refused an unbound (v2 or legacy) encrypted value`): enter it
+again in the manager. A value that does not decrypt with the instance's secret (a file copied from
+another instance) is left as it was. On a cluster, every node binds the files it holds; Jahia
+replicates the rewritten files.
+
+Modules that call `CryptoEngine.encryptString` or `decryptString` themselves (before 1.1.0) keep
+working until the migration only: those methods handle unbound values, and are deprecated.
 
 ## Installation
 
@@ -377,8 +392,8 @@ namespace: `Query.osgiConfigManager` and `Mutation.osgiConfigManager`. (The earl
 |---|---|
 | `save(name: String!, rawContent: String!)`, `toggle(name)`, `delete(name)`, `markAsDefault(name)`, `create(name)` | `true` |
 | `createFromMetatype(pid: String!, instanceIdentifier: String)` | the created file name |
-| `encrypt(value: String!)` | the `ENC(...)` value |
-| `decrypt(name: String!, value: String!)` | the plaintext; the value must occur in the named file (see *Keep `ENC(...)` values private*) |
+| `encrypt(value: String!, name: String!)` | the `ENC(...)` value, bound to the configuration file `name` (the caller must be allowed on it) |
+| `decrypt(name: String!, value: String!)` | the plaintext; the value must occur in the named file and have been encrypted for it |
 | `setPreference(key: String!, value: String)` | `false` when there was nowhere to store it |
 
 A mutation must carry both of the following, or it is refused before anything is read or written:

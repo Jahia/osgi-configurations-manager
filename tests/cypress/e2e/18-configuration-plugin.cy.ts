@@ -40,7 +40,7 @@ describe('OSGi Configurations Manager - ConfigurationPlugin decrypts values for 
     });
 
     it('delivers an ENC(...) value decrypted to a DS component, leaving the file encrypted', () => {
-        cy.osgiMutation('encrypt(value: $value)', '($value: String!)', {value: 'probe-secret-42'})
+        cy.osgiMutation('encrypt(value: $value, name: $name)', '($value: String!, $name: String!)', {value: 'probe-secret-42', name: PROBE_FILE})
             .its('data.encrypt').then((encrypted: string) => {
                 expect(encrypted, 'ENC envelope').to.match(/^ENC\(.+\)$/);
 

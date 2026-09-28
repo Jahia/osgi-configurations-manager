@@ -60,11 +60,11 @@ class OsgiConfigServiceCryptoSecretTest {
     void encryptedPassphraseIsIgnored(@TempDir Path etc) {
         OsgiConfigService service = serviceIn(etc);
         service.updateConfig(configWithSecret(""));
-        String wrapped = service.encrypt(PLAINTEXT);
+        String wrapped = service.encrypt(PLAINTEXT, "a.cfg");
 
         service.updateConfig(configWithSecret("ENC(v2:not-a-passphrase)"));
 
-        assertEquals(PLAINTEXT, service.decrypt(wrapped), "the generated per-instance secret is still in use");
+        assertEquals(PLAINTEXT, service.decryptIn(wrapped, "a.cfg"), "the generated per-instance secret is still in use");
     }
 
     @Test
@@ -72,15 +72,15 @@ class OsgiConfigServiceCryptoSecretTest {
     void clearPassphraseIsUsed(@TempDir Path etc) {
         OsgiConfigService service = serviceIn(etc);
         service.updateConfig(configWithSecret(""));
-        String wrappedWithGeneratedSecret = service.encrypt(PLAINTEXT);
+        String wrappedWithGeneratedSecret = service.encrypt(PLAINTEXT, "a.cfg");
 
         service.updateConfig(configWithSecret("operator-passphrase"));
 
         // Encrypted under the previous key: handed back unchanged rather than failing the read.
-        assertEquals(wrappedWithGeneratedSecret, service.decrypt(wrappedWithGeneratedSecret));
-        String rewrapped = service.encrypt(PLAINTEXT);
+        assertEquals(wrappedWithGeneratedSecret, service.decryptIn(wrappedWithGeneratedSecret, "a.cfg"));
+        String rewrapped = service.encrypt(PLAINTEXT, "a.cfg");
         assertNotEquals(wrappedWithGeneratedSecret, rewrapped);
-        assertEquals(PLAINTEXT, service.decrypt(rewrapped));
+        assertEquals(PLAINTEXT, service.decryptIn(rewrapped, "a.cfg"));
     }
 
     @Test

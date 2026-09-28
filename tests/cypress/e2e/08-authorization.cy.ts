@@ -28,14 +28,15 @@ const STATE_CHANGING = [
     {action: 'delete', fields: 'delete(name: $name)', params: NAME},
     {action: 'markAsDefault', fields: 'markAsDefault(name: $name)', params: NAME},
     {action: 'create', fields: 'create(name: $name)', params: NAME},
-    {action: 'encrypt', fields: 'encrypt(value: "secret")', params: ''},
+    {action: 'encrypt', fields: 'encrypt(value: "secret", name: $name)', params: NAME},
     // The permission check runs in the namespace field, before any operation is dispatched, so a
     // value that is in no file is refused as a denial rather than reaching the file-bound check.
     {action: 'decrypt', fields: 'decrypt(name: $name, value: "ENC(x)")', params: NAME}
 ];
 
 const create = (name: string) => cy.osgiMutation('create(name: $name)', NAME, {name});
-const encrypt = (value: string) => cy.osgiMutation('encrypt(value: $value)', '($value: String!)', {value});
+// The envelope is bound to the configuration file it is made for (SEC-603).
+const encrypt = (value: string, name: string) => cy.osgiMutation('encrypt(value: $value, name: $name)', NAME_VALUE, {value, name});
 const decrypt = (name: string, value: string) => cy.osgiMutation('decrypt(name: $name, value: $value)', NAME_VALUE, {name, value});
 
 const expectDenied = (label: string) => (res: Cypress.OsgiGqlResult) => {
@@ -110,7 +111,7 @@ describe('OSGi Configurations Manager - Authorization', () => {
             // Decryption is FILE-BOUND: the caller names the file the ciphertext came from, and the
             // service requires the value to actually be in it. Round-trip a REAL value — the engine
             // fails loudly on a malformed ENC(...) rather than returning it unchanged.
-            encrypt('probe-secret').its('data.encrypt').then((wrapped: string) => {
+            encrypt('probe-secret', probe).its('data.encrypt').then((wrapped: string) => {
                 // Store it in the probe file, so it genuinely belongs there.
                 cy.upsertOsgiFile(probe, `sample.value = ${wrapped}\n`);
                 decrypt(probe, wrapped).its('data.decrypt').should('eq', 'probe-secret');
@@ -123,8 +124,17 @@ describe('OSGi Configurations Manager - Authorization', () => {
             // decrypt any ENC(...) obtained elsewhere — a backup, a log, a git history.
             cy.upsertOsgiFile(probe, 'unrelated = 1\n');
 
-            encrypt('elsewhere-secret').its('data.encrypt').then((wrapped: string) => {
+            encrypt('elsewhere-secret', 'e2e-elsewhere.cfg').its('data.encrypt').then((wrapped: string) => {
                 decrypt(probe, wrapped).then(expectForeignCiphertextRefused);
+            });
+        });
+
+        it('SEC-603: a value copied into a file the caller may write is not decrypted there', () => {
+            // Made for another configuration, then planted in the probe file: the file-bound check
+            // passes (the value IS in the file), but the envelope is bound to its own configuration.
+            encrypt('planted-secret', 'e2e-elsewhere.cfg').its('data.encrypt').then((wrapped: string) => {
+                cy.upsertOsgiFile(probe, `x = ${wrapped}\n`);
+                decrypt(probe, wrapped).its('data.decrypt').should('eq', wrapped).and('not.eq', 'planted-secret');
             });
         });
 
