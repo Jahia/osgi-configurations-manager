@@ -7,6 +7,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-28
+
 ### Security
 
 - **Encrypted values are bound to their configuration (SEC-603).** The per-file check of the

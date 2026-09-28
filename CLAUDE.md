@@ -27,17 +27,32 @@ a change appears to require relaxing one, that comment is the thing to read firs
 - **Only `OsgiConfigGqlException` reaches the client.** The provider renders any other exception
   with its raw message, which here means absolute server paths, so every failure goes through
   `OsgiConfigGqlSupport.translate`.
-- **Encryption fails closed.** `CryptoEngine.encryptString` throws rather than returning its input,
+- **Encryption fails closed.** `CryptoEngine.encryptBound` throws rather than returning its input,
   because returning the input on error meant persisting a secret in clear.
-- **Decryption degrades on read, but only in the service.** `OsgiConfigService.decrypt` hands the
+- **Every encrypted value is bound to its configuration (SEC-603).** A v3 envelope carries
+  `EnvelopeBinding` (the file name without extension, `.disabled` or case) as AES-GCM additional
+  authenticated data, and both decryption paths check it: `decryptForFile` with the named file, the
+  ConfigurationPlugin with the delivered configuration's `felix.fileinstall.filename`. Without it, a
+  value copied into a file the caller may write was decrypted there, by the operation or into a
+  component that sends it out. Never add an encrypt or decrypt path that skips the binding.
+- **Unbound values are refused once the instance migrated.** `EnvelopeMigration` binds the v2 and
+  legacy values once, then writes `.osgi-config-manager.envelopes`; from then on `CryptoEngine`
+  refuses unbound values. Re-running the migration later would bind a value planted after it, so it
+  runs only while the marker is absent.
+- **Decryption degrades on read, but only in the service.** `OsgiConfigService.decryptForFile` hands the
   value back untouched when it cannot be decrypted, so a config copied from another instance does not
-  turn a page load into a 500. `CryptoEngine.decryptString` itself still throws — the leniency is
+  turn a page load into a 500. `CryptoEngine.decryptBound` itself still throws — the leniency is
   deliberately confined to the read path.
 - **Decryption is bound to the file the value comes from.** `decryptForFile` walks the same
   authorization path as `readFile` and additionally requires the value to occur in that file's raw
   content, so the endpoint cannot be used as an oracle for a value the caller may not read.
 - **Filter matching is case-insensitive**, for exact names and `*` wildcards alike. Both halves must
   agree; when only exact names were case-insensitive, wildcard rules were bypassable.
+- **A filename guard compares the configuration, not one spelling of its file (SEC-525, SEC-602).**
+  Karaf applies `<pid>.cfg`, `<pid>.yml`, their `.disabled` copies, any case and the factory forms
+  `<pid>-*` / `<pid>~*` to the same PID. The manager's own configuration and every blacklist entry go
+  through `ConfigFileFilter.isConfigurationFileOf`; comparing a literal file name reopened the bypass
+  twice. The whitelist stays exact on purpose: widening it grants access.
 - **Visual ↔ raw round-trips must preserve `_order`.** The visual `.cfg` editor reserializes through
   the raw representation, so dropping the recorded key order reorders or loses the user's lines on
   save.
@@ -46,6 +61,11 @@ a change appears to require relaxing one, that comment is the thing to read firs
   manager's own PID.** Removing the key would disguise a wrong secret as a missing setting, and the
   manager's configuration carries the secret everything else is decrypted with. It modifies only the
   delivered copy, never the file.
+- **Configurations holding `ENC(...)` are delivered again at the manager's start.** Consumers start
+  before the manager after its update and at every restart, and receive raw values. Only a real
+  update makes SCR fetch a configuration again (`update()` without arguments and a component restart
+  both reuse what it holds), so `EncryptedConfigurationsRedelivery` writes each one back with its own
+  stored properties, and skips one whose change count moved meanwhile, to not revert a newer update.
 - **The decryption probe reports shapes, never values.** The `pluginProbe` query says `plaintext` or
   `encrypted` per key; echoing a value would turn the probe into a decryption oracle.
 - **`ConfigFileFilter` publishes one immutable snapshot behind a `volatile` reference.** This
