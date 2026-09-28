@@ -400,6 +400,11 @@ export const useOsgiConfigs = () => {
                 filename: selectedFile.name,
                 rawContent: finalContent
             });
+            // The file is read again below: count the whole refresh as a load, from before the
+            // toast, so the mode switch is not offered and then withdrawn midway.
+            loadGenerationRef.current += 1;
+            loadingFileRef.current = true;
+            setLoadingFile(true);
             success(t('notification.saveSuccess'));
 
             // Update origins
@@ -437,6 +442,8 @@ export const useOsgiConfigs = () => {
             await fetchFileContent(selectedFile.name);
 
         } catch (e: any) {
+            loadingFileRef.current = false;
+            setLoadingFile(false);
             toastError(e.message);
         }
     }, [isRawMode, rawContent, selectedFile, isYamlValid, properties, originalRawContent, t, success, toastError, resetProperties, encryptRecursive, fetchFiles, fetchFileContent]);

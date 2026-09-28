@@ -60,7 +60,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Switching to raw mode while a file is still loading no longer empties the editor.** The raw text
   is regenerated from the visual properties, which are empty (or the previous file's) until the load
   ends; a quick switch showed an empty editor, and saving it then wiped the file. The mode selector
-  is disabled during the load, and a switch overtaken by a new load is abandoned.
+  is disabled during the load (including the one that follows a save, which now starts before the
+  confirmation toast), and a switch overtaken by a new load is abandoned.
 - **The delivery at start no longer reverts a newer update.** A configuration holding `ENC(...)`
   values is written back only if its change count is still the one read at the start of the pass;
   one updated in between (FileInstall, an administrator, the cluster) was delivered through the

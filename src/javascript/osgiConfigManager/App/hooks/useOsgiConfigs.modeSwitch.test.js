@@ -86,4 +86,55 @@ describe('useOsgiConfigs — editor mode switch while a file loads', () => {
         });
         expect(result.current.rawContent).toBe('token = second\n');
     });
+
+    it('refuses the switch from the save until the file has been read again', async () => {
+        osgiService.save.mockResolvedValue({});
+        osgiService.read.mockResolvedValue({ data: { rawContent: 'alpha = 1\n', properties: [] } });
+        const { result } = renderHook(() => useOsgiConfigs());
+        await act(async () => {
+            result.current.selectFile({ name: 'a.cfg' });
+        });
+        await act(async () => {
+            await result.current.handleSetEditorMode('raw');
+        });
+        expect(result.current.isRawMode).toBe(true);
+
+        act(() => {
+            result.current.handleRawUpdate('alpha = 2\n');
+        });
+        await act(async () => {
+            await result.current.handleSave();
+        });
+
+        // The refresh after the save lists the files first: hold it there.
+        const listing = deferred();
+        osgiService.getAll.mockReturnValueOnce(listing.promise);
+        osgiService.read.mockResolvedValue({ data: { rawContent: 'alpha = 2\n', properties: [] } });
+        await act(async () => {
+            result.current.diffConfig.onConfirm();
+            await Promise.resolve();
+            await Promise.resolve();
+        });
+        expect(osgiService.save).toHaveBeenCalled();
+        expect(result.current.loadingFile).toBe(true);
+
+        await act(async () => {
+            await result.current.handleSetEditorMode('visual');
+        });
+        expect(result.current.isRawMode).toBe(true);
+
+        await act(async () => {
+            listing.resolve({ files: [{ name: 'a.cfg' }] });
+            await listing.promise;
+        });
+        await act(async () => {
+            await Promise.resolve();
+        });
+        expect(result.current.loadingFile).toBe(false);
+
+        await act(async () => {
+            await result.current.handleSetEditorMode('visual');
+        });
+        expect(result.current.isRawMode).toBe(false);
+    });
 });
