@@ -274,6 +274,7 @@ const AppContent = () => {
                                             onDownloadFile={handleDownloadSelectedFile}
                                             onDeleteFile={handleDeleteFile}
                                             onSetEditorMode={handleSetEditorMode}
+                                            isLoadingFile={loadingFile}
                                         />
                                     )}
 

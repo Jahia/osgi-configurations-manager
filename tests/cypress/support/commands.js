@@ -323,7 +323,8 @@ Cypress.Commands.add('openOsgiFile', filename => {
  * Switch the CFG editor to visual mode when needed.
  */
 Cypress.Commands.add('ensureVisualCfgMode', () => {
-    cy.get('[data-cy="editor-mode-toggle"]', {timeout: 30000}).then($toggle => {
+    // The switch is refused while the file loads, so wait for the load to end before clicking.
+    cy.get('[data-cy="editor-mode-toggle"][data-loading="false"]', {timeout: 30000}).then($toggle => {
         if ($toggle.attr('data-mode') !== 'visual') {
             cy.wrap($toggle).find('[role="listbox"]').click();
             cy.contains('.moonstone-menuItem', 'Visual Edit', {timeout: 30000}).click({force: true});
@@ -337,7 +338,8 @@ Cypress.Commands.add('ensureVisualCfgMode', () => {
  * Switch the CFG editor to raw mode when needed.
  */
 Cypress.Commands.add('ensureRawCfgMode', () => {
-    cy.get('[data-cy="editor-mode-toggle"]', {timeout: 30000}).then($toggle => {
+    // The switch is refused while the file loads, so wait for the load to end before clicking.
+    cy.get('[data-cy="editor-mode-toggle"][data-loading="false"]', {timeout: 30000}).then($toggle => {
         if ($toggle.attr('data-mode') !== 'raw') {
             cy.wrap($toggle).find('[role="listbox"]').click();
             cy.contains('.moonstone-menuItem', 'Raw Edit', {timeout: 30000}).click({force: true});

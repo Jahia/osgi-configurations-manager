@@ -92,6 +92,10 @@ export const useOsgiConfigs = () => {
     const [error, setError] = useState<string | null>(null);
     const [loadingFiles, setLoadingFiles] = useState<boolean>(false);
     const [loadingFile, setLoadingFile] = useState<boolean>(false);
+    // Read by the mode switch, which awaits before applying its result: a load that starts or ends
+    // meanwhile would otherwise have its content overwritten by one serialized from stale properties.
+    const loadingFileRef = useRef<boolean>(false);
+    const loadGenerationRef = useRef<number>(0);
     const [isCreatingFile, setIsCreatingFile] = useState<boolean>(false);
     const [newFileName, setNewFileName] = useState<string>('');
     const [searchTerm, setSearchTerm] = useState<string>('');
@@ -143,6 +147,8 @@ export const useOsgiConfigs = () => {
     }, []);
 
     const fetchFileContent = useCallback(async (filename: string) => {
+        loadGenerationRef.current += 1;
+        loadingFileRef.current = true;
         setLoadingFile(true);
         setError(null); // Clear previous errors
         setMetatypeInfo(null);
@@ -208,6 +214,7 @@ export const useOsgiConfigs = () => {
             // If we have an error (e.g. blacklisted), refresh the files list to sync Sidebar
             fetchFiles();
         }
+        loadingFileRef.current = false;
         setLoadingFile(false);
     }, [fetchFiles, resetProperties, warnAboutUndecryptedValues]);
 
@@ -241,6 +248,8 @@ export const useOsgiConfigs = () => {
             setRawContent('');
             setOriginalRawContent('');
             setError(null);
+            loadGenerationRef.current += 1;
+            loadingFileRef.current = false;
             setLoadingFile(false);
         }
     }, [fetchFileContent, resetProperties]);
@@ -465,16 +474,17 @@ export const useOsgiConfigs = () => {
     }, [showEmptyLinesPreference, visualFormattingControlsEnabled]);
 
     const handleToggleRawMode = useCallback(async () => {
+        // Switching while a file loads would build the other mode from the previous (or empty)
+        // content, and saving it then would wipe the file.
+        if (loadingFileRef.current) {
+            return;
+        }
+        const loadGeneration = loadGenerationRef.current;
+        const loadChanged = () => loadingFileRef.current || loadGenerationRef.current !== loadGeneration;
+
         // Capture cleanliness state before toggle
         const wasClean = !hasUnsaved;
         const newMode = !isRawMode;
-
-        // Persist preference
-        try {
-            await osgiService.setPreference('osgiEditorMode', newMode ? 'raw' : 'visual');
-        } catch (e) {
-            console.error("Failed to save user preference", e);
-        }
 
         if (isRawMode) {
             // Switching TO Visual Mode
@@ -491,6 +501,9 @@ export const useOsgiConfigs = () => {
             // Same shared traversal as the load path; these copies previously swallowed decryption
             // errors entirely, so a refusal left the value unchanged with no trace at all.
             await decryptTree(parsed, currentFile.name, e => console.error('Decryption failed', e));
+            if (loadChanged()) {
+                return;
+            }
             warnAboutUndecryptedValues(parsed);
 
             resetProperties(parsed);
@@ -521,6 +534,9 @@ export const useOsgiConfigs = () => {
                 const prepared = await prepareDataForSave(propsToEnc);
                 formatted = toCfgFormat(prepared);
             }
+            if (loadChanged()) {
+                return;
+            }
 
             setRawContent(formatted);
 
@@ -530,6 +546,13 @@ export const useOsgiConfigs = () => {
             }
         }
         setIsRawMode(newMode);
+
+        // Persisted after the switch, so a switch abandoned above does not change the preference.
+        try {
+            await osgiService.setPreference('osgiEditorMode', newMode ? 'raw' : 'visual');
+        } catch (e) {
+            console.error("Failed to save user preference", e);
+        }
     }, [hasUnsaved, isRawMode, rawContent, encryptRecursive, properties, resetProperties, warnAboutUndecryptedValues]);
 
     const handleSetEditorMode = useCallback(async (mode: 'raw' | 'visual') => {
