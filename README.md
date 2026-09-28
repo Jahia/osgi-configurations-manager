@@ -62,7 +62,9 @@ A Jahia module to manage OSGi configurations directly from the Jahia Administrat
         `ENC(...)` values decrypted, so a consumer needs no crypto code (see *Consuming encrypted
         values from your module*).
     -   Decryption for viewing is authorized per file: a value is only decrypted for a user who may
-        read the file it actually appears in.
+        read the file it actually appears in. This does not make an `ENC(...)` value safe to share:
+        a user who may write some file can copy a value into it and have it decrypted (see
+        *Keep `ENC(...)` values private* below).
     -   **Review before save**: saving shows the raw diff of what is about to be written and requires
         an explicit confirmation.
     -   Saves are capped at 5 MiB of raw content.
@@ -114,6 +116,16 @@ allowedFiles = org.apache.felix.eventadmin.impl.EventAdmin.cfg, org.apache.karaf
 # Optional: re-enable comment and empty-line controls in the visual .cfg editor
 visualFormattingControlsEnabled = true
 ```
+
+A `filteredFiles` entry hides the **configuration**, not one spelling of its file name. Karaf applies
+`<pid>.cfg` and `<pid>.yml` to the same PID, so an exact entry such as `my-secret-config.cfg` also
+hides `my-secret-config.yml`, their `.disabled` copies, any upper/lower-case variant, and the factory
+files of the same PID (`my-secret-config-<name>.cfg`, `my-secret-config~<name>.yml`). A wildcard entry
+is tried against every admitted extension. `allowedFiles` entries, on the contrary, match the exact
+name only: a white list grants access, so it is not widened.
+
+The manager's own configuration, `org.jahia.modules.osgiconfigmanager`, is reserved for `root` in the
+same way, whatever its extension, case or factory form.
 
 When `allowedFiles` is defined:
 
@@ -208,9 +220,9 @@ public class MyService {
 
 Two things the consumer must do:
 
-- **Declare the dependency** in its manifest, `Jahia-Depends: osgi-configurations-manager`.
-  Plugins are consulted at delivery time only: a component that started before this module
-  received its `ENC(...)` values raw and is not re-delivered when the plugin appears.
+- **Declare the dependency** in its manifest, `Jahia-Depends: osgi-configurations-manager`, so that
+  Jahia installs and refreshes the consumer with the manager. It does not guarantee the start order
+  (see *When the manager starts* below).
 - **Receive the configuration through Declarative Services** (or a `ManagedService`). A direct
   `ConfigurationAdmin.getConfiguration(pid).getProperties()` returns the stored properties and
   bypasses plugins.
@@ -218,6 +230,30 @@ Two things the consumer must do:
 Declare secrets with `AttributeType.PASSWORD`. The manager then writes a hint next to them in a
 file created from the PID, and the visual editor's property picker inserts them with encryption
 already enabled.
+
+### When the manager starts
+
+Configuration Admin calls the plugin only when it delivers a configuration. A consumer that starts
+before the manager receives its `ENC(...)` values as stored, and no error is logged, because nothing
+tried to decrypt them. This is the usual case, not a rare race: when the manager is updated, Jahia
+restarts the modules that depend on it in bundle order, and a consumer installed before the manager
+starts first. A server restart does the same.
+
+So once its plugin is registered, the manager delivers again every configuration that holds an
+`ENC(...)` value (its own excepted). It writes each one back with its own stored properties. The
+content of the file does not change, but Configuration Admin counts a new version, and the consumer
+receives the configuration again, decrypted this time. What you will notice:
+
+- the log line `[AUDIT] Delivered again N configuration(s) holding ENC(...) values ...` on every
+  node, each time the manager starts;
+- the modification date of the encrypted `.cfg` files changes at that moment, with an unchanged
+  content;
+- a configuration that changed while the manager was reading it is left as it is, with the log line
+  `Configuration <pid> changed while being delivered again; left as is`. That newer version already
+  went through the plugin.
+
+To check a deployment, look for the `[AUDIT] Delivered again` line after the manager started, then
+for the consumer's own activation log line after it.
 
 ### When a value cannot be decrypted
 
@@ -262,6 +298,12 @@ than failing the page, and the plugin delivers it as stored.
 > the others. The manager's own `.cfg` is replicated like any other, so a `cryptoSecret` set there
 > reaches every node.
 
+> [!NOTE]
+> **Removing `cryptoSecret` takes effect at the next restart only.** The manager applies the
+> passphrase when its configuration is delivered. If you delete the key from the file, the former
+> passphrase stays in use until the manager restarts; after that, the generated per-instance secret
+> is used, and values encrypted with the former passphrase can no longer be decrypted. Re-enter them.
+
 > [!WARNING]
 > **`cryptoSecret` stays in clear text.** It is the passphrase the `ENC(...)` values are encrypted
 > with, so it is the one secret that cannot be encrypted: there would be nothing left to decrypt it
@@ -271,6 +313,21 @@ than failing the page, and the plugin delivers it as stored.
 > value reach the file anyway (edited by hand, copied from elsewhere), the manager logs an `[AUDIT]`
 > error, ignores it and keeps the generated per-instance secret. Protect the file with its
 > permissions, as for any other Karaf configuration holding credentials.
+
+### Keep `ENC(...)` values private
+
+An `ENC(...)` value is protected by the instance secret, not by the file it sits in. The manager only
+decrypts a value for a user who may read the file where it appears, and it delivers decrypted values
+to the component that owns each configuration. But the envelope does not record which configuration
+or which key it was made for. A user who may write some configuration can therefore copy a value
+taken from a file hidden from them (from a backup, an export, a support bundle, a log) into a file
+they may write, and have it decrypted, either by the `decrypt` operation or by a component that uses
+the value, such as a service that sends a token to a URL of that same file. This is tracked as
+SEC-603.
+
+Until the envelope is bound to its configuration and key, treat `ENC(...)` values like the secrets
+they hold: do not paste them into tickets, chats or repositories, and give the manager's delegated
+role only to people you would trust with the plaintext.
 
 ## Installation
 
@@ -321,7 +378,7 @@ namespace: `Query.osgiConfigManager` and `Mutation.osgiConfigManager`. (The earl
 | `save(name: String!, rawContent: String!)`, `toggle(name)`, `delete(name)`, `markAsDefault(name)`, `create(name)` | `true` |
 | `createFromMetatype(pid: String!, instanceIdentifier: String)` | the created file name |
 | `encrypt(value: String!)` | the `ENC(...)` value |
-| `decrypt(name: String!, value: String!)` | the plaintext; the value must occur in the named file |
+| `decrypt(name: String!, value: String!)` | the plaintext; the value must occur in the named file (see *Keep `ENC(...)` values private*) |
 | `setPreference(key: String!, value: String)` | `false` when there was nowhere to store it |
 
 A mutation must carry both of the following, or it is refused before anything is read or written:
