@@ -258,8 +258,14 @@ for the consumer's own activation log line after it.
 
 The plugin leaves the `ENC(...)` value exactly as stored and logs an error naming the PID and the
 key. The component starts with an unusable secret, its connection fails, and the log says why. The
-usual cause is a `.cfg` copied from another instance, whose secret differs; re-enter the value on
-the target instance, or give both instances the same `cryptoSecret`.
+usual causes:
+
+- a `.cfg` copied from another instance, whose secret differs: re-enter the value on the target
+  instance, or give both instances the same `cryptoSecret`;
+- a value copied from another configuration file: it is bound to the configuration it was
+  encrypted for (see *Encrypted values belong to their configuration*), so re-enter it in this one;
+- an unbound value (`ENC(v2:...)` or older) written after the instance migrated to bound values:
+  re-enter it in the manager.
 
 ### Checking that it works on an instance
 
@@ -278,9 +284,10 @@ value is ever returned. Delete the probe file afterwards.
 
 Modules written against earlier versions decrypt by themselves with
 `org.jahia.modules.osgiconfigmanager.admin.CryptoEngine.decryptString`, which throws
-`IllegalStateException` on an undecryptable value. That still works and the package stays exported,
-but new consumers should rely on the plugin: a value decrypted twice is not a problem, since a
-plaintext is not an envelope, so both styles coexist during a migration.
+`IllegalStateException` on an undecryptable value. The package stays exported, but that method
+(deprecated, like `encryptString`) handles unbound values only, so it stops working once the
+instance has migrated to bound values (see below). Move such modules to the plugin before
+upgrading: they then receive their values decrypted, whatever the envelope.
 
 ### Portability between instances
 
@@ -333,7 +340,8 @@ same file.
 **Upgrading from 1.1.0 or earlier.** Values written before 1.1.1 (`ENC(v2:...)`, and the pre-1.0.5 format) are
 not bound. At its first start, the manager binds them once and for all: each configuration file of
 `karaf/etc` gets its `ENC(...)` values encrypted again for its own configuration. Only those values
-change; comments, order and layout are kept. The manager then writes the marker
+change; comments, order and layout are kept, and an `ENC(...)` on a comment line (the generated
+templates carry such hints) is left alone. The manager then writes the marker
 `karaf/etc/.osgi-config-manager.envelopes` and logs
 `[AUDIT] Encrypted values bound to their configuration (v3): ...`. From then on, an unbound value is
 refused wherever it appears (`[AUDIT] Refused an unbound (v2 or legacy) encrypted value`): enter it
