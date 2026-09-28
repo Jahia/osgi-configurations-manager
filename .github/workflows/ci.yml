@@ -5,6 +5,11 @@ on:
   push:
     branches: [main]
 
+# Checkout, build, test and an artifact upload: the token never writes (code scanning:
+# actions/missing-workflow-permissions).
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
