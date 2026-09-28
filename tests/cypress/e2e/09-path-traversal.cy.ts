@@ -82,5 +82,20 @@ describe('OSGi Configurations Manager - Path traversal & self-config gating', ()
                 op().then(expectSelfConfigDenied);
             });
         });
+
+        // SEC-525: Karaf applies these spellings to the manager's PID too (the .yml carrier, any case, and the
+        // factory forms that would activate a second instance of its configuration component).
+        [
+            'org.jahia.modules.osgiconfigmanager.yml',
+            'org.jahia.modules.osgiconfigmanager.yml.disabled',
+            'org.jahia.modules.osgiconfigmanager.CFG',
+            'org.jahia.modules.osgiconfigmanager-other.cfg',
+            'org.jahia.modules.osgiconfigmanager~other.yml'
+        ].forEach(spelling => {
+            it(`is denied read and save of the self-config spelled ${spelling}`, () => {
+                readFile(spelling).then(expectSelfConfigDenied);
+                saveFile(spelling).then(expectSelfConfigDenied);
+            });
+        });
     });
 });
