@@ -20,6 +20,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Services activate a second instance of the manager's configuration component, which applies its
   own `cryptoSecret` to the shared crypto engine. File and PID guards now treat `<pid>-*`, `<pid>~*`
   and `<pid>.*` as the manager's configuration.
+- **A blacklist entry hides the configuration, not one spelling of its file.** An exact entry such as
+  `org.jahia.bundles.api.security.cfg` left `org.jahia.bundles.api.security.yml` writable, and
+  Karaf applies it to the same PID (same class as SEC-525). An exact entry now refuses every
+  admitted extension, any case and the factory forms of its PID, and a wildcard entry is tried
+  against every admitted extension of the requested name. The whitelist keeps exact names, since
+  widening it would grant access instead of refusing it.
 
 ### Changed
 

@@ -105,7 +105,47 @@ final class ConfigFileFilter {
         if (hasConfiguredEntries(fc.whitelist, fc.whitelistPatterns)) {
             return matchesConfiguredFilename(filename, fc.whitelist, fc.whitelistPatterns);
         }
-        return !matchesConfiguredFilename(filename, fc.blacklist, fc.blacklistPatterns);
+        return !matchesBlacklist(filename, fc);
+    }
+
+    /**
+     * A blacklist entry hides the configuration, not one spelling of its file. Karaf applies
+     * {@code <pid>.cfg}, {@code <pid>.yml} (each optionally {@code .disabled}, in any case) and the
+     * factory forms {@code <pid>-<name>} / {@code <pid>~<name>} to the same PID, so an exact entry
+     * {@code org.foo.cfg} also refuses {@code org.foo.yml}, and a wildcard entry is tried against
+     * every admitted extension of the requested stem. Without this, a delegated administrator saved
+     * the {@code .yml} spelling of a blacklisted configuration and reconfigured its PID (sibling of
+     * SEC-525). The whitelist keeps exact names: widening it would grant access, not refuse it.
+     */
+    private boolean matchesBlacklist(String filename, FilterConfig fc) {
+        if (matchesConfiguredFilename(filename, fc.blacklist, fc.blacklistPatterns)) {
+            return true;
+        }
+        for (String entry : fc.blacklist) {
+            if (OsgiConfigService.isSupportedConfigFilename(entry) && isConfigurationFileOf(configurationStem(entry), filename)) {
+                return true;
+            }
+        }
+        String stem = configurationStem(filename);
+        for (String extension : OsgiConfigService.SUPPORTED_CONFIG_EXTENSIONS) {
+            String spelling = stem + extension;
+            if (fc.blacklistPatterns.stream().anyMatch(pattern -> pattern.matcher(spelling).matches())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** The file name without its longest admitted extension, lower-cased: the PID it configures. */
+    static String configurationStem(String filename) {
+        String lower = filename.toLowerCase(Locale.ROOT);
+        String longest = "";
+        for (String extension : OsgiConfigService.SUPPORTED_CONFIG_EXTENSIONS) {
+            if (lower.endsWith(extension) && extension.length() > longest.length()) {
+                longest = extension;
+            }
+        }
+        return lower.substring(0, lower.length() - longest.length());
     }
 
     /** @return whether {@code filename} (or its {@code .disabled} variant) is blacklisted. */
@@ -149,14 +189,7 @@ final class ConfigFileFilter {
         if (pid == null || filename == null) {
             return false;
         }
-        String stem = filename.toLowerCase(Locale.ROOT);
-        String longest = "";
-        for (String extension : OsgiConfigService.SUPPORTED_CONFIG_EXTENSIONS) {
-            if (stem.endsWith(extension) && extension.length() > longest.length()) {
-                longest = extension;
-            }
-        }
-        stem = stem.substring(0, stem.length() - longest.length());
+        String stem = configurationStem(filename);
         String target = pid.toLowerCase(Locale.ROOT);
         return stem.equals(target) || stem.startsWith(target + "-") || stem.startsWith(target + "~");
     }
