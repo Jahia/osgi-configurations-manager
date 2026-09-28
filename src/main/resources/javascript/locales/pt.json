@@ -197,7 +197,11 @@
         },
         "empty": "vazio",
         "emptyLine": "Linha Vazia",
-        "reorderHandle": "Reordenar esta entrada — utilize Seta para cima ou Seta para baixo para a mover"
+        "reorderHandle": "Reordenar esta entrada — utilize Seta para cima ou Seta para baixo para a mover",
+        "filter": {
+            "placeholder": "Filtrar por nome da propriedade ou valor",
+            "count": "Propriedades correspondentes: {{count}}"
+        }
     },
     "tooltip": {
         "downloadFile": "Baixar arquivo atual (Dados brutos)",

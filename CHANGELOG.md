@@ -7,6 +7,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- **Visual editor: a row is dragged from its handle only.** The whole row used to be draggable, so
+  selecting text in a key or a value started a reorder instead. A row is now draggable only while
+  the pointer is down on its handle cell (the 48 px column on the left, wider than the icon);
+  keyboard reordering with Arrow Up/Down on the handle is unchanged.
+
+### Added
+
+- **Visual editor: filter by property name or value**, as in the former Encrypted Properties
+  Manager. A search field above the table keeps the properties whose key, or value, contains the
+  text (case-insensitive) and shows how many match; comments and empty lines are hidden while
+  filtering, and reordering is off. Encrypted values are not searched, so the filter cannot be used
+  to probe a secret.
+
 ### Fixed
 
 - **`cryptoSecret` is applied before the first value is decrypted.** `OsgiConfigService`, which reads

@@ -197,7 +197,11 @@
         },
         "empty": "leer",
         "emptyLine": "Leerzeile",
-        "reorderHandle": "Eintrag neu anordnen – mit Pfeil-hoch oder Pfeil-runter verschieben"
+        "reorderHandle": "Eintrag neu anordnen – mit Pfeil-hoch oder Pfeil-runter verschieben",
+        "filter": {
+            "placeholder": "Nach Eigenschaftsname oder Wert filtern",
+            "count": "Passende Eigenschaften: {{count}}"
+        }
     },
     "tooltip": {
         "downloadFile": "Aktuelle Datei herunterladen (Rohdaten)",

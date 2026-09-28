@@ -197,7 +197,11 @@
         },
         "empty": "vuoto",
         "emptyLine": "Riga vuota",
-        "reorderHandle": "Riordina questa voce — usa Freccia su o Freccia giù per spostarla"
+        "reorderHandle": "Riordina questa voce — usa Freccia su o Freccia giù per spostarla",
+        "filter": {
+            "placeholder": "Filtra per nome della proprietà o valore",
+            "count": "Proprietà corrispondenti: {{count}}"
+        }
     },
     "tooltip": {
         "downloadFile": "Scarica file corrente (Dati grezzi)",
