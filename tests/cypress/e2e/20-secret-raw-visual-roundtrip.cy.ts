@@ -25,6 +25,26 @@ const revealSecret = (index: number) => {
     return cy.get(`[data-cy="cfg-value-${index}"]`).should('have.attr', 'type', 'text');
 };
 
+/**
+ * Adds `line` right after the first line of the raw editor. Monaco drops the keys typed before it
+ * holds the focus: a lost {end} left the cursor at the start of line 1, the new line went ABOVE
+ * `password = ENC(...)`, and the visual mode later showed an empty line as row 0, with no eye
+ * button (the intermittent "cfg-value-cell-0 button" failure of the e2e runs). So wait for the
+ * focus, bring the cursor to line 1 with the arrows (the same on Linux and macOS), then check that
+ * the new line stands on its own.
+ */
+const addLineAfterFirst = (line: string) => {
+    cy.get('.monaco-editor textarea', {timeout: 30000}).click({force: true});
+    cy.get('.monaco-editor', {timeout: 10000}).should('have.class', 'focused');
+    cy.get('.monaco-editor textarea').type('{uparrow}{uparrow}{uparrow}{end}{enter}', {force: true});
+    cy.get('.monaco-editor textarea').type(line, {force: true});
+    cy.get('.monaco-editor .view-line', {timeout: 30000}).should($lines => {
+        const texts = $lines.toArray().map(el => (el.textContent || '').replace(/\u00a0/g, ' ').trim());
+        expect(texts, 'the new line stands on its own').to.include(line);
+        expect(texts.some(text => text.startsWith('password = ENC(')), 'the stored value keeps its own line').to.eq(true);
+    });
+};
+
 const DECRYPT = ['decrypt(name: $name, value: $value)', '($name: String!, $value: String!)'] as const;
 
 describe('OSGi Configurations Manager - Secrets survive the raw/visual round trip', () => {
@@ -69,8 +89,7 @@ describe('OSGi Configurations Manager - Secrets survive the raw/visual round tri
         cy.ensureRawCfgMode();
 
         // Add a clear value on a second line; the cursor stays on that line.
-        cy.get('.monaco-editor textarea', {timeout: 30000}).click({force: true});
-        cy.get('.monaco-editor textarea').type(`{end}{enter}token = ${RAW_SECRET}`, {force: true});
+        addLineAfterFirst(`token = ${RAW_SECRET}`);
 
         cy.get('[data-cy="raw-editor-encrypt"] button').click();
         rawTextShould(text => {
@@ -92,8 +111,7 @@ describe('OSGi Configurations Manager - Secrets survive the raw/visual round tri
 
     it('raw editor: Decrypt says so when the current line holds no ENC(...) value', () => {
         cy.ensureRawCfgMode();
-        cy.get('.monaco-editor textarea', {timeout: 30000}).click({force: true});
-        cy.get('.monaco-editor textarea').type('{end}{enter}plain = nothing-to-decrypt', {force: true});
+        addLineAfterFirst('plain = nothing-to-decrypt');
 
         cy.get('[data-cy="raw-editor-decrypt"] button').click();
 
