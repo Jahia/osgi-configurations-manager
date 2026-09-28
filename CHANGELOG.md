@@ -7,6 +7,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **The delivery at start no longer reverts a newer update.** A configuration holding `ENC(...)`
+  values is written back only if its change count is still the one read at the start of the pass;
+  one updated in between (FileInstall, an administrator, the cluster) was delivered through the
+  plugin already, and writing back the older copy would have reverted it on disk and on the other
+  nodes.
+
 ### Changed
 
 - **Visual editor: a row is dragged from its handle only.** The whole row used to be draggable, so

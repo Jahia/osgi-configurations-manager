@@ -70,11 +70,19 @@ public class EncryptedConfigurationsRedelivery {
         int redelivered = 0;
         for (Configuration configuration : configurations) {
             String pid = configuration.getPid();
+            long changeCount = configuration.getChangeCount();
             Dictionary<String, Object> properties = configuration.getProperties();
             if (OsgiConfigService.SELF_CONFIG_PID.equals(pid) || !holdsEnvelope(properties)) {
                 continue;
             }
             try {
+                // Changed since it was read (FileInstall, an administrator, the cluster): that
+                // update was delivered through the plugin already, and writing back the copy read
+                // above would revert it, on disk and on the other nodes.
+                if (changedSince(configurationAdmin, pid, changeCount)) {
+                    LOGGER.info("Configuration {} changed while being delivered again; left as is", pid);
+                    continue;
+                }
                 // The stored properties themselves (the plugin does not touch getProperties()),
                 // felix.fileinstall.filename included so the configuration stays bound to its file.
                 configuration.update(properties);
@@ -84,6 +92,24 @@ public class EncryptedConfigurationsRedelivery {
             }
         }
         return redelivered;
+    }
+
+    /** Whether the configuration's change count moved, read again from Configuration Admin. */
+    static boolean changedSince(ConfigurationAdmin configurationAdmin, String pid, long changeCount) throws Exception {
+        Configuration[] current = configurationAdmin.listConfigurations("(service.pid=" + escapeFilterValue(pid) + ")");
+        return current == null || current.length == 0 || current[0].getChangeCount() != changeCount;
+    }
+
+    /** RFC 1960 escaping of a filter value. */
+    static String escapeFilterValue(String value) {
+        StringBuilder out = new StringBuilder(value.length());
+        for (char c : value.toCharArray()) {
+            if (c == '\\' || c == '*' || c == '(' || c == ')') {
+                out.append('\\');
+            }
+            out.append(c);
+        }
+        return out.toString();
     }
 
     static boolean holdsEnvelope(Dictionary<String, Object> properties) {
