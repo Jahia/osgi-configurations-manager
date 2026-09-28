@@ -7,6 +7,26 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Security
+
+- **The manager's own configuration is reserved for root in every spelling (SEC-525).** The guard
+  compared the file name with two `.cfg` literals, while Karaf applies
+  `org.jahia.modules.osgiconfigmanager.yml` to the same PID and the manager admits `.yml`: a
+  delegated administrator could rewrite the file filter and `cryptoSecret`. The file is now
+  recognised by its PID whatever the extension the manager admits (`.cfg`, `.yml`, each optionally
+  `.disabled`) and the case. The refusal of an `ENC(...)` passphrase covers the same spellings.
+- **Factory configurations of the manager's PID are reserved too.** A file such as
+  `org.jahia.modules.osgiconfigmanager-other.cfg` (or a `~other` factory PID) makes Declarative
+  Services activate a second instance of the manager's configuration component, which applies its
+  own `cryptoSecret` to the shared crypto engine. File and PID guards now treat `<pid>-*`, `<pid>~*`
+  and `<pid>.*` as the manager's configuration.
+- **A blacklist entry hides the configuration, not one spelling of its file.** An exact entry such as
+  `org.jahia.bundles.api.security.cfg` left `org.jahia.bundles.api.security.yml` writable, and
+  Karaf applies it to the same PID (same class as SEC-525). An exact entry now refuses every
+  admitted extension, any case and the factory forms of its PID, and a wildcard entry is tried
+  against every admitted extension of the requested name. The whitelist keeps exact names, since
+  widening it would grant access instead of refusing it.
+
 ### Changed
 
 - **Visual editor: a row is dragged from its handle only.** The whole row used to be draggable, so
