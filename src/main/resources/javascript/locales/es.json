@@ -197,7 +197,11 @@
         },
         "empty": "vacío",
         "emptyLine": "Línea vacía",
-        "reorderHandle": "Reordenar esta entrada — usa Flecha arriba o Flecha abajo para moverla"
+        "reorderHandle": "Reordenar esta entrada — usa Flecha arriba o Flecha abajo para moverla",
+        "filter": {
+            "placeholder": "Filtrar por nombre de propiedad o valor",
+            "count": "Propiedades coincidentes: {{count}}"
+        }
     },
     "tooltip": {
         "downloadFile": "Descargar archivo actual (Datos sin procesar)",

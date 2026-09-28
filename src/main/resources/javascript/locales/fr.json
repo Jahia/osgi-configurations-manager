@@ -197,7 +197,11 @@
         },
         "empty": "vide",
         "emptyLine": "Ligne vide",
-        "reorderHandle": "Réorganiser cette entrée — utilisez Flèche haut ou Flèche bas pour la déplacer"
+        "reorderHandle": "Réorganiser cette entrée — utilisez Flèche haut ou Flèche bas pour la déplacer",
+        "filter": {
+            "placeholder": "Filtrer par nom de propriété ou valeur",
+            "count": "Propriétés correspondantes : {{count}}"
+        }
     },
     "configState": {
         "badge": {

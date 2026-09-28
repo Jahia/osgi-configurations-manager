@@ -1,6 +1,6 @@
 import React from 'react';
 import {render, screen, fireEvent} from '@testing-library/react';
-import {CfgEditor} from './CfgEditor';
+import {CfgEditor, matchesCfgFilter} from './CfgEditor';
 
 jest.mock('react-i18next', () => ({
     useTranslation: () => ({t: key => key})
@@ -129,6 +129,92 @@ describe('CfgEditor', () => {
             fireEvent.keyDown(container.querySelector('[data-cy="cfg-reorder-1"]'), {key: 'ArrowLeft'});
 
             expect(handleReorder).not.toHaveBeenCalled();
+        });
+    });
+    describe('drag zone', () => {
+        const entries = [
+            {type: 'property', key: 'alpha.key', value: 'alpha value'},
+            {type: 'property', key: 'beta.key', value: 'beta value'}
+        ];
+
+        it('makes a row draggable only while the pointer is down on its handle cell, so text can be selected', () => {
+            const {container} = render(<CfgEditor {...baseProps} entries={entries} visualFormattingControlsEnabled showComments showEmptyLines/>);
+            const row = container.querySelector('[data-cy="cfg-row-0"]');
+            expect(row.getAttribute('draggable')).toBe('false');
+
+            // Pressing in the value field (a text selection) does not arm the row.
+            fireEvent.mouseDown(screen.getByDisplayValue('alpha value'));
+            expect(row.getAttribute('draggable')).toBe('false');
+
+            fireEvent.mouseDown(container.querySelector('[data-cy="cfg-drag-zone-0"]'));
+            expect(row.getAttribute('draggable')).toBe('true');
+            expect(container.querySelector('[data-cy="cfg-row-1"]').getAttribute('draggable')).toBe('false');
+
+            fireEvent.mouseUp(window);
+            expect(row.getAttribute('draggable')).toBe('false');
+        });
+
+        it('reorders on a drop that started from the handle, and ignores a drag started elsewhere', () => {
+            const handleReorder = jest.fn();
+            const {container} = render(<CfgEditor {...baseProps} handleReorder={handleReorder} entries={entries} visualFormattingControlsEnabled showComments showEmptyLines/>);
+            const dataTransfer = {effectAllowed: '', dropEffect: ''};
+            const row0 = container.querySelector('[data-cy="cfg-row-0"]');
+            const row1 = container.querySelector('[data-cy="cfg-row-1"]');
+
+            fireEvent.dragStart(row0, {dataTransfer});
+            fireEvent.drop(row1, {dataTransfer});
+            expect(handleReorder).not.toHaveBeenCalled();
+
+            fireEvent.mouseDown(container.querySelector('[data-cy="cfg-drag-zone-0"]'));
+            fireEvent.dragStart(row0, {dataTransfer});
+            fireEvent.drop(row1, {dataTransfer});
+            expect(handleReorder).toHaveBeenCalledWith(0, 1);
+        });
+    });
+
+    describe('filter', () => {
+        const entries = [
+            {type: 'comment', value: '# jira settings'},
+            {type: 'property', key: 'jira.url', value: 'https://jira.example.org'},
+            {type: 'property', key: 'jira.token', value: {value: 'secret-jira', encrypted: true}},
+            {type: 'empty', value: ''},
+            {type: 'property', key: 'slack.url', value: 'https://slack.com/api'}
+        ];
+
+        it('keeps the properties whose name or value contains the text, case-insensitively, and nothing else', () => {
+            const {container} = render(<CfgEditor {...baseProps} entries={entries} visualFormattingControlsEnabled showComments showEmptyLines/>);
+            const input = container.querySelector('[data-cy="cfg-filter"] input');
+
+            fireEvent.change(input, {target: {value: 'JIRA'}});
+            expect(screen.getByDisplayValue('jira.url')).toBeInTheDocument();
+            expect(screen.getByDisplayValue('jira.token')).toBeInTheDocument();
+            expect(screen.queryByDisplayValue('slack.url')).not.toBeInTheDocument();
+            expect(screen.queryByDisplayValue('jira settings')).not.toBeInTheDocument();
+            expect(container.querySelector('[data-cy="cfg-filter-count"]')).toBeInTheDocument();
+
+            // By value.
+            fireEvent.change(input, {target: {value: 'slack.com'}});
+            expect(screen.getByDisplayValue('slack.url')).toBeInTheDocument();
+            expect(screen.queryByDisplayValue('jira.url')).not.toBeInTheDocument();
+
+            // Cleared: every row is back.
+            fireEvent.change(input, {target: {value: ''}});
+            expect(screen.getByDisplayValue('jira settings')).toBeInTheDocument();
+            expect(container.querySelector('[data-cy="cfg-filter-count"]')).not.toBeInTheDocument();
+        });
+
+        it('turns reordering off while filtering', () => {
+            const {container} = render(<CfgEditor {...baseProps} entries={entries} visualFormattingControlsEnabled showComments showEmptyLines/>);
+            fireEvent.change(container.querySelector('[data-cy="cfg-filter"] input'), {target: {value: 'jira'}});
+            fireEvent.mouseDown(container.querySelector('[data-cy="cfg-drag-zone-1"]'));
+            expect(container.querySelector('[data-cy="cfg-row-1"]').getAttribute('draggable')).toBe('false');
+        });
+
+        it('never searches an encrypted value', () => {
+            expect(matchesCfgFilter(entries[2], 'secret')).toBe(false);
+            expect(matchesCfgFilter(entries[2], 'token')).toBe(true);
+            expect(matchesCfgFilter(entries[0], 'jira')).toBe(false);
+            expect(matchesCfgFilter(entries[0], '')).toBe(true);
         });
     });
 });

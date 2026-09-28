@@ -197,7 +197,11 @@
         },
         "empty": "empty",
         "emptyLine": "Empty Line",
-        "reorderHandle": "Reorder this entry — press Arrow Up or Arrow Down to move it"
+        "reorderHandle": "Reorder this entry — press Arrow Up or Arrow Down to move it",
+        "filter": {
+            "placeholder": "Filter by property name or value",
+            "count": "Matching properties: {{count}}"
+        }
     },
     "configState": {
         "badge": {

@@ -16,7 +16,8 @@ import {
     HandleDrag,
     Visibility,
     Hidden,
-    AddCircleOutline
+    AddCircleOutline,
+    SearchInput
 } from '@jahia/moonstone';
 import { useTranslation } from 'react-i18next';
 import { CfgMetatypeInfoTooltip, CfgMetatypePropertyDialog } from './CfgMetatypePropertyDialog';
@@ -25,6 +26,26 @@ import {CHROME_TOKENS, FLOATING_TOOLTIP_STYLE, PANEL_ACTIONS_STYLE} from './AppC
 
 const MANAGER_SELF_PID = 'org.jahia.modules.osgiconfigmanager';
 const MANAGER_PASSPHRASE_KEY = 'cryptoSecret';
+
+/**
+ * True when a row matches the filter: a property whose key, or whose value when it is not a secret,
+ * contains the text (case-insensitive). Comments and empty lines never match, so a filtered view
+ * lists properties only. An encrypted value is not searched, so the filter cannot probe a secret.
+ */
+export const matchesCfgFilter = (entry, filter) => {
+    const needle = String(filter || '').trim().toLowerCase();
+    if (!needle) {
+        return true;
+    }
+    const type = entry?.type?.value ?? entry?.type;
+    if (type !== 'property') {
+        return false;
+    }
+    const key = String(entry.key?.value ?? entry.key ?? '').toLowerCase();
+    const encrypted = Boolean(entry.value?.encrypted);
+    const value = encrypted ? '' : String(entry.value?.value ?? entry.value ?? '').toLowerCase();
+    return key.includes(needle) || value.includes(needle);
+};
 
 const CFG_COLUMN_WIDTHS = {
     drag: {flex: '0 0 48px', minWidth: '48px'},
@@ -268,6 +289,11 @@ export const CfgEditor = ({
     const { t } = useTranslation('osgi-configurations-manager');
     const [selectedIndex, setSelectedIndex] = useState(null);
     const [draggedIndex, setDraggedIndex] = useState(null);
+    // A row is draggable only while the pointer is down on its handle cell: a draggable row would
+    // otherwise turn every text selection in its inputs into a drag of the whole row.
+    const [dragArmedIndex, setDragArmedIndex] = useState(null);
+    const [filter, setFilter] = useState('');
+    const filtering = filter.trim() !== '';
     const [overlay, setOverlay] = useState(null);
     const [visibleSecrets, setVisibleSecrets] = useState({});
     const [isMetatypeDialogOpen, setIsMetatypeDialogOpen] = useState(false);
@@ -384,17 +410,30 @@ export const CfgEditor = ({
         focusEntryValue(insertIndex);
     };
 
-    // Modified Drag Handlers: Only active if initiated from Handle
+    useEffect(() => {
+        const disarm = () => setDragArmedIndex(null);
+        window.addEventListener('mouseup', disarm);
+        window.addEventListener('touchend', disarm);
+        return () => {
+            window.removeEventListener('mouseup', disarm);
+            window.removeEventListener('touchend', disarm);
+        };
+    }, []);
+
+    // Drag handlers: a drag starts only from the handle cell (see dragArmedIndex).
     const handleDragStart = (e, index) => {
-        // Robust check: if the event target is inside an input/textarea/button, DO NOT drag.
-        // This covers Moonstone wrappers.
-        if (e.target.closest('input, textarea, button, [role="button"]')) {
+        if (dragArmedIndex !== index) {
             e.preventDefault();
             return;
         }
 
         setDraggedIndex(index);
         e.dataTransfer.effectAllowed = "move";
+    };
+
+    const handleDragEnd = () => {
+        setDraggedIndex(null);
+        setDragArmedIndex(null);
     };
 
     const handleDragOver = (e, index) => {
@@ -408,6 +447,7 @@ export const CfgEditor = ({
             handleReorder(draggedIndex, dropIndex);
         }
         setDraggedIndex(null);
+        setDragArmedIndex(null);
     };
 
     const handleRowClick = (index) => {
@@ -477,6 +517,24 @@ export const CfgEditor = ({
                 document.body
             )}
 
+            <div data-cy="cfg-filter" style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                <div style={{flex: '1 1 auto', maxWidth: '480px'}}>
+                    <SearchInput
+                        value={filter}
+                        placeholder={t('editor.filter.placeholder')}
+                        onChange={e => setFilter(e.target.value)}
+                        onClear={() => setFilter('')}
+                    />
+                </div>
+                {filtering && (
+                    <Typography variant="caption" data-cy="cfg-filter-count" style={{color: 'var(--color-gray_dark60)'}}>
+                        {t('editor.filter.count', {
+                            count: (Array.isArray(entries) ? entries : []).filter(entry => matchesCfgFilter(entry, filter)).length
+                        })}
+                    </Typography>
+                )}
+            </div>
+
             <div style={{ flex: 1, overflow: 'auto' }} onScroll={() => setOverlay(null)}>
                 <Table style={{ width: '100%' }}>
                     <CfgEditorHeader t={t} />
@@ -486,6 +544,9 @@ export const CfgEditor = ({
                             // use ?? to handle empty strings correctly
                             const type = entry.type?.value ?? entry.type;
 
+                            if (filtering && !matchesCfgFilter(entry, filter)) {
+                                return null;
+                            }
                             if (!showComments && type === 'comment') {
                                 return null;
                             }
@@ -517,13 +578,21 @@ export const CfgEditor = ({
                                     data-cy={`cfg-row-${index}`}
                                     style={rowStyle}
                                     className={draggedIndex === index ? "moonstone-drag" : ""}
-                                    draggable
+                                    draggable={dragArmedIndex === index}
                                     onDragStart={(e) => handleDragStart(e, index)}
                                     onDragOver={(e) => handleDragOver(e, index)}
                                     onDrop={(e) => handleDrop(e, index)}
+                                    onDragEnd={handleDragEnd}
                                     onClick={() => handleRowClick(index)}
                                 >
-                                    <TableBodyCell style={{ ...cfgRowIconCellStyle, ...CFG_COLUMN_WIDTHS.drag, cursor: 'grab' }}>
+                                    {/* The drag zone: the whole handle cell, wider than the icon. Reordering is
+                                        off while filtering, since only part of the rows is shown. */}
+                                    <TableBodyCell
+                                        data-cy={`cfg-drag-zone-${index}`}
+                                        style={{ ...cfgRowIconCellStyle, ...CFG_COLUMN_WIDTHS.drag, cursor: filtering ? 'default' : 'grab' }}
+                                        onMouseDown={() => { if (!filtering) setDragArmedIndex(index); }}
+                                        onTouchStart={() => { if (!filtering) setDragArmedIndex(index); }}
+                                    >
                                         {/* A real button, so the handle is reachable by keyboard: dragging a row
                                             was previously the only way to reorder, which excludes keyboard and
                                             assistive-technology users. Arrow Up/Down call the same handleReorder
