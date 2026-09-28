@@ -44,7 +44,8 @@ export const SelectedFileToolbar = ({
     onMarkAsDefault,
     onDownloadFile,
     onDeleteFile,
-    onSetEditorMode
+    onSetEditorMode,
+    isLoadingFile = false
 }) => {
     const {t} = useTranslation('osgi-configurations-manager');
     const isCfgFile = selectedFile.name.endsWith('.cfg') || selectedFile.name.endsWith('.cfg.disabled');
@@ -99,11 +100,12 @@ export const SelectedFileToolbar = ({
             </div>
 
             {isCfgFile && (
-                <div data-cy="editor-mode-toggle" data-mode={isRawMode ? 'raw' : 'visual'} style={MODE_SELECTOR_STYLE}>
+                <div data-cy="editor-mode-toggle" data-mode={isRawMode ? 'raw' : 'visual'} data-loading={isLoadingFile ? 'true' : 'false'} style={MODE_SELECTOR_STYLE}>
                     <Dropdown
                         data-cy="editor-mode-dropdown"
                         variant="ghost"
                         size="small"
+                        isDisabled={isLoadingFile}
                         value={isRawMode ? 'raw' : 'visual'}
                         icon={isRawMode ? <Code style={BUTTON_ICON_STYLE} /> : <ViewList style={BUTTON_ICON_STYLE} />}
                         data={modeOptions}
