@@ -133,12 +133,14 @@ class BoundEnvelopesTest {
         write("org.acme.slack.yml", "slack:\n  # the bot token\n  token: \"" + "ENC(" + CryptoEngine.encryptString("xoxb") + ")\"\n");
         write("org.jahia.modules.osgiconfigmanager.cfg", "cryptoSecret = test-instance-secret\n");
         write("org.acme.foreign.cfg", "token = ENC(v2:AAAA:BBBBBBBBBBBBBBBB:CCCC)\n");
+        write("org.acme.template.cfg", "# token is a secret: keep it encrypted (ENC(...))\n# token = ENC(v2:AAAA:BBBBBBBBBBBBBBBB:CCCC)\n  ! other = ENC(abc)\n");
         write("notes.txt", "token = " + v2 + "\n");
 
         EnvelopeMigration.Result result = EnvelopeMigration.runOnce(etc, OsgiConfigService.SELF_CONFIG_PID);
 
         assertEquals(2, result.rebound);
         assertEquals(1, result.undecryptable);
+        assertFalse(result.rewrittenFiles.contains("org.acme.template.cfg"), "comment hints are not values");
         assertTrue(result.rewrittenFiles.contains("org.acme.database-licenses.cfg"));
         String migrated = new String(Files.readAllBytes(etc.resolve("org.acme.database-licenses.cfg")), StandardCharsets.UTF_8);
         assertTrue(migrated.startsWith("# Database\n# keep this comment\nhost = db.example.org\npassword = ENC(v3:"), migrated);

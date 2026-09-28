@@ -76,6 +76,13 @@ final class EnvelopeMigration {
         return result;
     }
 
+    /** Whether the position is on a comment line (# or ! for properties, # for YAML). */
+    static boolean inComment(String text, int position) {
+        int lineStart = text.lastIndexOf('\n', position - 1) + 1;
+        String before = text.substring(lineStart, position).trim();
+        return before.startsWith("#") || before.startsWith("!");
+    }
+
     /** Rebinds the unbound values of every configuration file of the directory, the manager's own excepted. */
     static Result migrate(Path etcDirectory, String selfPid) {
         Set<String> rewritten = new HashSet<>();
@@ -102,7 +109,8 @@ final class EnvelopeMigration {
                 while (matcher.find()) {
                     String inner = matcher.group(1);
                     String replacement = matcher.group();
-                    if (!CryptoEngine.isBound(inner)) {
+                    // A comment is never delivered: the templates' "ENC(...)" hints are not values.
+                    if (!CryptoEngine.isBound(inner) && !inComment(text, matcher.start())) {
                         try {
                             String plain = CryptoEngine.decryptUnbound(inner);
                             replacement = "ENC(" + CryptoEngine.encryptBound(plain, binding) + ")";

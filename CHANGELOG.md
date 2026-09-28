@@ -19,7 +19,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **One-time migration, then unbound values are refused.** At its first start the manager encrypts
   again, for their own configuration, the `ENC(v2:...)` and legacy values of every configuration
   file of `karaf/etc` (only those values change, comments and layout are kept), writes the marker
-  `.osgi-config-manager.envelopes` and refuses unbound values from then on. This also ends the
+  `.osgi-config-manager.envelopes` and refuses unbound values from then on. `ENC(...)` hints on comment lines
+  (the generated templates carry some) are left alone and not reported. This also ends the
   decryption of the pre-1.0.5 hard-coded-key values (the SEC-177 residue).
 - **A malformed envelope no longer escapes as a `ProviderException`**: it fails like any other
   undecryptable value.
