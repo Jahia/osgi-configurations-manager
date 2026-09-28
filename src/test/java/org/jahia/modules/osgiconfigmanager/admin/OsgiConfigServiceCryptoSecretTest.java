@@ -96,6 +96,16 @@ class OsgiConfigServiceCryptoSecretTest {
     }
 
     @Test
+    @DisplayName("the refusal also covers the .yml spelling Karaf applies to the same PID (SEC-525)")
+    void refusesEncryptedPassphraseInYmlSpelling(@TempDir Path etc) {
+        OsgiConfigService service = serviceIn(etc);
+        String yml = "org.jahia.modules.osgiconfigmanager.yml";
+
+        assertThrows(IOException.class, () -> service.saveFile(yml, rawContent("cryptoSecret: ENC(v2:abc)\n")));
+        assertFalse(Files.exists(etc.resolve(yml)));
+    }
+
+    @Test
     @DisplayName("the refusal also covers the disabled copy and the ':' separator")
     void refusesEncryptedPassphraseInDisabledCopy(@TempDir Path etc) {
         OsgiConfigService service = serviceIn(etc);

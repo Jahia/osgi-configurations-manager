@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -18,16 +19,14 @@ import java.util.regex.Pattern;
  */
 final class ConfigFileFilter {
 
-    private final String selfConfigFilename;
-    private final String selfConfigFilenameDisabled;
+    private final String selfConfigPid;
 
     // Deeply immutable snapshot → a volatile reference is sufficient for safe publication (S3077 N/A).
     @SuppressWarnings("java:S3077")
     private volatile FilterConfig filterConfig = FilterConfig.EMPTY;
 
     ConfigFileFilter(String selfConfigPid) {
-        this.selfConfigFilename = selfConfigPid + ".cfg";
-        this.selfConfigFilenameDisabled = this.selfConfigFilename + OsgiConfigService.DISABLED_SUFFIX;
+        this.selfConfigPid = selfConfigPid;
     }
 
     /** Immutable snapshot of the filtering configuration. */
@@ -130,7 +129,36 @@ final class ConfigFileFilter {
     }
 
     private boolean isSelfConfigurationFilename(String filename) {
-        return selfConfigFilename.equals(filename) || selfConfigFilenameDisabled.equals(filename);
+        return isConfigurationFileOf(selfConfigPid, filename);
+    }
+
+    /**
+     * Whether {@code filename} configures {@code pid}, whatever its spelling: every extension the
+     * manager admits ({@code .cfg}, {@code .yml}, each optionally {@code .disabled}), any case (a
+     * case-insensitive filesystem resolves {@code .CFG} to the same file), and the factory forms
+     * {@code <pid>-<name>} and {@code <pid>~<name>}. Declarative Services creates one component
+     * configuration per factory configuration of a component's PID, so a factory file for the
+     * manager's PID activates a second instance of its configuration component.
+     *
+     * <p>SEC-525: the guard used to compare the name with two {@code .cfg} literals, so
+     * {@code org.jahia.modules.osgiconfigmanager.yml}, which Karaf applies to the same PID, let a
+     * delegated administrator rewrite the file filter and the encryption secret. The extensions are
+     * taken from the list the manager admits, so a new one cannot reopen the hole.
+     */
+    static boolean isConfigurationFileOf(String pid, String filename) {
+        if (pid == null || filename == null) {
+            return false;
+        }
+        String stem = filename.toLowerCase(Locale.ROOT);
+        String longest = "";
+        for (String extension : OsgiConfigService.SUPPORTED_CONFIG_EXTENSIONS) {
+            if (stem.endsWith(extension) && extension.length() > longest.length()) {
+                longest = extension;
+            }
+        }
+        stem = stem.substring(0, stem.length() - longest.length());
+        String target = pid.toLowerCase(Locale.ROOT);
+        return stem.equals(target) || stem.startsWith(target + "-") || stem.startsWith(target + "~");
     }
 
     private void addConfiguredFilenames(Set<String> target, List<Pattern> patterns, String csv) {

@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
 public class OsgiConfigService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OsgiConfigService.class);
-    private static final Set<String> SUPPORTED_CONFIG_EXTENSIONS = Set.of(".cfg", ".cfg.disabled", ".yml", ".yml.disabled");
+    static final Set<String> SUPPORTED_CONFIG_EXTENSIONS = Set.of(".cfg", ".cfg.disabled", ".yml", ".yml.disabled");
     static final String DEFAULT_FACTORY_FILE_EXTENSION = ".cfg";
     private static final String FACTORY_IDENTIFIER_PATTERN = "^[A-Za-z0-9._-]+$";
     private static final String KEY_CREATED = "created";
@@ -84,7 +84,6 @@ public class OsgiConfigService {
 
     static final String SELF_CONFIG_PID = "org.jahia.modules.osgiconfigmanager";
     private static final String SELF_CONFIG = SELF_CONFIG_PID + ".cfg";
-    private static final String SELF_CONFIG_DISABLED = SELF_CONFIG + DISABLED_SUFFIX;
 
     @org.osgi.service.metatype.annotations.ObjectClassDefinition(
             name = "OSGi Configurations Manager",
@@ -1353,7 +1352,11 @@ public class OsgiConfigService {
 
     // package-private seam for unit testing (SUPPORT-646)
     boolean isSelfConfigurationPid(String pid) {
-        return SELF_CONFIG_PID.equals(pid);
+        // The singleton PID and its factory instances: <pid>~<name> (Felix ConfigAdmin R7) or
+        // <pid>.<uuid> (older naming). A factory configuration of this PID would activate another
+        // instance of this component, and with it another cryptoSecret (SEC-525 variant).
+        return pid != null && (SELF_CONFIG_PID.equals(pid) || pid.startsWith(SELF_CONFIG_PID + "~")
+                || pid.startsWith(SELF_CONFIG_PID + "."));
     }
 
     /** True for the manager's own {@code cryptoSecret}: a Password attribute that must stay in clear text. */
@@ -1371,7 +1374,7 @@ public class OsgiConfigService {
      * (or its absence) exactly as it was.
      */
     private void rejectEncryptedPassphrase(String safeFilename, Map<String, Object> content) throws IOException {
-        if (!SELF_CONFIG.equals(safeFilename) && !(SELF_CONFIG + DISABLED_SUFFIX).equals(safeFilename)) {
+        if (!ConfigFileFilter.isConfigurationFileOf(SELF_CONFIG_PID, safeFilename)) {
             return;
         }
 
