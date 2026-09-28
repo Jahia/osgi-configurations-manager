@@ -322,7 +322,7 @@ than failing the page, and the plugin delivers it as stored.
 
 ### Encrypted values belong to their configuration
 
-Since 1.1.1 an encrypted value is bound to the configuration it was encrypted for. Its envelope,
+Since 1.2.0 an encrypted value is bound to the configuration it was encrypted for. Its envelope,
 `ENC(v3:...)`, carries the configuration's identity (the file name without its extension,
 `.disabled` suffix or case) as authenticated data. The value decrypts in that configuration only:
 
@@ -337,7 +337,7 @@ it a value taken from a file hidden from them, from a backup, an export or a log
 decrypted, either by the `decrypt` operation or by a component that sends the secret to a URL of that
 same file.
 
-**Upgrading from 1.1.0 or earlier.** Values written before 1.1.1 (`ENC(v2:...)`, and the pre-1.0.5 format) are
+**Upgrading from 1.1.x or earlier.** Values written before 1.2.0 (`ENC(v2:...)`, and the pre-1.0.5 format) are
 not bound. At its first start, the manager binds them once and for all: each configuration file of
 `karaf/etc` gets its `ENC(...)` values encrypted again for its own configuration. Only those values
 change; comments, order and layout are kept, and an `ENC(...)` on a comment line (the generated
