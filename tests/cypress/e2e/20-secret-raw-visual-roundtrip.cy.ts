@@ -25,23 +25,30 @@ const revealSecret = (index: number) => {
     return cy.get(`[data-cy="cfg-value-${index}"]`).should('have.attr', 'type', 'text');
 };
 
+/** The raw editor's rendered lines, in line order, with Monaco's rendering spaces normalized. */
+const rawLines = ($lines: JQuery<HTMLElement>): string[] => $lines.toArray()
+    .sort((a, b) => (parseFloat(a.style.top) || 0) - (parseFloat(b.style.top) || 0))
+    .map(el => (el.textContent || '').replace(/[\u00a0\u2002\u2003]/g, ' ').replace(/[\u200b-\u200d\ufeff]/g, '').trim());
+
 /**
- * Adds `line` right after the first line of the raw editor. Monaco drops the keys typed before it
- * holds the focus: a lost {end} left the cursor at the start of line 1, the new line went ABOVE
- * `password = ENC(...)`, and the visual mode later showed an empty line as row 0, with no eye
- * button (the intermittent "cfg-value-cell-0 button" failure of the e2e runs). So wait for the
- * focus, bring the cursor to line 1 with the arrows (the same on Linux and macOS), then check that
- * the new line stands on its own.
+ * Adds `line` at the end of the raw editor, which ends with an empty line (the raw text is written
+ * with a trailing newline). Typing into Monaco after a forced click on its hidden textarea was not
+ * reliable in CI: keys sent before the editor held the focus were lost, so `{end}{enter}` could
+ * split or push down `password = ENC(...)`, and the visual mode then had no encrypted row 0 and
+ * no eye button (the intermittent "cfg-value-cell-0 button" failure). So focus the editor, check
+ * it holds the focus, jump to the end of the document with the platform's own shortcut, type, and
+ * check the result, naming the lines seen if it is not the expected one.
  */
-const addLineAfterFirst = (line: string) => {
-    cy.get('.monaco-editor textarea', {timeout: 30000}).click({force: true});
+const addLineAtEnd = (line: string) => {
+    cy.get('.monaco-editor textarea', {timeout: 30000}).focus();
     cy.get('.monaco-editor', {timeout: 10000}).should('have.class', 'focused');
-    cy.get('.monaco-editor textarea').type('{uparrow}{uparrow}{uparrow}{end}{enter}', {force: true});
+    cy.get('.monaco-editor textarea').type(Cypress.platform === 'darwin' ? '{cmd}{downarrow}' : '{ctrl}{end}', {force: true});
     cy.get('.monaco-editor textarea').type(line, {force: true});
-    cy.get('.monaco-editor .view-line', {timeout: 30000}).should($lines => {
-        const texts = $lines.toArray().map(el => (el.textContent || '').replace(/\u00a0/g, ' ').trim());
-        expect(texts, 'the new line stands on its own').to.include(line);
-        expect(texts.some(text => text.startsWith('password = ENC(')), 'the stored value keeps its own line').to.eq(true);
+    cy.get('.monaco-editor .view-lines .view-line', {timeout: 30000}).should($lines => {
+        const texts = rawLines($lines);
+        const filled = texts.filter(text => text !== '');
+        expect(filled[filled.length - 1], `raw editor lines: ${JSON.stringify(texts)}`).to.eq(line);
+        expect(filled.length, `raw editor lines: ${JSON.stringify(texts)}`).to.be.at.least(2);
     });
 };
 
@@ -89,7 +96,7 @@ describe('OSGi Configurations Manager - Secrets survive the raw/visual round tri
         cy.ensureRawCfgMode();
 
         // Add a clear value on a second line; the cursor stays on that line.
-        addLineAfterFirst(`token = ${RAW_SECRET}`);
+        addLineAtEnd(`token = ${RAW_SECRET}`);
 
         cy.get('[data-cy="raw-editor-encrypt"] button').click();
         rawTextShould(text => {
@@ -111,7 +118,7 @@ describe('OSGi Configurations Manager - Secrets survive the raw/visual round tri
 
     it('raw editor: Decrypt says so when the current line holds no ENC(...) value', () => {
         cy.ensureRawCfgMode();
-        addLineAfterFirst('plain = nothing-to-decrypt');
+        addLineAtEnd('plain = nothing-to-decrypt');
 
         cy.get('[data-cy="raw-editor-decrypt"] button').click();
 
