@@ -131,4 +131,43 @@ describe('MonacoEditor', () => {
             expect(editor.executeEdits).not.toHaveBeenCalled();
         });
     });
+
+    describe('masking of secrets', () => {
+        const toggle = container => container.querySelector('[data-cy="raw-editor-toggle-secrets"]');
+        const masked = () => monaco.__getLastEditor().__decorations.map(d => [d.range.startLineNumber, d.range.startColumn, d.range.endColumn]);
+
+        it('masks the value of a secret, a Password attribute and nothing else', () => {
+            const text = 'url = https://x\npassword = s3cret\ncredential = abc\nuser = me';
+            render(<MonacoEditor value={text} language="properties" filename="db.cfg" onChange={jest.fn()}
+                metatypeDefinition={{ properties: [{ id: 'credential', type: 'password' }] }} />);
+
+            expect(masked()).toEqual([[2, 12, 18], [3, 14, 17]]);
+            expect(monaco.__getLastEditor().__decorations[0].options.inlineClassName).toBe('ocm-masked-secret');
+        });
+
+        it('shows the values with the toolbar button, and masks them again', () => {
+            const { container } = render(<MonacoEditor value={'password = s3cret'} language="properties" filename="db.cfg" onChange={jest.fn()} />);
+            expect(toggle(container).getAttribute('data-state')).toBe('masked');
+
+            fireEvent.click(toggle(container).firstChild);
+            expect(toggle(container).getAttribute('data-state')).toBe('visible');
+            expect(masked()).toEqual([]);
+
+            fireEvent.click(toggle(container).firstChild);
+            expect(masked()).toEqual([[1, 12, 18]]);
+        });
+
+        it('follows the edits: a secret typed in the editor is masked at once', () => {
+            render(<MonacoEditor value={'url = https://x'} language="properties" filename="db.cfg" onChange={jest.fn()} />);
+            expect(masked()).toEqual([]);
+
+            monaco.__getLastEditor().__fireChange('url = https://x\ntoken = typed');
+            expect(masked()).toEqual([[2, 9, 14]]);
+        });
+
+        it('masks the secrets of a YAML file too', () => {
+            render(<MonacoEditor value={'server:\n  password: s3cret'} language="yaml" filename="db.yml" onChange={jest.fn()} />);
+            expect(masked()).toEqual([[2, 13, 19]]);
+        });
+    });
 });

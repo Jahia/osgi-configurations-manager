@@ -64,6 +64,9 @@ A Jahia module to manage OSGi configurations directly from the Jahia Administrat
     -   Decryption for viewing is authorized per file: a value is only decrypted for a user who may
         read the file it actually appears in, and only in the configuration it was encrypted for
         (see *Encrypted values belong to their configuration* below).
+    -   **Masked secrets**: the value of a secret is masked in the visual editor, in the raw editor
+        and in the review-before-save diff, even when it is stored in clear text, with a button to
+        show it (see *Masked secrets* below).
     -   **Review before save**: saving shows the raw diff of what is about to be written and requires
         an explicit confirmation.
     -   Saves are capped at 5 MiB of raw content.
@@ -351,6 +354,34 @@ replicates the rewritten files.
 
 Modules that call `CryptoEngine.encryptString` or `decryptString` themselves (before 1.1.0) keep
 working until the migration only: those methods handle unbound values, and are deprecated.
+
+## Masked secrets
+
+Many modules cannot read `ENC(...)` values: they do not depend on this manager, or read their
+configuration without Configuration Admin. Their secrets stay in clear text, and the editor masks
+them, as the Felix web console does for a Password attribute.
+
+A property is a secret when its Metatype attribute is declared as `Password`, or, for a text
+attribute or a property without Metatype, when its name contains `password`, `passwd`,
+`passphrase`, `secret`, `token`, `credential`, `apikey` (or `api.key`, `api_key`) or
+`privatekey`. The Felix console only knows `password`. A Boolean or a number is never a secret,
+whatever its name.
+
+-   **Visual editor**: the value is shown as a password field, with the eye to show it. The filter
+    does not search the value of a secret.
+-   **Raw editor**: the value is drawn as dots, in `.cfg` and `.yml` files (continued lines and YAML
+    block scalars included). The text itself is untouched: the cursor, the selection, a copy and the
+    save work on the real value. **Show secrets (n)** in the toolbar shows them until another file
+    is opened.
+-   **Review before save**: both sides of the diff are masked, so a changed secret shows as changed
+    without being displayed. **Show secrets** shows them.
+
+`ENC(...)` values are ciphertext and stay visible in the raw editor.
+
+Masking keeps a secret off the screen, a screen share and a screenshot. It does not protect the
+stored value: the file holds it in clear text, and **Download** gives the file as it is. Only
+`ENC(...)` protects the stored value, for a module that reads it through Configuration Admin while
+this manager runs.
 
 ## Installation
 

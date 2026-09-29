@@ -217,4 +217,46 @@ describe('CfgEditor', () => {
             expect(matchesCfgFilter(entries[0], '')).toBe(true);
         });
     });
+
+    describe('masking of secrets stored in clear text', () => {
+        const entries = [
+            {type: 'property', key: 'url', value: 'https://x'},
+            {type: 'property', key: 'db.password', value: 'clear-secret'},
+            {type: 'property', key: 'credential', value: 'provider-secret'},
+            {type: 'property', key: 'tokenTtl', value: '3600'}
+        ];
+        const metatype = {properties: [{id: 'credential', type: 'password'}, {id: 'tokenTtl', type: 'integer'}]};
+
+        it('masks a secret name and a Password attribute like an encrypted value, and leaves the others', () => {
+            const {container} = render(<CfgEditor {...baseProps} entries={entries} metatypeDefinition={metatype}/>);
+            const typeOf = index => container.querySelector(`[data-cy="cfg-value-cell-${index}"] input`)?.getAttribute('type') ?? 'textarea';
+
+            expect(typeOf(0)).toBe('textarea');
+            expect(typeOf(1)).toBe('password');
+            expect(typeOf(2)).toBe('password');
+            // A number named like a secret is not one.
+            expect(typeOf(3)).toBe('textarea');
+            // Masked, not encrypted: the encryption box is left as it is.
+            const box = container.querySelector('[data-cy="cfg-encrypted-1"]');
+            expect((box.matches('input') ? box : box.querySelector('input')).checked).toBe(false);
+        });
+
+        it('shows the value with the eye, and masks it again', () => {
+            const {container} = render(<CfgEditor {...baseProps} entries={entries} metatypeDefinition={metatype}/>);
+            const cell = container.querySelector('[data-cy="cfg-value-cell-1"]');
+            const eye = cell.querySelector('button[aria-label="tooltip.showSecret"]');
+
+            fireEvent.click(eye);
+            expect(cell.querySelector('input').getAttribute('type')).toBe('text');
+            fireEvent.click(cell.querySelector('button[aria-label="tooltip.hideSecret"]'));
+            expect(cell.querySelector('input').getAttribute('type')).toBe('password');
+        });
+
+        it('does not let the filter probe a secret stored in clear text', () => {
+            const isSecretKey = key => key === 'db.password';
+            expect(matchesCfgFilter(entries[1], 'clear-secret', isSecretKey)).toBe(false);
+            expect(matchesCfgFilter(entries[1], 'password', isSecretKey)).toBe(true);
+            expect(matchesCfgFilter(entries[0], 'https', isSecretKey)).toBe(true);
+        });
+    });
 });

@@ -144,7 +144,10 @@
             "encrypt": "Cifrar",
             "decrypt": "Descifrar",
             "toggleEmptyLines": "Alternar líneas vacías",
-            "toggleComments": "Alternar comentarios"
+            "toggleComments": "Alternar comentarios",
+            "showSecrets": "Mostrar secretos ({{count}})",
+            "hideSecrets": "Ocultar secretos",
+            "showSecretsInDiff": "Mostrar secretos"
         },
         "placeholder": {
             "key": "Clave",
@@ -228,7 +231,9 @@
         "hideSecret": "Ocultar valor secreto",
         "toggleComments": "Alternar visibilidad de comentarios (excepto cabecera)",
         "toggleEmptyLines": "Mostrar u ocultar líneas vacías (excepto la cabecera)",
-        "markAsDefault": "Añadir la cabecera '# default configuration' para que Jahia conserve los cambios locales de los valores predeterminados del módulo"
+        "markAsDefault": "Añadir la cabecera '# default configuration' para que Jahia conserve los cambios locales de los valores predeterminados del módulo",
+        "showSecrets": "Mostrar los valores de los secretos de este archivo. Se vuelven a ocultar al abrir otro archivo.",
+        "hideSecrets": "Ocultar los valores de los secretos"
     },
     "sidebar": {
         "on": "On",

@@ -144,7 +144,10 @@
             "encrypt": "Cifra",
             "decrypt": "Decifra",
             "toggleComments": "Attiva/disattiva commenti",
-            "toggleEmptyLines": "Mostra/nascondi righe vuote"
+            "toggleEmptyLines": "Mostra/nascondi righe vuote",
+            "showSecrets": "Mostra segreti ({{count}})",
+            "hideSecrets": "Nascondi segreti",
+            "showSecretsInDiff": "Mostra segreti"
         },
         "placeholder": {
             "key": "Chiave",
@@ -228,7 +231,9 @@
         "hideSecret": "Nascondi il valore segreto",
         "toggleComments": "Attiva/disattiva visibilità commenti (eccetto intestazione)",
         "toggleEmptyLines": "Mostra o nasconde le righe vuote (tranne l’intestazione)",
-        "markAsDefault": "Aggiungi l'intestazione '# default configuration' affinché Jahia conservi le modifiche locali per i valori predefiniti del modulo"
+        "markAsDefault": "Aggiungi l'intestazione '# default configuration' affinché Jahia conservi le modifiche locali per i valori predefiniti del modulo",
+        "showSecrets": "Mostra i valori dei segreti di questo file. Vengono nascosti di nuovo all'apertura di un altro file.",
+        "hideSecrets": "Nascondi i valori dei segreti"
     },
     "sidebar": {
         "on": "On",

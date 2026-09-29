@@ -144,7 +144,10 @@
             "encrypt": "Chiffrer",
             "decrypt": "Déchiffrer",
             "toggleComments": "Basculer les commentaires",
-            "toggleEmptyLines": "Afficher les lignes vides"
+            "toggleEmptyLines": "Afficher les lignes vides",
+            "showSecrets": "Afficher les secrets ({{count}})",
+            "hideSecrets": "Masquer les secrets",
+            "showSecretsInDiff": "Afficher les secrets"
         },
         "placeholder": {
             "key": "Clé",
@@ -249,7 +252,9 @@
         "showSecret": "Afficher la valeur secrète",
         "hideSecret": "Masquer la valeur secrète",
         "toggleComments": "Afficher/Masquer les commentaires (sauf en-tête)",
-        "toggleEmptyLines": "Afficher ou masquer les lignes vides (sauf l’en-tête)"
+        "toggleEmptyLines": "Afficher ou masquer les lignes vides (sauf l’en-tête)",
+        "showSecrets": "Afficher les valeurs des secrets de ce fichier. Elles sont de nouveau masquées à l'ouverture d'un autre fichier.",
+        "hideSecrets": "Masquer les valeurs des secrets"
     },
     "sidebar": {
         "on": "On",

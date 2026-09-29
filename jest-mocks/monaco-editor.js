@@ -47,6 +47,12 @@ function createEditor(container, options = {}) {
         trigger: () => {},
         getAction: () => ({ run: () => {} }),
         executeEdits: () => {},
+        // Inline decorations (the masking of secrets): the current set is readable by the tests.
+        createDecorationsCollection: (initial = []) => {
+            editor.__decorations = initial;
+            return { set: (next) => { editor.__decorations = next; }, clear: () => { editor.__decorations = []; } };
+        },
+        __decorations: [],
         focus: () => {},
         dispose: () => {},
         // test helper: simulate a user edit
