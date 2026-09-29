@@ -144,7 +144,10 @@
             "encrypt": "Encrypt",
             "decrypt": "Decrypt",
             "toggleComments": "Toggle Comments",
-            "toggleEmptyLines": "Toggle Empty Lines"
+            "toggleEmptyLines": "Toggle Empty Lines",
+            "showSecrets": "Show secrets ({{count}})",
+            "hideSecrets": "Hide secrets",
+            "showSecretsInDiff": "Show secrets"
         },
         "placeholder": {
             "key": "Key",
@@ -249,7 +252,9 @@
         "showSecret": "Show secret value",
         "hideSecret": "Hide secret value",
         "toggleComments": "Toggle comments visibility (except header)",
-        "toggleEmptyLines": "Toggle empty line visibility (except header)"
+        "toggleEmptyLines": "Toggle empty line visibility (except header)",
+        "showSecrets": "Show the values of the secrets of this file. They are masked again when another file is opened.",
+        "hideSecrets": "Mask the values of the secrets"
     },
     "sidebar": {
         "on": "On",

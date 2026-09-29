@@ -7,6 +7,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Secrets stored in clear text are masked, in every view.** The Felix web console masks a
+  Password attribute; the manager showed it in clear unless it was encrypted, and the raw editor and
+  the review-before-save diff showed every value. A property is now a secret when its Metatype
+  attribute is Password or, for a text attribute or a property without Metatype, when its name
+  looks like one (`password`, `passwd`, `passphrase`, `secret`, `token`, `credential`, `apikey`,
+  `privatekey`). The visual editor shows it as a password field with the eye, and its filter no
+  longer searches it; the raw editor draws it as dots, text untouched, with **Show secrets (n)** in
+  its toolbar; the diff masks both sides, with **Show secrets**. This is also the case of the
+  manager's own `cryptoSecret`, which must stay in clear text. Masking is a display matter: the
+  file and **Download** keep the value as stored.
+
 ## [1.2.0] - 2026-09-28
 
 ### Security

@@ -2,13 +2,14 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as monaco from 'monaco-editor';
 import { configureMonacoYaml } from 'monaco-yaml';
 import { Button, Input, Typography } from '@jahia/moonstone';
-import { Add, Undo, RotateRight, Code, Lock, Unlock } from '@jahia/moonstone';
+import { Add, Undo, RotateRight, Code, Lock, Unlock, Visibility, Hidden } from '@jahia/moonstone';
 import { useTranslation } from 'react-i18next';
 import { osgiService } from '../api/osgiService';
 import { lookupKnownPlaintext, rememberPlaintext } from '../utils/cryptoTree';
 import { useToast } from '../hooks/useToast';
 import { buildPropertyDocumentation, findExactMetatypePropertyMatch, formatDefaultValue, getLocalizedTypeLabel, getPropertyLabel, matchesMetatypePropertyQuery } from '../utils/metatypeUtils';
 import { CHROME_TOKENS, PANEL_ACTIONS_STYLE } from './AppChrome';
+import { findSecretValues, secretKeyTester } from '../utils/secretMask';
 
 const isExpectedCancellation = reason => {
     if (!reason) {
@@ -95,8 +96,21 @@ const RAW_EDITOR_SEARCH_STYLE = {
 
 const RawToolbarDivider = () => <div style={RAW_EDITOR_DIVIDER_STYLE} />;
 
-const RawToolbarButton = ({ dataCy, ...props }) => (
-    <div data-cy={dataCy}>
+// The inline decoration over a masked secret: the characters stay in the model (and in their
+// place, so the cursor and the selection keep their columns) but are drawn transparent, over one
+// dot per character.
+const MASKED_SECRET_CLASS = 'ocm-masked-secret';
+const MASKED_SECRET_STYLE = `
+.${MASKED_SECRET_CLASS} {
+    color: transparent !important;
+    background-image: radial-gradient(circle at center, #4a5561 0, #4a5561 2px, transparent 2.5px);
+    background-size: 1ch 100%;
+    background-repeat: repeat-x;
+    background-position: left center;
+}`;
+
+const RawToolbarButton = ({ dataCy, dataState, ...props }) => (
+    <div data-cy={dataCy} data-state={dataState}>
         <Button variant="ghost" {...props} />
     </div>
 );
@@ -662,6 +676,11 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
     const validatePropertiesRef = useRef(() => {});
     const [showPropertyPanel, setShowPropertyPanel] = useState(false);
     const [propertySearch, setPropertySearch] = useState('');
+    // Secret values are masked until the user asks to see them; the choice is not kept per file.
+    const [secretsVisible, setSecretsVisible] = useState(false);
+    const [secretCount, setSecretCount] = useState(0);
+    const secretDecorationsRef = useRef(null);
+    const applySecretMaskRef = useRef(() => {});
     const supportsMetatypeAssistance = (language === 'properties' || language === 'yaml') &&
         Array.isArray(metatypeDefinition?.properties) &&
         metatypeDefinition.properties.length > 0;
@@ -696,6 +715,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
     useEffect(() => {
         setPropertySearch('');
         setShowPropertyPanel(false);
+        setSecretsVisible(false);
     }, [filename]);
 
     useEffect(() => {
@@ -991,6 +1011,45 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
             };
         }
     }, [language]); // Re-create if language changes (rare)
+
+    // Masks the value of every secret (see secretMask) with an inline decoration, again at every
+    // change of the content, of the Metatype or of the show/hide choice.
+    applySecretMaskRef.current = () => {
+        const editor = editorRef.current;
+        if (!editor || typeof editor.createDecorationsCollection !== 'function') {
+            return;
+        }
+        const secrets = (language === 'properties' || language === 'yaml')
+            ? findSecretValues(editor.getValue(), language, secretKeyTester(metatypeDefinition))
+            : [];
+        setSecretCount(secrets.length);
+        const decorations = secretsVisible ? [] : secrets.flatMap(secret => secret.ranges.map(range => ({
+            range: new monaco.Range(range.lineNumber, range.startColumn, range.lineNumber, range.endColumn),
+            options: {inlineClassName: MASKED_SECRET_CLASS}
+        })));
+        if (!secretDecorationsRef.current) {
+            secretDecorationsRef.current = editor.createDecorationsCollection(decorations);
+        } else {
+            secretDecorationsRef.current.set(decorations);
+        }
+    };
+
+    useEffect(() => {
+        const editor = editorRef.current;
+        if (!editor) {
+            return undefined;
+        }
+        applySecretMaskRef.current();
+        const listener = editor.onDidChangeModelContent(() => applySecretMaskRef.current());
+        return () => {
+            listener.dispose();
+            secretDecorationsRef.current = null;
+        };
+    }, [language]);
+
+    useEffect(() => {
+        applySecretMaskRef.current();
+    }, [secretsVisible, metatypeDefinition]);
 
     useEffect(() => {
         if ((language !== 'properties' && language !== 'yaml') || !editorRef.current) {
@@ -1288,6 +1347,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
 
     return (
         <div style={{ flex: 1, minHeight: 0, minWidth: 0, width: '100%', display: 'flex', flexDirection: 'column' }}>
+            <style>{MASKED_SECRET_STYLE}</style>
             <div data-cy="raw-editor-surface" style={RAW_EDITOR_SURFACE_STYLE}>
                 <div style={RAW_EDITOR_MAIN_PANEL_STYLE}>
                     <div data-cy="raw-editor-toolbar" style={RAW_EDITOR_TOOLBAR_STYLE}>
@@ -1328,6 +1388,16 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                                 icon={<Unlock style={TOOLBAR_BUTTON_ICON_STYLE} />}
                                 onClick={handleDecryptSelection}
                                 title={t('tooltip.decryptSelection')}
+                            />
+                            <RawToolbarDivider />
+                            <RawToolbarButton
+                                dataCy="raw-editor-toggle-secrets"
+                                dataState={secretsVisible ? 'visible' : 'masked'}
+                                label={secretsVisible ? t('editor.button.hideSecrets') : t('editor.button.showSecrets', { count: secretCount })}
+                                icon={secretsVisible ? <Hidden style={TOOLBAR_BUTTON_ICON_STYLE} /> : <Visibility style={TOOLBAR_BUTTON_ICON_STYLE} />}
+                                onClick={() => setSecretsVisible(visible => !visible)}
+                                disabled={secretCount === 0 && !secretsVisible}
+                                title={secretsVisible ? t('tooltip.hideSecrets') : t('tooltip.showSecrets')}
                             />
                             {showRawPropertyPanel && (
                                 <>

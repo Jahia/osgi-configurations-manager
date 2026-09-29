@@ -353,6 +353,7 @@ const AppContent = () => {
                 originalContent={diffConfig.originalContent}
                 newContent={diffConfig.newContent}
                 filename={diffConfig.filename}
+                metatypeDefinition={metatypeInfo}
             />
         </>
     );

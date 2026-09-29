@@ -22,6 +22,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { CfgMetatypeInfoTooltip, CfgMetatypePropertyDialog } from './CfgMetatypePropertyDialog';
 import { getSuggestedPropertyValue } from '../utils/metatypeUtils';
+import { secretKeyTester } from '../utils/secretMask';
 import {CHROME_TOKENS, FLOATING_TOOLTIP_STYLE, PANEL_ACTIONS_STYLE} from './AppChrome';
 
 const MANAGER_SELF_PID = 'org.jahia.modules.osgiconfigmanager';
@@ -30,9 +31,10 @@ const MANAGER_PASSPHRASE_KEY = 'cryptoSecret';
 /**
  * True when a row matches the filter: a property whose key, or whose value when it is not a secret,
  * contains the text (case-insensitive). Comments and empty lines never match, so a filtered view
- * lists properties only. An encrypted value is not searched, so the filter cannot probe a secret.
+ * lists properties only. An encrypted value, or the value of a secret (see secretMask), is not
+ * searched, so the filter cannot probe a secret.
  */
-export const matchesCfgFilter = (entry, filter) => {
+export const matchesCfgFilter = (entry, filter, isSecretKey = () => false) => {
     const needle = String(filter || '').trim().toLowerCase();
     if (!needle) {
         return true;
@@ -42,8 +44,8 @@ export const matchesCfgFilter = (entry, filter) => {
         return false;
     }
     const key = String(entry.key?.value ?? entry.key ?? '').toLowerCase();
-    const encrypted = Boolean(entry.value?.encrypted);
-    const value = encrypted ? '' : String(entry.value?.value ?? entry.value ?? '').toLowerCase();
+    const masked = Boolean(entry.value?.encrypted) || isSecretKey(entry.key?.value ?? entry.key ?? '');
+    const value = masked ? '' : String(entry.value?.value ?? entry.value ?? '').toLowerCase();
     return key.includes(needle) || value.includes(needle);
 };
 
@@ -350,6 +352,10 @@ export const CfgEditor = ({
         return map;
     }, [metatypeDefinition]);
 
+    // A secret is masked like an encrypted value, even when it is stored in clear text: the value of
+    // a module that cannot read ENC(...) stays off the screen, as in the Felix web console.
+    const isSecretKey = useMemo(() => secretKeyTester(metatypeDefinition), [metatypeDefinition]);
+
     const existingPropertyKeys = useMemo(() => new Set(
         (Array.isArray(entries) ? entries : [])
             .filter(entry => (entry.type?.value ?? entry.type) === 'property')
@@ -529,7 +535,7 @@ export const CfgEditor = ({
                 {filtering && (
                     <Typography variant="caption" data-cy="cfg-filter-count" style={{color: 'var(--color-gray_dark60)'}}>
                         {t('editor.filter.count', {
-                            count: (Array.isArray(entries) ? entries : []).filter(entry => matchesCfgFilter(entry, filter)).length
+                            count: (Array.isArray(entries) ? entries : []).filter(entry => matchesCfgFilter(entry, filter, isSecretKey)).length
                         })}
                     </Typography>
                 )}
@@ -544,7 +550,7 @@ export const CfgEditor = ({
                             // use ?? to handle empty strings correctly
                             const type = entry.type?.value ?? entry.type;
 
-                            if (filtering && !matchesCfgFilter(entry, filter)) {
+                            if (filtering && !matchesCfgFilter(entry, filter, isSecretKey)) {
                                 return null;
                             }
                             if (!showComments && type === 'comment') {
@@ -558,6 +564,7 @@ export const CfgEditor = ({
 
                             const valueNode = entry.value;
                             const isEncrypted = valueNode?.encrypted;
+                            const isMasked = Boolean(isEncrypted) || (type === 'property' && isSecretKey(key));
                             const isSelected = selectedIndex === index;
 
                             const commentValue = type === 'comment' && value.startsWith('#') ? value.substring(1).trimStart() : value;
@@ -715,10 +722,10 @@ export const CfgEditor = ({
                                             <TableBodyCell data-cy={`cfg-value-cell-${index}`} style={{ ...cfgRowBaseCellStyle, ...CFG_COLUMN_WIDTHS.value }}>
                                                 <div
                                                     style={{ display: 'flex', alignItems: 'flex-start', width: '100%', position: 'relative' }}
-                                                    onMouseEnter={(e) => (isEncrypted && isSecretVisible) ? handleMouseEnter(e, value) : null}
+                                                    onMouseEnter={(e) => (isMasked && isSecretVisible) ? handleMouseEnter(e, value) : null}
                                                     onMouseLeave={() => setOverlay(null)}
                                                 >
-                                                    {isEncrypted ? (
+                                                    {isMasked ? (
                                                         <div
                                                             style={{ flex: 1, display: 'flex' }}
                                                             onMouseDown={(e) => e.stopPropagation()}
@@ -752,7 +759,7 @@ export const CfgEditor = ({
                                                         />
                                                     )}
 
-                                                    {isEncrypted && (
+                                                    {isMasked && (
                                                         <Tooltip label={isSecretVisible ? t('tooltip.hideSecret') : t('tooltip.showSecret')}>
                                                             <Button
                                                                 variant="ghost"

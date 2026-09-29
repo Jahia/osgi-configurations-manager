@@ -66,6 +66,12 @@ a change appears to require relaxing one, that comment is the thing to read firs
   update makes SCR fetch a configuration again (`update()` without arguments and a component restart
   both reuse what it holds), so `EncryptedConfigurationsRedelivery` writes each one back with its own
   stored properties, and skips one whose change count moved meanwhile, to not revert a newer update.
+- **Every view that displays the values of a file masks its secrets through `utils/secretMask`.**
+  The visual editor, the raw editor and the review-before-save diff share one rule (Password in the
+  Metatype, or a secret-looking name on a text attribute) and one parser, so a value masked in one
+  view is masked in the others: before it, the raw editor and the diff showed in clear what the
+  visual editor masked. A new view of file content uses the same module, and masking never changes
+  the text that is saved.
 - **The decryption probe reports shapes, never values.** The `pluginProbe` query says `plaintext` or
   `encrypted` per key; echoing a value would turn the probe into a decryption oracle.
 - **`ConfigFileFilter` publishes one immutable snapshot behind a `volatile` reference.** This

@@ -144,7 +144,10 @@
             "encrypt": "Verschlüsseln",
             "decrypt": "Entschlüsseln",
             "toggleEmptyLines": "Leerzeilen umschalten",
-            "toggleComments": "Kommentare umschalten"
+            "toggleComments": "Kommentare umschalten",
+            "showSecrets": "Geheimnisse anzeigen ({{count}})",
+            "hideSecrets": "Geheimnisse ausblenden",
+            "showSecretsInDiff": "Geheimnisse anzeigen"
         },
         "placeholder": {
             "key": "Schlüssel",
@@ -228,7 +231,9 @@
         "hideSecret": "Geheimen Wert ausblenden",
         "toggleComments": "Kommentarsichtbarkeit umschalten (außer Kopfzeile)",
         "toggleEmptyLines": "Sichtbarkeit leerer Zeilen umschalten (außer Kopfzeile)",
-        "markAsDefault": "Den Header '# default configuration' hinzufügen, damit Jahia lokale Änderungen für Modul-Standardwerte bewahrt"
+        "markAsDefault": "Den Header '# default configuration' hinzufügen, damit Jahia lokale Änderungen für Modul-Standardwerte bewahrt",
+        "showSecrets": "Die Werte der Geheimnisse dieser Datei anzeigen. Beim Öffnen einer anderen Datei werden sie wieder maskiert.",
+        "hideSecrets": "Die Werte der Geheimnisse maskieren"
     },
     "sidebar": {
         "on": "Ein",
