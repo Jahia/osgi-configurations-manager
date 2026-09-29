@@ -7,6 +7,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-09-29
+
 ### Added
 
 - **Secrets stored in clear text are masked, in every view.** The Felix web console masks a
