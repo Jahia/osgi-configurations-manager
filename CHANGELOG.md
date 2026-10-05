@@ -7,6 +7,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **New labels no longer show as their keys behind a CDN.** Jahia fetches the translations from
+  `javascript/locales/<lng>.json`, the same URL in every version, while the JavaScript file names
+  carry a hash. After the 1.2.1 upgrade, a CDN kept serving the 1.2.0 file to the new interface,
+  and the raw editor's button read `editor.button.showSecrets`. The interface now also loads the
+  translations built with it (the user's language and English), as hashed chunks, over the ones
+  Jahia fetched.
+
 ## [1.2.1] - 2026-09-29
 
 ### Added

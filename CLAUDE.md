@@ -72,6 +72,10 @@ a change appears to require relaxing one, that comment is the thing to read firs
   view is masked in the others: before it, the raw editor and the diff showed in clear what the
   visual editor masked. A new view of file content uses the same module, and masking never changes
   the text that is saved.
+- **The translations come with the build.** `bundledTranslations.js` adds the locale of the user
+  (and English) from hashed chunks over what Jahia fetched from `javascript/locales/<lng>.json`, a
+  URL a CDN may keep across versions. A new label only needs its key in every locale file; do not
+  drop the bundled load, or the next release shows keys again behind a stale CDN (1.2.1).
 - **The decryption probe reports shapes, never values.** The `pluginProbe` query says `plaintext` or
   `encrypted` per key; echoing a value would turn the probe into a decryption oracle.
 - **`ConfigFileFilter` publishes one immutable snapshot behind a `volatile` reference.** This
