@@ -153,6 +153,7 @@
             "key": "Chiave",
             "value": "Valore"
         },
+        "encryptValueOf": "Cifra il valore di {{key}}",
         "validation": {
             "missingKey": "La proprietà deve avere una chiave prima del separatore",
             "duplicateKey": "Chiave duplicata '{{key}}'",

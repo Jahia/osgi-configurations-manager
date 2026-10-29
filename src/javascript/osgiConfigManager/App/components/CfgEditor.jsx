@@ -58,6 +58,10 @@ const CFG_COLUMN_WIDTHS = {
     actions: {flex: '0 0 48px', minWidth: '48px'}
 };
 
+// In a narrow editor the table scrolls sideways inside its own container (a data table may,
+// under WCAG 1.4.10) rather than squeezing its columns until the headers break apart.
+const CFG_TABLE_MIN_WIDTH = `${Object.values(CFG_COLUMN_WIDTHS).reduce((sum, column) => sum + parseInt(column.minWidth, 10), 0)}px`;
+
 const cfgTableHeaderCellStyle = {
     paddingTop: '8px',
     paddingBottom: '8px'
@@ -542,7 +546,7 @@ export const CfgEditor = ({
             </div>
 
             <div style={{ flex: 1, overflow: 'auto' }} onScroll={() => setOverlay(null)}>
-                <Table style={{ width: '100%' }}>
+                <Table style={{ width: '100%', minWidth: CFG_TABLE_MIN_WIDTH }}>
                     <CfgEditorHeader t={t} />
                     <TableBody>
                         {Array.isArray(entries) && entries.map((entry, index) => {
@@ -777,6 +781,8 @@ export const CfgEditor = ({
                                             <TableBodyCell style={{ ...cfgRowIconCellStyle, ...CFG_COLUMN_WIDTHS.security }} title={t('editor.header.security')}>
                                                 <Checkbox
                                                     data-cy={`cfg-encrypted-${index}`}
+                                                    // The title on the cell does not name the input (WCAG 4.1.2).
+                                                    aria-label={t('editor.encryptValueOf', {key: key || `#${index + 1}`})}
                                                     checked={isEncrypted || false}
                                                     onChange={() => {
                                                         // Sync toggle: Just flip the flag

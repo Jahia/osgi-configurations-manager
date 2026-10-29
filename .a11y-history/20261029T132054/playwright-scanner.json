@@ -1,0 +1,156 @@
+{
+ "skill": "playwright-scanner",
+ "scope": [
+  "http://localhost:8080/jahia/administration/osgi-configurations-manager (Jahia 8.2, Chromium headless, axe-core 4.x tags wcag2a/aa, wcag21a/aa, wcag22aa)",
+  "15 UI states: initial, .cfg visual editor, filter, add-property prompt, review diff, discard, raw editor, delete/disable confirmations, create dialog (3 tabs), .yml raw editor",
+  "Behaviour: Tab order, focus visibility, dialog focus in/return, Monaco Tab capture, Enter on list rows, widths 1280/1024/320, WCAG 1.4.12 text-spacing override"
+ ],
+ "findings": [
+  {
+   "rule": "RT-REFLOW-CLIP",
+   "wcag": "1.4.10 AA",
+   "severity": "critical",
+   "location": "src/javascript/osgiConfigManager/App/components/AppChrome.jsx:19",
+   "summary": "With the Jahia admin navigation open the module needs ~1420 CSS px: at 1280 px Save and the mode selector are cut off; at 1024 px (125% zoom) Save, Cancel, Delete and the Value column are unreachable.",
+   "fix": "Let the two panes shrink and wrap: replace the fixed 350px sidebar with flex: '0 1 350px' + minWidth: 0, allow the file header/toolbar rows to wrap (flexWrap: 'wrap'), and stack sidebar over editor below ~900px of available width; give the editor pane overflow: auto rather than hidden so nothing becomes unreachable.",
+   "evidence": "1280x800: save-config-button right=1280 (clipped), editor-mode-dropdown clipped; 1024x800: cancel right=1124, delete right=1080, save right=1280, document scrollWidth=1419; screenshot 40-width-1024.png",
+   "component": "App layout"
+  },
+  {
+   "rule": "RT-REFLOW-320",
+   "wcag": "1.4.10 AA",
+   "severity": "serious",
+   "confidence": "medium",
+   "location": "http://localhost:8080/jahia/administration/osgi-configurations-manager",
+   "summary": "At 320 CSS px (1280 at 400%) the module needs about 1100 px of horizontal scrolling even with the secondary navigation collapsed (h1 975px wide), and with it open the module is not visible at all.",
+   "fix": "Same layout change as RT-REFLOW-CLIP for the module; the shell's navigation covering the viewport is Jahia's and should be reported to the platform team.",
+   "evidence": "320x256, secondary nav collapsed: document scrollWidth=1119, module h1 width=975",
+   "component": "App layout"
+  },
+  {
+   "rule": "RT-KBD-MONACO-TRAP",
+   "wcag": "2.1.2 A",
+   "severity": "serious",
+   "location": "src/javascript/osgiConfigManager/App/components/MonacoEditor.jsx:742",
+   "summary": "In the raw editor Tab and Shift+Tab stay in the editor; the only way out on macOS is Ctrl+Shift+M, which nothing tells the user, and Alt+F1 opens no help in this build.",
+   "fix": "Show a persistent hint in the raw editor toolbar ('Ctrl+M / Ctrl+Shift+M on macOS: Tab moves focus') and/or a toolbar toggle calling editor.trigger('keyboard','editor.action.toggleTabFocusMode'); set ariaLabel including that hint.",
+   "evidence": "Tab x3 from the editor textarea: focus stays on TEXTAREA 'Editor content'; Ctrl+M has no effect on macOS; Ctrl+Shift+M then Tab leaves; Alt+F1 shows no widget",
+   "component": "MonacoEditor"
+  },
+  {
+   "rule": "RT-KBD-ROW-ENTER",
+   "wcag": "2.1.1 A",
+   "severity": "serious",
+   "location": "src/javascript/osgiConfigManager/App/components/FileSidebar.jsx:137",
+   "summary": "Each of the 77 file rows is a Tab stop, but Enter (and Space) on a focused row does not open the file; only the Arrow keys on the list container or a mouse click do.",
+   "fix": "Make each entry a native <button> (or a listbox option driven by the container), and set tabIndex={-1} on the Moonstone TableRow so the list is one Tab stop.",
+   "evidence": "focus file-row-aaaa2.cfg, press Enter: selected file stays aaaa.cfg; Tab sequence from the h1 hits 6 controls then 77 TR rows",
+   "component": "FileSidebar"
+  },
+  {
+   "rule": "RT-FOCUS-LIST-INVISIBLE",
+   "wcag": "2.4.7 AA",
+   "severity": "serious",
+   "location": "src/javascript/osgiConfigManager/App/components/FileSidebar.jsx:130",
+   "summary": "The file list container takes focus (6th Tab stop) with outline-style none and no other indicator; the screenshot of the focused list shows no ring.",
+   "fix": "Remove outline: 'none' and add a :focus-visible outline of at least 2px with 3:1 contrast, or move focus semantics to the rows.",
+   "evidence": "activeElement DIV (list) computed outline-style none, box-shadow none; screenshot 20-list-focus.png",
+   "component": "FileSidebar"
+  },
+  {
+   "rule": "RT-FOCUS-RING-CONTRAST",
+   "wcag": "1.4.11 AA",
+   "severity": "moderate",
+   "confidence": "medium",
+   "location": "src/javascript/osgiConfigManager/App/components/AppHeaderBar.jsx:37",
+   "summary": "The focus ring on Moonstone buttons, search fields and switch is a 2px #63d1ff outline, about 1.7:1 against the white panels, so focus is hard to see.",
+   "fix": "Override the focus ring inside the module (e.g. .osgi-config-manager :focus-visible { outline: 2px solid var(--color-accent_dark) }, #0072b1 = 5.2:1) and report the token to the Moonstone team.",
+   "evidence": "computed outline on New/Import/Refresh/Cancel: solid 2px rgb(99, 209, 255); focus-search.png, focus-switch.png",
+   "component": "Moonstone focus ring"
+  },
+  {
+   "rule": "RT-AXE-LABEL",
+   "wcag": "4.1.2 A",
+   "severity": "serious",
+   "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:778",
+   "summary": "axe 'label' fails on every per-row encryption checkbox (11 in the sample file) and on the 'Search in content' switch: inputs with no accessible name.",
+   "fix": "aria-label on each Checkbox naming the property ('Encrypt value of {{key}}'); associate the switch with its visible text via id/htmlFor or aria-labelledby.",
+   "evidence": "input[data-cy=cfg-encrypted-3..19], input[data-cy=deep-search-toggle-control]",
+   "component": "CfgEditor / FileSidebar"
+  },
+  {
+   "rule": "RT-AXE-CONTRAST-MODULE",
+   "wcag": "1.4.3 AA",
+   "severity": "serious",
+   "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:110",
+   "summary": "axe measured text below 4.5:1 in module content: Create-dialog descriptions #d3d4d5 on #fdfdfd (1.45:1), file path, empty-state heading and filter count #7f8386 (3.82:1), diff dialog Save white on #00a0e3 (2.94:1).",
+   "fix": "Replace the alpha grey tokens (gray_dark20/40/60) with an opaque colour of at least 4.5:1 (e.g. var(--color-gray_dark)) and drop the inline #00a0e3 Save background.",
+   "evidence": "12-create-configuration-tab: caption 1.45:1; 02/03: p[color=textSecondary], cfg-filter-count 3.82:1; 05: diff-modal-confirm 2.94:1",
+   "component": "Dialogs / AppChrome / DiffModal"
+  },
+  {
+   "rule": "RT-AXE-CONTRAST-MOONSTONE",
+   "wcag": "1.4.3 AA",
+   "severity": "moderate",
+   "location": "src/javascript/osgiConfigManager/App/components/FileSidebar.jsx:137",
+   "summary": "Moonstone colours used by the module fail 4.5:1: selected file row (2.89:1), Delete button (3.68:1), outlined Add Property (2.94:1), Create-dialog tabs (2.89 and 3.95:1).",
+   "fix": "Override these within the module (darker accent #0072b1 for the selected row and outlined buttons, #c62828 for danger) and raise a Moonstone token issue.",
+   "evidence": "axe color-contrast nodes: sidebar-file-name (bold 14px), .moonstone-button_danger, .moonstone-button_outlined_accent, .moonstone-tabItem_selected",
+   "component": "Moonstone theme"
+  },
+  {
+   "rule": "RT-AXE-SCROLL-REGION",
+   "wcag": "2.1.1 A",
+   "severity": "moderate",
+   "location": "src/javascript/osgiConfigManager/App/components/DiffModal.tsx:155",
+   "summary": "axe 'scrollable-region-focusable' fails on the review diff body and on the Create dialog's factory list (max-height 220px): scrollable, nothing focusable inside.",
+   "fix": "tabIndex={0}, role=\"region\" and an aria-label on both scroll containers, with a visible focus style.",
+   "evidence": "05-cfg-diff-modal: div max-height 60vh overflow-y auto; 13-create-factory-tab: div max-height 220px overflow auto",
+   "component": "DiffModal / ModalDialog"
+  },
+  {
+   "rule": "RT-MODAL-NAME",
+   "wcag": "4.1.2 A",
+   "severity": "serious",
+   "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:272",
+   "summary": "The delete confirmation (all Moonstone ModalDialogs) is aria-labelledby itself, so its name is its whole content; it has no aria-describedby, opens on the X button named 'Cancel', and its buttons read 'Cancel', 'CANCEL', 'OK'.",
+   "fix": "Pass aria-labelledby pointing at the title only and aria-describedby at the message, use role=alertdialog for confirmations, label the X 'Close' and the confirm button with the action ('Delete').",
+   "evidence": "role=dialog, aria-labelledby === own id, describedby=null, buttons ['Cancel','CANCEL','OK'], initial focus on X",
+   "component": "ModalDialog"
+  },
+  {
+   "rule": "RT-FOCUS-PROMPT-LOST",
+   "wcag": "2.4.3 A",
+   "severity": "moderate",
+   "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:301",
+   "summary": "Closing the Add Property prompt with Escape drops focus to <body> instead of returning it to the Add Property button; the prompt input is named only 'Type here...'.",
+   "fix": "Return focus to the trigger when the prompt closes (it is unmounted-and-remounted, so keep a ref to the trigger), and name the input with the prompt's question.",
+   "evidence": "activeElement after Escape: BODY; prompt input accessible name from placeholder 'Type here...'",
+   "component": "ModalDialog prompt"
+  },
+  {
+   "rule": "RT-NAME-MONACO",
+   "wcag": "4.1.2 A",
+   "severity": "minor",
+   "location": "src/javascript/osgiConfigManager/App/components/MonacoEditor.jsx:742",
+   "summary": "The raw editor's textarea is named 'Editor content' with no file name and no hint about leaving the editor.",
+   "fix": "ariaLabel: 'Raw content of {{name}}. Ctrl+M (Ctrl+Shift+M on macOS) toggles Tab focus.'",
+   "evidence": "textarea aria-label='Editor content'",
+   "component": "MonacoEditor"
+  }
+ ],
+ "passed": [
+  "axe target-size (2.5.8): no violation in any of the 15 states",
+  "axe: no duplicate-id, button-name, image-alt, list or heading-order violation inside the module",
+  "Module h1 'OSGi Configurations Manager' is inside the shell's <main> landmark",
+  "Moonstone ModalDialog: focus moves inside on open, background is aria-hidden while open, Escape closes, focus returns to the Delete button",
+  "WCAG 1.4.12 text-spacing override (line-height 1.5, letter 0.12em, word 0.16em, paragraph 2em): no clipped text detected on the initial page",
+  "Ctrl+Shift+M (macOS) does release Tab from the Monaco editor; no other keyboard trap found",
+  "Toolbar buttons (New, Import, Refresh, Cancel, Delete) show a visible focus outline"
+ ],
+ "notes": [
+  "Out of the module's scope, reported by axe on the Jahia admin shell (platform team): <html> without lang (3.1.1), invalid custom roles on primary nav items (dashboard-menu-item, ...) and accordion headers (accordion-item, aria-expanded/aria-controls invalid), selected tree item white on #00a0e3 (2.89:1), a hidden h1 'Something wrong happened' inside <main>, and the secondary navigation covering the whole viewport at 320 px.",
+  "No toast was triggered during the runtime pass (Refresh shows none), so toast announcement relies on the code review finding.",
+  "Nothing was saved or deleted on the instance: every dialog was cancelled and every edit discarded."
+ ]
+}

@@ -153,6 +153,7 @@
             "key": "Schlüssel",
             "value": "Wert"
         },
+        "encryptValueOf": "Wert von {{key}} verschlüsseln",
         "validation": {
             "missingKey": "Eigenschaft muss vor dem Trennzeichen einen Schlüssel haben",
             "duplicateKey": "Doppelter Schlüssel '{{key}}'",

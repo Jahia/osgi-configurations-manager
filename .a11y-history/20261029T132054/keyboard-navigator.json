@@ -1,0 +1,256 @@
+{
+  "skill": "keyboard-navigator",
+  "scope": [
+    "src/javascript/osgiConfigManager/registerRoutes.js",
+    "src/javascript/osgiConfigManager/App/index.jsx",
+    "src/javascript/osgiConfigManager/App/components/ActionButton.jsx",
+    "src/javascript/osgiConfigManager/App/components/AppChrome.jsx",
+    "src/javascript/osgiConfigManager/App/components/AppHeaderBar.jsx",
+    "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx",
+    "src/javascript/osgiConfigManager/App/components/CfgMetatypePropertyDialog.jsx",
+    "src/javascript/osgiConfigManager/App/components/ConfigStateBadge.jsx",
+    "src/javascript/osgiConfigManager/App/components/Dialogs.jsx",
+    "src/javascript/osgiConfigManager/App/components/DiffModal.tsx",
+    "src/javascript/osgiConfigManager/App/components/Editor.jsx",
+    "src/javascript/osgiConfigManager/App/components/FileSidebar.jsx",
+    "src/javascript/osgiConfigManager/App/components/MonacoEditor.jsx",
+    "src/javascript/osgiConfigManager/App/components/SelectedFileHeader.jsx",
+    "src/javascript/osgiConfigManager/App/components/SelectedFileToolbar.jsx",
+    "src/javascript/osgiConfigManager/App/hooks/useDialogA11y.ts",
+    "src/javascript/osgiConfigManager/App/hooks/useFileActions.ts",
+    "src/javascript/osgiConfigManager/App/hooks/useOsgiConfigs.ts",
+    "src/javascript/osgiConfigManager/App/hooks/useProperties.ts",
+    "src/javascript/osgiConfigManager/App/hooks/useToast.tsx",
+    "src/javascript/osgiConfigManager/App/hooks/osgiTypes.ts",
+    "src/javascript/osgiConfigManager/App/api/osgiService.ts",
+    "src/javascript/osgiConfigManager/App/utils/*.{js,ts}"
+  ],
+  "findings": [
+    {
+      "rule": "KBD-CLICK-NONFOCUSABLE",
+      "wcag": "2.1.1 A",
+      "severity": "critical",
+      "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:91",
+      "summary": "The Metatype template and factory cards in the New configuration dialog are divs with onClick only, so a keyboard user cannot select a template or factory and cannot create a configuration from the Configuration or Factory tabs.",
+      "fix": "Render each card as a native radio inside a fieldset/legend (input type=\"radio\" name=\"metatype\" checked={isSelected} onChange={onClick}, label wrapping the title/subtitle/description), which gives Tab into the group and Arrow keys between options. A <button type=\"button\" aria-pressed={isSelected}> is the minimal alternative.",
+      "evidence": "<div data-cy={dataCy} style={getSelectableCardStyle(isSelected)} onClick={onClick}> (used at lines 379 and 419)",
+      "component": "CreateOptionCard"
+    },
+    {
+      "rule": "KBD-TRAP-EDITOR",
+      "wcag": "2.1.2 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/MonacoEditor.jsx:742",
+      "summary": "The Monaco editor captures Tab and Shift+Tab (indent/outdent) and the module neither enables tabFocusMode nor tells users the exit key (Ctrl+M, Ctrl+Shift+M on macOS), so a keyboard user entering the raw/YAML editor cannot Tab out of it.",
+      "fix": "Keep Tab for indentation but tell users how to leave: add a visible hint in the raw editor toolbar (e.g. 'Press Ctrl+M (Ctrl+Shift+M on macOS) to make Tab move focus'), optionally with a toolbar toggle button calling editorRef.current.trigger('keyboard', 'editor.action.toggleTabFocusMode', null). Also pass ariaLabel to monaco.editor.create and document the key in README.",
+      "evidence": "monaco.editor.create(containerRef.current, { value, language, theme, wordBasedSuggestions, minimap, ... }) - no tabFocusMode, no ariaLabel; no addCommand/addAction anywhere; README has no Ctrl+M mention"
+    },
+    {
+      "rule": "KBD-REORDER-FOCUS",
+      "wcag": "2.1.1 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:584",
+      "summary": "Rows are keyed by index, so after Arrow Up/Down on a reorder handle focus stays put while the entry moves; the next press moves the displaced neighbour back, so an entry cannot move more than one step by keyboard.",
+      "fix": "Key rows by a stable id (assign one when parsing entries), and after handleReorder(index, target) focus the reorder button of the moved entry at its new index (ref map + requestAnimationFrame). Skip hidden neighbours (filtered rows, hidden comments/empty lines) when computing target, and disable keyboard reorder while filtering as the drag is (line 600). Announce the new position via a polite live region.",
+      "evidence": "<TableRow key={index} ...> with onKeyDown: if (e.key === 'ArrowUp' && index > 0) handleReorder(index, index - 1) (lines 614-621); reorder runs even when filtering or when the neighbour row is hidden",
+      "component": "CfgEditor"
+    },
+    {
+      "rule": "KBD-DRAG-ONLY-POINTER",
+      "wcag": "2.5.7 AA",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:608",
+      "summary": "Reordering .cfg entries with a pointer requires a drag; clicking the handle button does nothing (onClick only stops propagation), and the Arrow-key alternative does not serve pointer-only users, so there is no single-pointer way to reorder.",
+      "fix": "Add single-click controls, e.g. 'Move up' / 'Move down' icon buttons in the actions cell or a small menu on the handle button (onClick opens Move up / Move down / Move to top), calling the same handleReorder.",
+      "evidence": "draggable={dragArmedIndex === index} (588); handle button onClick={(e) => e.stopPropagation()} (613)",
+      "component": "CfgEditor"
+    },
+    {
+      "rule": "KBD-FOCUS-INDICATOR-REMOVED",
+      "wcag": "2.4.7 AA",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/FileSidebar.jsx:130",
+      "summary": "The focusable file-list container (tabIndex=0) sets outline: none with no replacement; with no file selected nothing shows focus, and with one selected the highlight is the same whether focused or not.",
+      "fix": "Remove outline: 'none' and give the container a class with a :focus-visible style (e.g. outline: 2px solid var(--color-accent); outline-offset: -2px), or style the highlighted row differently while the container has focus. Pair with role=\"listbox\"/aria-activedescendant (aria specialist).",
+      "evidence": "style={{ flex: 1, overflowY: 'auto', outline: 'none' }} tabIndex={0} onKeyDown={handleKeyDown}",
+      "component": "FileSidebar"
+    },
+    {
+      "rule": "KBD-FOCUS-INDICATOR-REMOVED",
+      "wcag": "2.4.7 AA",
+      "severity": "moderate",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:259",
+      "summary": "The key, value and comment textareas of the visual .cfg editor set outline: none and keep the same 1px light-grey border when focused (the comment field has no border at all), so the only cue is the caret and the row tint.",
+      "fix": "Drop outline: 'none' from AutoResizeTextArea, or add a class with :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px } (or a border-color change with at least 3:1 contrast against the unfocused state).",
+      "evidence": "border: 'none', outline: 'none', background: 'transparent' (257-260); comment textarea style border: 'none' (661)",
+      "component": "AutoResizeTextArea"
+    },
+    {
+      "rule": "KBD-FOCUS-LOST-REMOVED",
+      "wcag": "2.4.3 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/hooks/useFileActions.ts:82",
+      "summary": "After a file is deleted, selectFile(null) unmounts the toolbar holding the Delete button the Moonstone Modal returns focus to, so focus falls to <body> and the keyboard user has to start again from the top of the page.",
+      "fix": "After a successful delete, move focus explicitly: select the next file in the list and focus the file-list container (pass a ref from FileSidebar), or focus the list container / 'New' button when the list is empty. Do it after fetchFiles() resolves.",
+      "evidence": "await osgiService.delete(f.name); if (selectedFile?.name === f.name) { selectFile(null); } fetchFiles();"
+    },
+    {
+      "rule": "KBD-FOCUS-LOST-DISABLED",
+      "wcag": "2.4.3 A",
+      "severity": "moderate",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/SelectedFileHeader.jsx:82",
+      "summary": "After Save (focus is returned to the Save button when the review dialog closes) or Cancel, hasUnsaved becomes false and the focused button gets disabled, which drops focus to <body>.",
+      "fix": "Keep Save/Cancel focusable when nothing is pending (aria-disabled=\"true\" and a no-op handler instead of the disabled attribute), or after the save/cancel completes move focus to a stable target such as the selected file heading (tabIndex={-1}) or the editor.",
+      "evidence": "disabled={isSaveDisabled} (82), disabled={!hasUnsaved} (70); save flow useOsgiConfigs.ts:390-442",
+      "component": "SelectedFileHeader"
+    },
+    {
+      "rule": "KBD-FOCUS-LOST-REMOVED",
+      "wcag": "2.4.3 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:798",
+      "summary": "Deleting a .cfg entry returns focus to the delete button's DOM node, which, with index keys, now belongs to the next entry (a second Enter targets a different row), or is gone when the last row was deleted, leaving focus on <body>.",
+      "fix": "With stable row keys, after deleteProperty move focus to the key field of the entry now at that index, or to the previous row when the last one was deleted, or to the 'Add property' button when the list is empty.",
+      "evidence": "onClick={(e) => { e.stopPropagation(); handleDeleteProperty([index]); }} with <TableRow key={index}> (584)",
+      "component": "CfgEditor"
+    },
+    {
+      "rule": "KBD-DIALOG-FOCUS-RESET",
+      "wcag": "2.4.3 A",
+      "severity": "moderate",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/hooks/useDialogA11y.ts:91",
+      "summary": "useDialogA11y re-runs whenever onClose changes; callers pass inline arrows, so any parent re-render while a dialog is open (e.g. a toast appearing or expiring) moves focus back to the dialog's first control.",
+      "fix": "Store onClose in a ref inside the hook (const onCloseRef = useRef(onClose); onCloseRef.current = onClose) and depend on [isOpen] only; memoize the ToastContext value with useMemo in useToast.tsx:74; optionally wrap the callers' onClose in useCallback.",
+      "evidence": "}, [isOpen, onClose]); and onClose={() => setDiffConfig(prev => ({ ...prev, isOpen: false }))}",
+      "component": "useDialogA11y"
+    },
+    {
+      "rule": "KBD-PANEL-FOCUS",
+      "wcag": "2.4.3 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/MonacoEditor.jsx:1409",
+      "summary": "Opening the Metatype 'Add property' panel leaves focus on the toolbar, the panel sits after the Tab-capturing Monaco editor in DOM order, and closing it unmounts the focused Hide button, dropping focus to <body>.",
+      "fix": "On open, focus the panel's search Input (ref + useEffect on showPropertyPanel); on close, return focus to the 'Add property' toolbar button; close on Escape. Consider placing the panel before the editor canvas in DOM order (visual order can stay with CSS order).",
+      "evidence": "onClick={() => supportsMetatypeAssistance && setShowPropertyPanel(true)} (1409); panel rendered at 1434 after the editor container (1420); hide button onClick={() => setShowPropertyPanel(false)} (1458)",
+      "component": "MonacoEditor"
+    },
+    {
+      "rule": "KBD-TOOLTIP-NONFOCUSABLE",
+      "wcag": "2.1.1 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:696",
+      "summary": "The 'i' Metatype documentation badge is a div inside a Moonstone Tooltip; the tooltip opens on hover or on focus of its child, but the div cannot take focus, so the property's description, type and default are mouse-only.",
+      "fix": "Render the badge as <button type=\"button\" aria-label={t('...metatypeInfo', {name: key})}> styled the same, so Tab reaches it and the Tooltip opens on focus (and closes on Escape via Moonstone's useDismiss).",
+      "evidence": "<Tooltip label={<CfgMetatypeInfoTooltip .../>}><div data-cy={`cfg-metatype-info-${index}`} style={{... cursor: 'help'}}>i</div></Tooltip>",
+      "component": "CfgEditor"
+    },
+    {
+      "rule": "KBD-HOVER-ONLY",
+      "wcag": "1.4.13 AA",
+      "severity": "moderate",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/AppChrome.jsx:199",
+      "summary": "OverflowPreviewText reveals the full text of truncated file names (sidebar) and the file path (header) only on mouseenter, so keyboard users cannot read long names that are cut with an ellipsis.",
+      "fix": "Show the preview on focus as well (onFocus/onBlur on the focusable ancestor, or render it for the active row of the list), or let the text wrap instead of truncating. For the selected file header, which uses showPreview={false} (SelectedFileHeader.jsx:33), allow the heading to wrap.",
+      "evidence": "onMouseEnter={showPreviewIfNeeded} onMouseLeave={hidePreview} - no focus trigger",
+      "component": "OverflowPreviewText"
+    },
+    {
+      "rule": "KBD-SCROLL-REGION",
+      "wcag": "2.1.1 A",
+      "severity": "moderate",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/DiffModal.tsx:155",
+      "summary": "The review-before-save diff is a scroll container (max-height 60vh) with no focusable content or tabindex, so where scrollers are not focusable (Safari) changes past the first screen cannot be reached by keyboard.",
+      "fix": "Add tabIndex={0} role=\"region\" aria-label={t('modal.diff.title', {name: filename})} to the scroll container, with a visible :focus-visible outline.",
+      "evidence": "<div style={{ fontFamily: 'monospace', ..., maxHeight: '60vh', overflowY: 'auto' }}>",
+      "component": "DiffModal"
+    },
+    {
+      "rule": "KBD-STICKY-OBSCURES",
+      "wcag": "2.4.11 AA",
+      "severity": "moderate",
+      "confidence": "low",
+      "location": "src/javascript/osgiConfigManager/App/hooks/useToast.tsx:80",
+      "summary": "The toast is position: fixed at bottom-right for 6 s with no Escape dismissal and can sit over the bottom-right controls of the editor (e.g. the .cfg footer 'Toggle empty lines' button) while a keyboard user tabs onto them.",
+      "fix": "Place the toast where it cannot overlap the editor footer (e.g. top-right of the content area), or dismiss it on Escape without moving focus, and pause/close it when focus moves under it. Verify at runtime with the e2e keyboard scan.",
+      "evidence": "position: 'fixed', bottom: '20px', right: '20px', zIndex: 10000, minWidth: '280px'",
+      "component": "ToastProvider"
+    },
+    {
+      "rule": "KBD-CLICK-NONFOCUSABLE",
+      "wcag": "2.1.1 A",
+      "severity": "minor",
+      "location": "src/javascript/osgiConfigManager/App/components/DiffModal.tsx:145",
+      "summary": "The dialog's close (X) icon is a div with onClick and mouseover styling, unreachable by keyboard; Cancel and Escape remain available, so this is a redundant mouse-only control.",
+      "fix": "Use a Moonstone <Button variant=\"ghost\" icon={<Close/>} aria-label={t('modal.cancel')} onClick={onClose}/> as Dialogs.jsx:285 already does.",
+      "evidence": "<div style={{ cursor: 'pointer', color: '#888' }} onClick={onClose} onMouseOver=... onMouseOut=...><Close /></div>",
+      "component": "DiffModal"
+    },
+    {
+      "rule": "KBD-CLICK-NONFOCUSABLE",
+      "wcag": "2.1.1 A",
+      "severity": "minor",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgMetatypePropertyDialog.jsx:112",
+      "summary": "The Metatype property picker's close (X) icon is a div with onClick, unreachable by keyboard; Cancel and Escape remain available.",
+      "fix": "Replace with <Button variant=\"ghost\" icon={<Close/>} aria-label={t('modal.cancel')} onClick={onClose}/>.",
+      "evidence": "<div style={{ cursor: 'pointer' }} onClick={onClose}><Close /></div>",
+      "component": "CfgMetatypePropertyDialog"
+    },
+    {
+      "rule": "KBD-SCROLL-REGION",
+      "wcag": "2.1.1 A",
+      "severity": "minor",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:475",
+      "summary": "The 'Existing instances' list of the factory tab scrolls (max-height 140px) but holds only static text and has no tabindex, so its overflow cannot be scrolled by keyboard in Safari.",
+      "fix": "Add tabIndex={0} role=\"region\" aria-label={t('modal.create.existingInstances')} to the INSTANCES_LIST_STYLE container.",
+      "evidence": "<div style={INSTANCES_LIST_STYLE}> (maxHeight: '140px', overflow: 'auto')",
+      "component": "ModalDialog"
+    },
+    {
+      "rule": "KBD-TOOLTIP-NONFOCUSABLE",
+      "wcag": "2.1.1 A",
+      "severity": "minor",
+      "location": "src/javascript/osgiConfigManager/App/components/ConfigStateBadge.jsx:48",
+      "summary": "In the sidebar the compact (icon-only) state chip explains the configuration state only through a hover tooltip on a non-focusable Chip, so keyboard users cannot read the state of non-selected files.",
+      "fix": "Expose the state as text in the row (visually hidden text or the row's accessible name) rather than relying on the tooltip; the full labelled badge in the header covers only the selected file.",
+      "evidence": "<Tooltip label={t(config.tooltipKey)}>{chip}</Tooltip> with label '' when compact",
+      "component": "ConfigStateBadge"
+    },
+    {
+      "rule": "KBD-LIST-KEYS",
+      "wcag": "n/a",
+      "severity": "minor",
+      "location": "src/javascript/osgiConfigManager/App/components/FileSidebar.jsx:77",
+      "summary": "The file list supports only Arrow Up/Down, and selection follows focus: each arrow press loads the file and, with unsaved changes, opens the confirmation dialog, so Home/End and moving without loading are not possible.",
+      "fix": "Add Home/End (and optionally type-ahead). Consider moving an active descendant on arrows and loading the file on Enter/Space, or debounce loading, so browsing past files with unsaved changes does not raise a dialog per keystroke.",
+      "evidence": "if (e.key === 'ArrowDown') {... handleFileClick(processedFiles[nextIndex]); } else if (e.key === 'ArrowUp') {...}",
+      "component": "FileSidebar"
+    }
+  ],
+  "passed": [
+    "No positive tabindex anywhere in scope (only tabIndex={0} on the file list and tabindex=-1 set programmatically by useDialogA11y).",
+    "2.1.4 Character Key Shortcuts: no single-character shortcut registered; no document-level key listener except Escape/Tab inside open dialogs (useDialogA11y), no Monaco addCommand/addAction, Monaco default bindings are modifier-based and active only while the editor has focus.",
+    "Custom dialogs (DiffModal, CfgMetatypePropertyDialog) move focus in, trap Tab/Shift+Tab, close on Escape and restore focus via useDialogA11y.",
+    "Moonstone Modal (Dialogs.jsx ModalDialog) uses floating-ui FloatingFocusManager (modal trap, returnFocus=true) and useDismiss (Escape), checked in @jahia/moonstone 2.20.3 dist/index.js.",
+    "Moonstone TabItem in the create dialog renders role=tab buttons with a horizontal roving arrow-key hook.",
+    "Moonstone Tooltip opens on focus as well as hover (useFocus), so tooltips on Buttons (ActionButton, EditorToolbarButton, secret toggle) are keyboard-reachable.",
+    "Toolbar and header actions (New, Import, Refresh, Save, Cancel, Enable/Disable, Mark as default, Download, Delete, raw-editor toolbar) are Moonstone Buttons, i.e. native buttons.",
+    "Upload: the hidden file input is triggered from a real button; no keyboard dead end.",
+    "CfgEditor row onClick (selection) has a keyboard equivalent: focusing any field of the row selects it (handleInputFocus).",
+    "Metatype property cards in the raw editor panel: onDoubleClick insertion has a keyboard-operable 'Insert' button equivalent (MonacoEditor.jsx:1534).",
+    "Metatype property picker dialog options are native <button> elements (CfgMetatypePropertyDialog.jsx:149).",
+    "Reorder handle is a native <button> with an aria-label describing the Arrow Up/Down interaction (keyboard alternative to drag exists, defects aside)."
+  ],
+  "notes": [
+    "Editor.jsx (ConfigEditor) is unreachable today: the backend lists only .cfg/.yml (OsgiConfigService.SUPPORTED_CONFIG_EXTENSIONS) and index.jsx routes those to CfgEditor/MonacoEditor. If it is ever re-enabled, it has mouse-only value editing (onDoubleClick, Editor.jsx:105), a clickable non-focusable collapse cell (Editor.jsx:170) and a sticky header (Editor.jsx:328) that can hide focused small buttons when Shift+Tabbing upward (2.4.11); consider deleting the file.",
+    "2.4.1 Bypass Blocks / skip link: the module renders inside the Jahia administration shell (LayoutContent); a skip link to the editor is the shell's responsibility. Within the module the tab sequence before the editor is short (header actions, search, deep-search switch, file list, Save/Cancel, file toolbar).",
+    "Runtime checks for the orchestrator's keyboard scan: (1) whether the Moonstone Modal's FloatingFocusManager initial focus overrides autoFocus on the prompt/filename inputs (Dialogs.jsx:303, 339) and lands on the close button placed before the header (Dialogs.jsx:284); (2) focus ring visibility of Moonstone ghost Buttons, Switch, Dropdown and SearchInput in the admin theme; (3) whether the native reorder <button> keeps a visible default outline under Moonstone's global CSS; (4) Moonstone Dropdown (editor mode, SelectedFileToolbar.jsx:104) arrow-key and Escape behaviour.",
+    "Focus after file selection is preserved: arrow-key selection keeps focus on the list container and auto-scrolls the selected row into view (FileSidebar.jsx:65-75); clicking a row does not move focus, which is acceptable.",
+    "Screen-reader semantics of the file list (listbox/option, aria-activedescendant), the Moonstone Modal aria-labelledby pointing at its own id, the toast lacking role=status and the lack of a live announcement after keyboard reorder are left to the ARIA/live-region specialists."
+  ]
+}

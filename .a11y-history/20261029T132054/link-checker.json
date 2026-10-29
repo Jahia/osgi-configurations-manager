@@ -1,0 +1,76 @@
+{
+  "skill": "link-checker",
+  "scope": [
+    "src/javascript/osgiConfigManager/**/*.{jsx,tsx,js,ts} (excluding *.test.*) - 26 files, 7579 lines"
+  ],
+  "findings": [
+    {
+      "rule": "LINK-CONTROL-ELEMENT",
+      "wcag": "4.1.2 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/DiffModal.tsx:145",
+      "summary": "The review dialog's close control is a div with onClick around a Close icon: no button role, no name, not focusable, so screen reader users meet an unlabelled image (Escape still closes).",
+      "fix": "Replace the div with the pattern Dialogs.jsx:285 already uses: <Button aria-label={t('modal.cancel')} icon={<Close/>} variant=\"ghost\" size=\"small\" onClick={onClose}/>. Keep it a button, not a link: it performs an action.",
+      "evidence": "<div style={{ cursor: 'pointer', color: '#888' }} onClick={onClose} onMouseOver=... ><Close /></div>",
+      "component": "DiffModal"
+    },
+    {
+      "rule": "LINK-CONTROL-ELEMENT",
+      "wcag": "4.1.2 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgMetatypePropertyDialog.jsx:112",
+      "summary": "The Metatype property picker's close control is a div with onClick around a Close icon: no role, no accessible name and not reachable by Tab (Escape still closes).",
+      "fix": "Use <Button aria-label={t('modal.cancel')} icon={<Close/>} variant=\"ghost\" size=\"small\" onClick={onClose}/>, as in Dialogs.jsx:285.",
+      "evidence": "<div style={{ cursor: 'pointer' }} onClick={onClose}><Close /></div>",
+      "component": "CfgMetatypePropertyDialog"
+    },
+    {
+      "rule": "LINK-CONTROL-ELEMENT",
+      "wcag": "2.1.1 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:91",
+      "summary": "CreateOptionCard, the selectable template/factory card of the create dialog, is a div with onClick: not focusable, no role, selected state shown only by styling, so keyboard and screen reader users cannot pick a template.",
+      "fix": "Render each card as a native choice: <label> wrapping <input type=\"radio\" name=\"create-template\" checked={isSelected} onChange={onClick}/> plus the texts, inside a <fieldset> whose <legend> is the section title (modal.create.templateLabel / factoryLabel). Alternatively <button type=\"button\" aria-pressed={isSelected}>. Not a link: it selects, it does not navigate.",
+      "evidence": "<div data-cy={dataCy} style={getSelectableCardStyle(isSelected)} onClick={onClick}>",
+      "component": "CreateOptionCard"
+    },
+    {
+      "rule": "LINK-CONTROL-ELEMENT",
+      "wcag": "4.1.2 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/FileSidebar.jsx:137",
+      "summary": "Each file entry is a table row with onClick that loads the file: exposed as a plain row, Enter/Space on the focused row do nothing, and the current file is marked only by the isHighlighted class.",
+      "fix": "Selecting a file does not change the URL, so use button semantics, not a link: render the list as <ul> with one <button type=\"button\" aria-current={isSelected ? 'true' : undefined}> per file, or a role=\"listbox\" with role=\"option\" aria-selected items driven by the existing ArrowUp/ArrowDown handler (FileSidebar.jsx:77). Use <a href> only if file selection gets its own route.",
+      "evidence": "<TableRow ... isHighlighted={selectedFile?.name === f.name} onClick={() => handleFileClick(f)} style={{ cursor: 'pointer' }}>",
+      "component": "FileSidebar"
+    },
+    {
+      "rule": "LINK-NEW-WINDOW",
+      "wcag": "3.2.5 AAA",
+      "severity": "minor",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/MonacoEditor.jsx:742",
+      "summary": "The raw editor leaves Monaco's link detection on (links defaults to true), so URLs inside configuration values become Ctrl/Cmd+click links that open a new window without warning and are not exposed to assistive technology.",
+      "fix": "Add links: false to the monaco.editor.create options: configuration values are data to edit, not navigation. If following URLs is wanted, keep it and document the new-window behaviour in the editor help text. Recommendation only (AAA, beyond the AA target).",
+      "evidence": "monaco.editor.create(containerRef.current, { value, language, ... lineNumbers: 'on', glyphMargin: true, folding: true, ... }) - no links option",
+      "component": "MonacoEditor"
+    }
+  ],
+  "passed": [
+    "No <a> element is rendered anywhere in scope: Editor.jsx, CfgEditor.jsx and FileSidebar.jsx contain no anchors or hrefs (their grep hits were table markup).",
+    "No href=\"#\", javascript: URL, or anchor used as a button.",
+    "No target=\"_blank\", window.open or other new-tab navigation in application code.",
+    "The only anchor is the detached download anchor built in index.jsx:98-107 (href to a blob URL, download=file.name), clicked programmatically and removed; the user-facing trigger is a real Button labelled Download (SelectedFileToolbar.jsx:85-89) next to the selected file's name.",
+    "No ambiguous link text (click here, read more, learn more, here) and no raw URL used as link text, in JSX or in locales/en.json.",
+    "No repeated identical link texts pointing to different destinations, and no adjacent icon + text link duplicates.",
+    "Label in name (2.5.3): the Metatype option buttons (CfgMetatypePropertyDialog.jsx:149-153) use aria-label={property.id}, which matches their visible bold label.",
+    "Actions are buttons: modal close (Dialogs.jsx:285), Metatype options (CfgMetatypePropertyDialog.jsx:149), reorder handle (CfgEditor.jsx:608), toolbar actions (SelectedFileToolbar.jsx, MonacoEditor.jsx:1355-1412).",
+    "useDialogA11y.ts:4 includes a[href] in its focusable selector, so a future link inside a dialog stays inside the focus trap."
+  ],
+  "notes": [
+    "Premise correction: the task said FileSidebar.jsx, Editor.jsx and CfgEditor.jsx contain anchors/hrefs. They do not. The clickable non-button elements found instead are reported above as LINK-CONTROL-ELEMENT.",
+    "The YAML editor's collapsible container row (Editor.jsx:161-171, onClick on a td) and the double-click-to-edit value (Editor.jsx:105) are also non-button controls. They are reported by tables-data-specialist (they are table cells), not repeated here.",
+    "Repeated identical button names without row context (Delete this property, Reorder this entry, Insert) are not link text under 2.4.4 and are reported by tables-data-specialist as cell-control context.",
+    "Runtime check left to the browser half: confirm Monaco's link hover ('Follow link') appears on a value containing http(s):// at the page URL."
+  ]
+}

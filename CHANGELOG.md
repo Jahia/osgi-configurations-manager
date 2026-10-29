@@ -15,6 +15,22 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and the raw editor's button read `editor.button.showSecrets`. The interface now also loads the
   translations built with it (the user's language and English), as hashed chunks, over the ones
   Jahia fetched.
+- **Save, Cancel and Delete stay on screen in a narrow window (WCAG 1.4.10).** A long file path
+  widened the whole administration page to about 1,060 px, so below about 1,420 px of window width
+  (with Jahia's navigation open) the file actions and the editor's Value column were cut off with
+  no way to scroll to them. The manager now takes the width it is given, stacks the file list above
+  the editor when there is no room for both, and scrolls the visual editor's table sideways inside
+  its own area.
+- **Templates and factories can be chosen with the keyboard (WCAG 2.1.1, 4.1.2).** In **New**, the
+  **Configuration** and **Factory** choices were clickable areas that Tab never reached, so a
+  configuration could only be created from a Metatype with a mouse. They are now radio buttons in
+  a named group, and their description is readable (it was drawn at 1.45:1 contrast).
+- **Screen readers announce the notifications (WCAG 4.1.3).** The message shown after a save,
+  delete, creation, import or toggle is now placed in a status region that exists before it
+  appears, and errors in an alert region; it was mounted together with its text, which screen
+  readers do not announce.
+- **The encryption checkbox of each visual-editor row has a name (WCAG 4.1.2):** "Encrypt the
+  value of `<key>`", where a screen reader said only "checkbox".
 
 ## [1.2.1] - 2026-09-29
 

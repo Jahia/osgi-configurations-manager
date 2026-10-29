@@ -1,0 +1,268 @@
+{
+  "skill": "alt-text-headings",
+  "scope": [
+    "src/javascript/osgiConfigManager/registerRoutes.js",
+    "src/javascript/osgiConfigManager/App/index.jsx",
+    "src/javascript/osgiConfigManager/App/components/ActionButton.jsx",
+    "src/javascript/osgiConfigManager/App/components/AppChrome.jsx",
+    "src/javascript/osgiConfigManager/App/components/AppHeaderBar.jsx",
+    "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx",
+    "src/javascript/osgiConfigManager/App/components/CfgMetatypePropertyDialog.jsx",
+    "src/javascript/osgiConfigManager/App/components/ConfigStateBadge.jsx",
+    "src/javascript/osgiConfigManager/App/components/Dialogs.jsx",
+    "src/javascript/osgiConfigManager/App/components/DiffModal.tsx",
+    "src/javascript/osgiConfigManager/App/components/Editor.jsx",
+    "src/javascript/osgiConfigManager/App/components/FileSidebar.jsx",
+    "src/javascript/osgiConfigManager/App/components/MonacoEditor.jsx",
+    "src/javascript/osgiConfigManager/App/components/SelectedFileHeader.jsx",
+    "src/javascript/osgiConfigManager/App/components/SelectedFileToolbar.jsx",
+    "src/javascript/osgiConfigManager/App/hooks/useToast.tsx",
+    "src/javascript/osgiConfigManager/App/hooks/useDialogA11y.ts",
+    "src/javascript/osgiConfigManager/App/hooks/*.ts, App/utils/*, App/api/* (no markup; checked for document.title / lang only)"
+  ],
+  "findings": [
+    {
+      "rule": "SEM-DIV-BUTTON-001",
+      "wcag": "2.1.1 A",
+      "severity": "critical",
+      "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:91",
+      "summary": "The selectable configuration and factory options in the Create dialog are clickable divs: not focusable, no role, no selected state, so keyboard and screen reader users cannot create from a template or factory.",
+      "fix": "Render each option as a native control: a radio group (<fieldset><legend>{templateLabel}</legend> then per option <label><input type=\"radio\" name=\"pid\" checked={isSelected}/> title/subtitle/meta</label>) inside a <ul>, or <button type=\"button\" aria-pressed={isSelected}> in <li>. Keep the card look with CSS. Applies to both uses at Dialogs.jsx:379 and :419.",
+      "evidence": "<div data-cy={dataCy} style={getSelectableCardStyle(isSelected)} onClick={onClick}> (selection shown only by background colour)",
+      "component": "CreateOptionCard"
+    },
+    {
+      "rule": "SEM-DIV-BUTTON-002",
+      "wcag": "4.1.2 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/DiffModal.tsx:145",
+      "summary": "The review-before-save dialog's close control is a div with an onClick around a bare Close icon: no role, no accessible name, not in the tab order.",
+      "fix": "Replace with the pattern already used in Dialogs.jsx:285: <Button variant=\"ghost\" size=\"small\" icon={<Close/>} aria-label={t('modal.cancel')} onClick={onClose}/>. Drop the inline onMouseOver/onMouseOut colour hack.",
+      "evidence": "<div style={{ cursor: 'pointer', ... }} onClick={onClose} onMouseOver=... ><Close /></div>",
+      "component": "DiffModal"
+    },
+    {
+      "rule": "SEM-DIV-BUTTON-003",
+      "wcag": "4.1.2 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgMetatypePropertyDialog.jsx:112",
+      "summary": "The Add-property dialog's close control is a div with an onClick around a bare Close icon: no role, no accessible name, not focusable.",
+      "fix": "Use <Button variant=\"ghost\" size=\"small\" icon={<Close/>} aria-label={t('modal.cancel')} onClick={onClose}/> as in Dialogs.jsx:285.",
+      "evidence": "<div style={{ cursor: 'pointer' }} onClick={onClose}><Close /></div>",
+      "component": "CfgMetatypePropertyDialog"
+    },
+    {
+      "rule": "SEM-LIST-001",
+      "wcag": "1.3.1 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/FileSidebar.jsx:134",
+      "summary": "The configuration file list is marked up as a headerless data table (Moonstone Table/TableRow/TableBodyCell) instead of a list, so AT announces a 2-column table with no headers rather than a list of N files.",
+      "fix": "Render <ul aria-labelledby=\"<sidebar heading id>\"> with one <li> per file, each containing a <button type=\"button\"> (see SEM-LIST-002). Keep Moonstone styling via classes or switch to Moonstone ListItem if it fits.",
+      "evidence": "<Table ...><TableBody>{processedFiles.map(f => <TableRow ...><TableBodyCell>status bar</TableBodyCell><TableBodyCell>name + badge</TableBodyCell>",
+      "component": "FileSidebar"
+    },
+    {
+      "rule": "SEM-LIST-002",
+      "wcag": "4.1.2 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/FileSidebar.jsx:137",
+      "summary": "Each file row is a <tr> that Moonstone makes focusable (tabIndex 0) with an onClick but no role, no Enter/Space activation and no exposed selected state (selection is only highlight + bold).",
+      "fix": "Make each entry a <button type=\"button\" aria-current={selected ? 'true' : undefined} onClick={() => handleFileClick(f)}> inside an <li>; native buttons give Enter/Space. If arrow-key navigation is kept, use the listbox pattern instead: container role=\"listbox\" aria-label, rows role=\"option\" aria-selected, focus via aria-activedescendant or roving tabindex.",
+      "evidence": "<TableRow id=... isHighlighted={selectedFile?.name === f.name} onClick={() => handleFileClick(f)} style={{ cursor: 'pointer' }}> (Moonstone TableRow sets tabIndex: 0)",
+      "component": "FileSidebar"
+    },
+    {
+      "rule": "SEM-LIST-003",
+      "wcag": "4.1.2 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/FileSidebar.jsx:129",
+      "summary": "The file-list scroll container is a focusable div (tabIndex 0) that handles ArrowUp/ArrowDown but has no role or accessible name, so focusing it announces nothing.",
+      "fix": "If the arrow-key behaviour is kept, give this element role=\"listbox\" and aria-label/aria-labelledby (sidebar heading) and wire aria-activedescendant to the selected option; otherwise remove tabIndex and onKeyDown and rely on the per-file buttons. Its outline:'none' also hides focus (focus specialist).",
+      "evidence": "<div style={{ flex: 1, overflowY: 'auto', outline: 'none' }} tabIndex={0} onKeyDown={handleKeyDown}>",
+      "component": "FileSidebar"
+    },
+    {
+      "rule": "IMG-STATE-001",
+      "wcag": "1.1.1 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/FileSidebar.jsx:158",
+      "summary": "Whether a file is enabled or disabled is shown only by a 3px coloured bar and a line-through on the name, neither of which reaches assistive technology.",
+      "fix": "Add a text alternative inside the file's button, e.g. <span className=\"sr-only\">{t('…disabled')}</span> when !f.enabled (or include it in the accessible name), and mark the bar aria-hidden=\"true\".",
+      "evidence": "<div data-cy=\"sidebar-file-status-…\" style={getFileStatusIndicatorStyle(f.enabled)} /> and textDecoration: f.enabled ? 'none' : 'line-through'",
+      "component": "FileSidebar"
+    },
+    {
+      "rule": "IMG-ICON-001",
+      "wcag": "1.1.1 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/ConfigStateBadge.jsx:40",
+      "summary": "In compact mode (every sidebar row, FileSidebar.jsx:176) the state badge is an icon-only Chip (Build / Module / Edit) with an empty label, so MODULE / MODULE_DEFAULT / USER has no text alternative.",
+      "fix": "When compact, keep the label for AT: render <span className=\"sr-only\">{t(config.labelKey)}</span> next to the icon (or give the icon role=\"img\" aria-label={t(config.labelKey)}). The Tooltip wraps a non-focusable div and opens only on hover, so it is not a substitute.",
+      "evidence": "const label = compact ? '' : t(config.labelKey); <Chip icon={<config.icon/>} label={label} />",
+      "component": "ConfigStateBadge"
+    },
+    {
+      "rule": "IMG-ICON-002",
+      "wcag": "2.1.1 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:696",
+      "summary": "The metatype info icon is a div showing the letter 'i' whose documentation tooltip opens only on mouse hover: not focusable, no role or name, so the property documentation is unreachable by keyboard and AT.",
+      "fix": "Make it <button type=\"button\" aria-label={`${t('…propertyInfo')} ${key}`}> with the 'i' glyph in an aria-hidden span; Moonstone Tooltip then opens on focus and sets aria-describedby on the focusable child.",
+      "evidence": "<Tooltip label={<CfgMetatypeInfoTooltip …/>}><div data-cy=\"cfg-metatype-info-…\" style={{ …, cursor: 'help' }}>i</div></Tooltip>",
+      "component": "CfgEditor"
+    },
+    {
+      "rule": "IMG-ICON-003",
+      "wcag": "1.1.1 A",
+      "severity": "minor",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/AppChrome.jsx:128",
+      "summary": "Decorative Moonstone SVG icons placed outside a named control are not hidden from AT (Moonstone renders <svg> with no aria-hidden or focusable=false), so some screen readers announce an unnamed graphic.",
+      "fix": "Pass aria-hidden=\"true\" focusable=\"false\" to the icon (SvgWrapper spreads props onto the <svg>): StatusBanner icon AppChrome.jsx:128, toast icons useToast.tsx:50/55/60/65, Chip icon ConfigStateBadge.jsx:30 when the label is shown, comment-row icon CfgEditor.jsx:630. Icons inside labelled buttons need nothing.",
+      "evidence": "<Warning size=\"small\" style={{color: variant.iconColor, flexShrink: 0}}/> next to <Typography>{message}</Typography>",
+      "component": "AppChrome / useToast / ConfigStateBadge / CfgEditor"
+    },
+    {
+      "rule": "HEAD-001",
+      "wcag": "1.3.1 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/SelectedFileHeader.jsx:34",
+      "summary": "The selected file name is styled as a heading but rendered as <p> (Moonstone Typography defaults to p whatever the variant), so the editor panel has no heading under the module's h1.",
+      "fix": "Pass the element: typographyProps={{variant: 'heading', component: 'h2'}} (OverflowPreviewText spreads typographyProps into Typography). Outline target: h1 app title > h2 file list (LAND-001) > h2 selected file name.",
+      "evidence": "<OverflowPreviewText text={selectedFile.name} showPreview={false} typographyProps={{variant: 'heading'}} />",
+      "component": "SelectedFileHeader"
+    },
+    {
+      "rule": "HEAD-002",
+      "wcag": "1.3.1 A",
+      "severity": "minor",
+      "location": "src/javascript/osgiConfigManager/App/components/DiffModal.tsx:131",
+      "summary": "Visual headings in the dialogs and side panel are plain <p> (Typography variant heading/subheading without component), and the custom dialogs repeat their title in aria-label instead of referencing a heading.",
+      "fix": "DiffModal.tsx:131 and CfgMetatypePropertyDialog.jsx:109: component=\"h2\" with an id, and aria-labelledby on the role=dialog in place of aria-label. CfgMetatypePropertyDialog.jsx:207 and MonacoEditor.jsx:1450: component=\"h3\". Dialogs.jsx:334/350 are field captions: make them <label htmlFor>; Dialogs.jsx:365/405 head option lists: the <legend> of the radio group (SEM-DIV-BUTTON-001).",
+      "evidence": "<Typography variant=\"heading\" weight=\"bold\" …>{t('modal.diff.title', …)}</Typography> renders <p class=\"moonstone-variant_heading\">",
+      "component": "DiffModal / CfgMetatypePropertyDialog / Dialogs / MonacoEditor"
+    },
+    {
+      "rule": "LAND-001",
+      "wcag": "1.3.1 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/FileSidebar.jsx:97",
+      "summary": "The two panes (file list, editor) and the raw editor's property side panel are anonymous divs with no heading or region name, so they cannot be reached by landmark or heading navigation.",
+      "fix": "Wrap the sidebar in <nav aria-labelledby=\"ocm-files-heading\"> (or <section>) with an <h2 id=\"ocm-files-heading\"> (visually hidden is fine), the editor Paper (index.jsx:231) in <section aria-labelledby> pointing to the file-name h2 (HEAD-001), and the panel at MonacoEditor.jsx:1435 in <aside aria-labelledby> pointing to its h3. Paper accepts component or wrap it.",
+      "evidence": "<Paper style={{ ...PANEL_STYLE, width: '350px', height: '100%' }}> / <Paper style={{ ...PANEL_STYLE, flex: '1 1 0%', … }}>",
+      "component": "FileSidebar / App / MonacoEditor"
+    },
+    {
+      "rule": "LAND-002",
+      "wcag": "4.1.2 A",
+      "severity": "minor",
+      "location": "src/javascript/osgiConfigManager/App/components/AppHeaderBar.jsx:37",
+      "summary": "role=\"toolbar\" is declared with no accessible name and without the arrow-key roving focus the role promises; the three buttons are ordinary tab stops.",
+      "fix": "Either remove the role (a plain div of buttons is valid), or keep it with aria-label={t('…toolbarLabel')} and implement roving tabindex with Left/Right arrows. Semantic HTML first: removing the role is the smaller change.",
+      "evidence": "<div role=\"toolbar\" className=\"flexRow_between alignCenter moonstone-header_toolbar\">",
+      "component": "AppHeaderBar"
+    },
+    {
+      "rule": "SEM-TABLE-001",
+      "wcag": "1.3.1 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:181",
+      "summary": "The .cfg visual editor's header row uses TableBodyCell (<td>) inside <thead> instead of header cells, and three header cells are empty, so inputs, checkboxes and buttons in rows get no column context.",
+      "fix": "Use Moonstone TableHeadCell (renders <th>) with scope=\"col\" for every header cell, and give the drag, type and actions columns visually hidden text (e.g. 'Reorder', 'Type', 'Actions'). Same pattern in Editor.jsx:328 if that editor is kept.",
+      "evidence": "<thead><TableRow><TableBodyCell style={…drag}></TableBodyCell><TableBodyCell style={…type}></TableBodyCell><TableBodyCell data-cy=\"cfg-header-property\">…",
+      "component": "CfgEditorHeader"
+    },
+    {
+      "rule": "SEM-TABLE-002",
+      "wcag": "2.4.3 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:583",
+      "summary": "Every .cfg row is an extra unnamed tab stop: Moonstone TableRow sets tabIndex 0 on the <tr>, and the module only uses it for an onClick that selects the row.",
+      "fix": "Pass tabIndex={-1} to TableRow here (props spread after Moonstone's default) so focus goes straight to the row's controls; selection already follows focus through handleInputFocus.",
+      "evidence": "<TableRow key={index} data-cy={`cfg-row-${index}`} … onClick={() => handleRowClick(index)}>",
+      "component": "CfgEditor"
+    },
+    {
+      "rule": "SEM-NAME-001",
+      "wcag": "2.4.6 AA",
+      "severity": "minor",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:792",
+      "summary": "The icon-only delete button (named only by title) and the reorder handle (CfgEditor.jsx:611) have the same accessible name on every row, so a screen reader user cannot tell which property they act on.",
+      "fix": "Include the row's key: aria-label={t('tooltip.deleteProperty') + ' ' + (key || t('editor.emptyLine'))} on the delete Button, and aria-label={`${t('editor.reorderHandle')} ${key}`} on the reorder button; keep title for sighted users.",
+      "evidence": "<Button data-cy={`cfg-delete-${index}`} icon={<Close />} … title={t('tooltip.deleteProperty')} />",
+      "component": "CfgEditor"
+    },
+    {
+      "rule": "SEM-DIFF-001",
+      "wcag": "1.3.1 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/DiffModal.tsx:177",
+      "summary": "In the review-before-save diff, added and removed lines are distinguished only by green/red colour on plain spans, so the changes the dialog exists to show are not conveyed in structure or text.",
+      "fix": "Render added parts as <ins> and removed parts as <del>, each with a visually hidden prefix ('Added:' / 'Removed:') since ins/del are not announced by every screen reader, and show a visible '+' / '−' gutter so the distinction does not rely on colour (1.4.1).",
+      "evidence": "<span key={index} style={{ backgroundColor: part.added ? '#e6ffec' : part.removed ? '#ffebe9' : 'transparent', … }}>",
+      "component": "DiffModal"
+    },
+    {
+      "rule": "SEM-TABS-001",
+      "wcag": "4.1.2 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:319",
+      "summary": "The Create dialog uses Moonstone Tab/TabItem (role tablist/tab, aria-selected) but the content below is not a tabpanel: no role=\"tabpanel\", aria-controls or aria-labelledby, and the tablist has no name.",
+      "fix": "Give each TabItem an id and aria-controls, wrap the active tab's content (Dialogs.jsx:332-497) in <div role=\"tabpanel\" id=… aria-labelledby={tabId}>, and add aria-label (e.g. the dialog title) to <Tab>.",
+      "evidence": "<Tab>{createTabs.map(tab => <TabItem key={tab.id} isSelected={…} label={tab.label} onClick={…}/>)}</Tab> followed by plain <div style={SECTION_STYLE}>",
+      "component": "ModalDialog"
+    },
+    {
+      "rule": "SEM-LIST-004",
+      "wcag": "1.3.1 A",
+      "severity": "minor",
+      "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:476",
+      "summary": "Collections are rendered as div stacks rather than lists: existing factory instances, the metatype property options, and the raw editor's property cards.",
+      "fix": "Use <ul>/<li> (list-style: none) for Dialogs.jsx:476-489, CfgMetatypePropertyDialog.jsx:137-197 and MonacoEditor.jsx:1489-1572 so AT announces the count and allows list navigation.",
+      "evidence": "<div style={INSTANCES_LIST_STYLE}>{instances.map(instance => <div key=… style={EXISTING_INSTANCE_STYLE}>…</div>)}</div>",
+      "component": "ModalDialog / CfgMetatypePropertyDialog / MonacoEditor"
+    },
+    {
+      "rule": "SEM-NAME-002",
+      "wcag": "1.3.1 A",
+      "severity": "minor",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgMetatypePropertyDialog.jsx:153",
+      "summary": "aria-label={property.id} on each property option button replaces its visible content, so the type, default value and description shown in the button are hidden from AT.",
+      "fix": "Remove aria-label (the visible content then forms the name) or keep it and add aria-describedby pointing to the type/default/description elements.",
+      "evidence": "<button type=\"button\" … aria-label={property.id}> containing type, default and description Typography",
+      "component": "CfgMetatypePropertyDialog"
+    },
+    {
+      "rule": "SEM-NAME-003",
+      "wcag": "2.4.6 AA",
+      "severity": "minor",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/MonacoEditor.jsx:742",
+      "summary": "monaco.editor.create is called without ariaLabel, so the raw editor's text area keeps Monaco's generic name and does not say which file is being edited.",
+      "fix": "Add ariaLabel: t('…rawEditorLabel', {name: filename}) to the create options (and update it with editor.updateOptions when filename changes).",
+      "evidence": "monaco.editor.create(containerRef.current, { value, language, theme, …, automaticLayout: false })",
+      "component": "MonacoEditor"
+    }
+  ],
+  "passed": [
+    "No <img>, <picture>, <figure>, <video>, <audio>, <canvas> or CSS background image carrying information in the module.",
+    "Icons inside buttons that have a visible label or aria-label (ActionButton, raw editor toolbar, reorder button, show/hide secret button, Dialogs close button) are presentational children of the button and need no text alternative.",
+    "InlineLoader spinner (AppChrome.jsx:111) is a CSS-only element with a visible text label beside it.",
+    "Raw editor toolbar dividers (MonacoEditor.jsx:97) are empty decorative divs with no semantics, which is correct.",
+    "The hidden file input (AppHeaderBar.jsx:65) is display:none and opened by a labelled button.",
+    "The module renders one h1 (AppHeaderBar.jsx:27, component=\"h1\") holding the app title.",
+    "Reorder handle is a native <button> with aria-label and keyboard reordering (CfgEditor.jsx:608).",
+    "Metatype property options in CfgMetatypePropertyDialog are native <button> elements (CfgMetatypePropertyDialog.jsx:149).",
+    "Modal dialogs (DiffModal, CfgMetatypePropertyDialog) carry role=\"dialog\", aria-modal and an accessible name.",
+    "No document.title or lang handling in the module; both belong to the Jahia shell."
+  ],
+  "notes": [
+    "Contrary to the brief, the module owns the page h1: AppHeaderBar.jsx:23-32 renders <header> plus <Typography component=\"h1\">. Runtime check needed: confirm the Jahia shell does not add another h1, and that this <header> sits inside the shell's <main> (Moonstone LayoutModule renders main); if it does not, it becomes a second banner landmark.",
+    "Moonstone ModalHeader (used by Dialogs.jsx:293) renders the dialog title as an <h4> inside a <header>; the level is not configurable from the module. Dialog headings conventionally restart at h2; raise it with the Moonstone team if the jump from h1 matters.",
+    "Moonstone TableRow/TableBodyCell apply flex classes to <tr>/<td>. Some browsers drop table semantics when table elements get display:flex; the runtime a11y tree should confirm whether the CfgEditor table is still exposed as a table.",
+    "Editor.jsx (ConfigEditor) is only rendered for files that are neither .cfg nor .yml (index.jsx:326), and the server only lists .cfg/.yml and their .disabled forms (OsgiConfigService.java:43), so it is effectively dead code. It would add: a td-as-button collapse toggle with no aria-expanded (Editor.jsx:161-171), a double-click-only value editor div (Editor.jsx:102-121), and decorative Chevron/Folder icons. Not reported as findings; delete the component or fix those if it is ever reached.",
+    "Outside WCAG, but in line with the project's secret-masking invariant: MonacoEditor masks secrets with a CSS decoration that makes the characters transparent (MonacoEditor.jsx:103-111). The plaintext stays in the Monaco model, which Monaco exposes to screen readers, so a screen reader reads the 'masked' secret aloud. The CfgEditor (type=password) and DiffModal (text replaced) do not have this problem. Worth a decision by the maintainer.",
+    "Left to the forms/ARIA specialists: the 'Search in content' Switch is not associated with its visible text (FileSidebar.jsx:117-124); the editor-mode Dropdown has no label (SelectedFileToolbar.jsx:104); SearchInput and dialog Inputs rely on placeholders; the encryption Checkbox per row has no label (CfgEditor.jsx:778, title is on the td). Status banners and the toast have no live-region role (AppChrome.jsx:131, useToast.tsx:77).",
+    "Moonstone Tooltip clones a fixed id 'moonstone-tooltip_label' into aria-describedby on its child; with several tooltips open in sequence that is fine, but the id is not unique per instance (Moonstone internal)."
+  ]
+}

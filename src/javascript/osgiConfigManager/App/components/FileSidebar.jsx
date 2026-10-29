@@ -17,7 +17,8 @@ import {
     getFileStatusIndicatorStyle,
     OverflowPreviewText,
     PANEL_STYLE,
-    SEARCH_SECTION_STYLE
+    SEARCH_SECTION_STYLE,
+    SIDEBAR_PANE_FLEX
 } from './AppChrome';
 
 export const FileSidebar = ({
@@ -94,7 +95,7 @@ export const FileSidebar = ({
     };
 
     return (
-        <Paper style={{ ...PANEL_STYLE, width: '350px', height: '100%' }}>
+        <Paper style={{ ...PANEL_STYLE, ...SIDEBAR_PANE_FLEX, height: '100%' }}>
             {/* Search & Filter Section */}
             <div style={SEARCH_SECTION_STYLE}>
                 <div data-cy="file-search-input">

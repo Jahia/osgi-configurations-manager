@@ -153,6 +153,7 @@
             "key": "Key",
             "value": "Value"
         },
+        "encryptValueOf": "Encrypt the value of {{key}}",
         "validation": {
             "missingKey": "Property must have a key before the separator",
             "duplicateKey": "Duplicate key '{{key}}'",

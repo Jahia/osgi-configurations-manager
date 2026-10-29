@@ -1,0 +1,275 @@
+{
+  "skill": "modal-specialist",
+  "scope": [
+    "src/javascript/osgiConfigManager/App/components/Dialogs.jsx",
+    "src/javascript/osgiConfigManager/App/components/CfgMetatypePropertyDialog.jsx",
+    "src/javascript/osgiConfigManager/App/components/DiffModal.tsx",
+    "src/javascript/osgiConfigManager/App/hooks/useDialogA11y.ts",
+    "src/javascript/osgiConfigManager/App/hooks/useFileActions.ts",
+    "src/javascript/osgiConfigManager/App/hooks/useOsgiConfigs.ts",
+    "src/javascript/osgiConfigManager/App/index.jsx",
+    "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx",
+    "src/javascript/osgiConfigManager/App/components/SelectedFileToolbar.jsx",
+    "src/javascript/osgiConfigManager/App/components/SelectedFileHeader.jsx",
+    "@jahia/moonstone 2.21.0 Modal/ModalHeader/ModalFooter/Tab/Paper/Typography (dist/index.js, read-only)"
+  ],
+  "findings": [
+    {
+      "rule": "MODAL-CREATE-OPTION-NOT-KEYBOARD",
+      "wcag": "2.1.1 A",
+      "severity": "critical",
+      "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:90",
+      "summary": "In the Create dialog, Metatype and factory options are clickable divs with no role, tabindex or key handler, so keyboard users cannot select one and the Create button stays disabled on the Configuration and Factory tabs.",
+      "fix": "Render each CreateOptionCard as a <button type=\"button\" aria-pressed={isSelected}> (or an ARIA listbox with role=option/aria-selected and arrow-key handling) wrapping the title/subtitle text; keep the click handler and selection style. Selection state must be exposed programmatically, not only by background colour.",
+      "evidence": "<div data-cy={dataCy} style={getSelectableCardStyle(isSelected)} onClick={onClick}> (used at lines 379 and 419)",
+      "component": "ModalDialog / CreateOptionCard"
+    },
+    {
+      "rule": "MODAL-NAME-SELF-REFERENCE",
+      "wcag": "4.1.2 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:272",
+      "summary": "Moonstone Modal sets aria-labelledby to the dialog's own id and the module does not override it, so the dialog's accessible name is its entire text content (close button, message, every Metatype in the Create list, footer labels).",
+      "fix": "Pass aria-labelledby to <Modal> (Moonstone spreads extra props after its own): give the title an id, e.g. wrap config.title in an element with id={titleId} or pass id={headerId} to ModalHeader and point aria-labelledby at the title only, and add aria-describedby={messageId} for config.message.",
+      "evidence": "Runtime probe of Moonstone 2.21.0 Modal: role=dialog id=moonstone-modal_:r2: aria-labelledby=moonstone-modal_:r2: aria-modal=true",
+      "component": "ModalDialog (all confirm/prompt/alert/createConfig dialogs)"
+    },
+    {
+      "rule": "MODAL-FOCUS-RETURN-LOST",
+      "wcag": "2.4.3 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgMetatypePropertyDialog.jsx:120",
+      "summary": "The autoFocus search input takes focus before useDialogA11y records document.activeElement, so the hook saves the input as the element to return to; on Cancel, Escape or backdrop click focus falls to <body>.",
+      "fix": "Capture the trigger before the dialog mounts: record document.activeElement in useLayoutEffect, or pass a triggerRef/returnFocusRef to useDialogA11y and focus it on close; remove autoFocus and let the hook move focus to the input. Selecting a property already focuses the new value via focusEntryValue, keep that.",
+      "evidence": "jsdom probe with Moonstone Input autoFocus + the hook's logic: captured previouslyFocused = <input class=\"moonstone-baseInput-element ...\">; activeElement after close = BODY",
+      "component": "CfgMetatypePropertyDialog / useDialogA11y"
+    },
+    {
+      "rule": "MODAL-CUSTOM-BACKGROUND-NOT-INERT",
+      "wcag": "2.4.3 A",
+      "severity": "serious",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/hooks/useDialogA11y.ts:53",
+      "summary": "DiffModal and CfgMetatypePropertyDialog leave the page behind focusable and exposed; the Tab trap wraps only from the exact first/last item, so focus elsewhere (e.g. after clicking dialog text) lets Tab escape.",
+      "fix": "Prefer a native <dialog> opened with showModal(). Otherwise, in useDialogA11y set inert on the app root (and other body children except the dialog portal) while open and remove it on close; also handle Tab when document.activeElement is outside the container by moving focus to first/last.",
+      "evidence": "if (event.shiftKey && active === first) {...} else if (!event.shiftKey && active === last) {...}  // no inert/aria-hidden applied anywhere; DiffModal is not portalled",
+      "component": "useDialogA11y"
+    },
+    {
+      "rule": "MODAL-DIFF-SCROLL-REGION",
+      "wcag": "2.1.1 A",
+      "severity": "serious",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/DiffModal.tsx:155",
+      "summary": "The review-before-save diff is a scrollable div (60vh, overflow auto) with no tabindex: without focusable-scroller support keyboard users cannot scroll a long diff, and the hook's trap ignores it.",
+      "fix": "Give the diff container tabIndex={0}, role=\"region\" and aria-label (e.g. t('modal.diff.title')) plus a visible focus style; tabindex=0 also makes the hook's FOCUSABLE_SELECTOR include it in the Tab cycle.",
+      "evidence": "<div style={{ ... maxHeight: '60vh', overflowY: 'auto' ... }}> with only <span> children",
+      "component": "DiffModal"
+    },
+    {
+      "rule": "MODAL-DIFF-COLOR-ONLY",
+      "wcag": "1.4.1 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/DiffModal.tsx:167",
+      "summary": "Added and removed lines in the review-before-save diff differ only by text and background colour, so screen reader users and users who cannot see colour cannot tell what will change on save.",
+      "fix": "Render additions in <ins> and removals in <del> (or prefix each line with a visible + / - and add visually hidden 'Added:' / 'Removed:' text), and keep the colours as a secondary cue.",
+      "evidence": "<span key={index} style={{backgroundColor: part.added ? '#e6ffec' : part.removed ? '#ffebe9' : 'transparent', color: ...}}>",
+      "component": "DiffModal"
+    },
+    {
+      "rule": "MODAL-SAVE-BUTTON-CONTRAST",
+      "wcag": "1.4.3 AA",
+      "severity": "serious",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/DiffModal.tsx:202",
+      "summary": "The diff dialog's Save button overrides Moonstone colours with white text on #00a0e3, about 2.9:1, below 4.5:1 for normal-size text.",
+      "fix": "Drop the inline style and rely on Moonstone color=\"accent\", or use a darker blue (e.g. #00739f or darker) that reaches at least 4.5:1 against white.",
+      "evidence": "style={{ backgroundColor: '#00a0e3', color: '#fff', fontWeight: '600' }}",
+      "component": "DiffModal"
+    },
+    {
+      "rule": "MODAL-CONFIRM-NOT-ALERTDIALOG",
+      "wcag": "4.1.2 A",
+      "severity": "moderate",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:272",
+      "summary": "Delete, disable, discard-changes, overwrite and error dialogs render as role=dialog with the message not referenced by aria-describedby, so they are not announced as alerts and the question is not exposed as the description.",
+      "fix": "When config.type is 'confirm' or 'alert' (or isWarning), pass role=\"alertdialog\" and aria-describedby={messageId} to <Modal>; render config.message in an element with that id (ModalHeader children or ModalBody).",
+      "evidence": "<Modal data-cy=\"modal-dialog\" isOpen size=... onOpenChange=...>  // no role, aria-labelledby or aria-describedby override",
+      "component": "ModalDialog"
+    },
+    {
+      "rule": "MODAL-DESTRUCTIVE-WORDING",
+      "wcag": "2.4.6 AA",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/hooks/useFileActions.ts:73",
+      "summary": "The delete-file confirmation sets no confirmLabel/cancelLabel, so its danger-coloured button reads 'OK', and the message ('Are you sure you want to delete {{name}}?') does not say the deletion cannot be undone.",
+      "fix": "Set confirmLabel: t('modal.deleteFile.confirm') = 'Delete' (or 'Delete configuration') and cancelLabel: t('modal.cancel'), add the keys to every locale, and extend modal.deleteFile.message with 'This cannot be undone.'",
+      "evidence": "setModalConfig({ type: 'confirm', severity: 'warning', title: t('modal.deleteFile.title'), message: t('modal.deleteFile.message', { name: f.name }), onConfirm: ... })  // footer falls back to t('modal.ok')",
+      "component": "ModalDialog / delete file"
+    },
+    {
+      "rule": "MODAL-FOCUS-LOST-AFTER-DELETE",
+      "wcag": "2.4.3 A",
+      "severity": "moderate",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/hooks/useFileActions.ts:81",
+      "summary": "After a confirmed delete, focus returns to the toolbar Delete button, then selectFile(null) unmounts the toolbar, so keyboard and screen reader focus drops to <body>.",
+      "fix": "After a successful delete, move focus explicitly to a stable target, e.g. the file list/search field in FileSidebar or the sidebar heading (tabindex=-1), once fetchFiles resolves; the success toast covers the announcement.",
+      "evidence": "if (selectedFile?.name === f.name) { selectFile(null); }  // trigger: SelectedFileToolbar.jsx:91-99 delete-file-button",
+      "component": "Delete file flow"
+    },
+    {
+      "rule": "MODAL-FOCUS-LOST-AFTER-SAVE",
+      "wcag": "2.4.3 A",
+      "severity": "moderate",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/hooks/useOsgiConfigs.ts:389",
+      "summary": "Confirming the diff returns focus to the header Save button, which becomes disabled once the save clears hasUnsaved (SelectedFileHeader.jsx:25), so the browser drops focus to <body>.",
+      "fix": "Keep the Save button focusable after saving (aria-disabled instead of the disabled attribute), or after a successful save move focus to a stable element such as the editor or the file title (tabindex=-1).",
+      "evidence": "onConfirm: () => { setDiffConfig(prev => ({ ...prev, isOpen: false })); void handleSaveRef.current?.(confirmedContent); }",
+      "component": "DiffModal / save flow"
+    },
+    {
+      "rule": "MODAL-CLOSE-ICON-NOT-BUTTON",
+      "wcag": "2.1.1 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/DiffModal.tsx:145",
+      "summary": "The diff dialog's close icon is a div with onClick: not focusable, no role and no accessible name (Cancel and Escape remain available).",
+      "fix": "Replace with <Button variant=\"ghost\" icon={<Close/>} aria-label={t('modal.close')} onClick={onClose}/> (as Dialogs.jsx:285 does) and drop the onMouseOver/onMouseOut colour hacks.",
+      "evidence": "<div style={{ cursor: 'pointer', color: '#888' }} onClick={onClose} onMouseOver=... onMouseOut=...><Close /></div>",
+      "component": "DiffModal"
+    },
+    {
+      "rule": "MODAL-CLOSE-ICON-NOT-BUTTON",
+      "wcag": "2.1.1 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgMetatypePropertyDialog.jsx:112",
+      "summary": "The property picker's close icon is a div with onClick: not focusable, no role and no accessible name (Cancel and Escape remain available).",
+      "fix": "Replace with <Button variant=\"ghost\" icon={<Close/>} aria-label={t('modal.close')} onClick={onClose}/>.",
+      "evidence": "<div style={{ cursor: 'pointer' }} onClick={onClose}><Close /></div>",
+      "component": "CfgMetatypePropertyDialog"
+    },
+    {
+      "rule": "MODAL-INPUT-NO-LABEL",
+      "wcag": "1.3.1 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:301",
+      "summary": "Dialog text fields have only a placeholder; the visible captions above them are unassociated <p> elements, here and at Dialogs.jsx:337, :353, :445 and CfgMetatypePropertyDialog.jsx:118.",
+      "fix": "Give each Input an id and associate the visible caption (<label htmlFor> or aria-labelledby pointing at the caption's id); for the prompt input use the dialog message or title. Moonstone Input passes aria-label/aria-labelledby through to the <input>.",
+      "evidence": "<Input data-cy=\"modal-prompt-input\" autoFocus value={promptValue} ... placeholder={t('modal.prompt.placeholder')} />",
+      "component": "ModalDialog / CfgMetatypePropertyDialog"
+    },
+    {
+      "rule": "MODAL-ERROR-NOT-ANNOUNCED",
+      "wcag": "4.1.3 AA",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:458",
+      "summary": "In-dialog validation messages (factory identifier already exists; CfgMetatypePropertyDialog.jsx:210 'custom property already exists') appear silently and are not tied to their field, while the action button just becomes disabled.",
+      "fix": "Render the message in a persistent container with role=\"status\" (or aria-live=\"polite\"), give it an id and reference it from the input with aria-describedby, and set aria-invalid on the input while the error shows.",
+      "evidence": "{isFactoryIdentifierTaken && (<Typography variant=\"caption\" style={{color: 'var(--color-danger)'}}>{t('modal.create.factoryIdentifierExists')}</Typography>)}",
+      "component": "ModalDialog / CfgMetatypePropertyDialog"
+    },
+    {
+      "rule": "MODAL-FILTER-COUNT-NOT-ANNOUNCED",
+      "wcag": "4.1.3 AA",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgMetatypePropertyDialog.jsx:146",
+      "summary": "Typing in the property search (and in the Create dialog filter, Dialogs.jsx:353) filters the list with no announced result count, so screen reader users do not know whether anything matched.",
+      "fix": "Add a polite live region (role=\"status\") in each dialog announcing e.g. t('...resultCount', {count: filteredProperties.length}), debounced; give the result list an accessible name.",
+      "evidence": "{filteredProperties.map(property => (<button ...>))}  // no count, no live region",
+      "component": "CfgMetatypePropertyDialog / ModalDialog"
+    },
+    {
+      "rule": "MODAL-TABS-NO-PANEL",
+      "wcag": "1.3.1 A",
+      "severity": "minor",
+      "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:319",
+      "summary": "The Create dialog's Moonstone tabs (role=tab, aria-selected) have no aria-controls and the switched content is not a role=tabpanel labelled by its tab.",
+      "fix": "Give each TabItem an id and aria-controls={panelId}, and wrap the manual/configuration/factory sections in <div role=\"tabpanel\" id={panelId} aria-labelledby={tabId}>.",
+      "evidence": "<Tab>{createTabs.map(tab => (<TabItem key={tab.id} isSelected=... label={tab.label} onClick=.../>))}</Tab>",
+      "component": "ModalDialog (createConfig)"
+    },
+    {
+      "rule": "MODAL-INITIAL-FOCUS",
+      "wcag": "2.4.3 A",
+      "severity": "minor",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:285",
+      "summary": "Confirmation dialogs open with focus on the top-right X icon (Floating UI initialFocus=0), whose aria-label is 'Cancel' even where the footer's safe action is 'Keep Editing', giving two differently-worded controls for one action.",
+      "fix": "For confirm/alert dialogs, put autoFocus on the footer cancel Button (the least destructive action; the focus manager keeps focus already inside), and label the X with t('modal.close') ('Close').",
+      "evidence": "Probe: active after open = button aria-label=\"Cancel\" (icon X), before footer Cancel/Keep Editing",
+      "component": "ModalDialog"
+    },
+    {
+      "rule": "MODAL-DIFF-INITIAL-FOCUS",
+      "wcag": "2.4.3 A",
+      "severity": "minor",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/DiffModal.tsx:134",
+      "summary": "When the file holds secrets, the diff dialog's first focusable control, and so its initial focus, is 'Show secrets', so an early Enter reveals masked values instead of letting the user read the change.",
+      "fix": "Focus a static element first for this complex dialog: render the title as <h2 id tabIndex={-1}>, focus it on open (let useDialogA11y take an initialFocusRef), and point aria-labelledby at it.",
+      "evidence": "useDialogA11y: focusables[0].focus()  // first = diff-modal-toggle-secrets Button when hasSecrets",
+      "component": "DiffModal"
+    },
+    {
+      "rule": "MODAL-HEADING-SEMANTICS",
+      "wcag": "1.3.1 A",
+      "severity": "minor",
+      "location": "src/javascript/osgiConfigManager/App/components/DiffModal.tsx:131",
+      "summary": "Custom dialog titles (DiffModal.tsx:131, CfgMetatypePropertyDialog.jsx:109) render as <p> and the dialogs use a duplicate aria-label, not aria-labelledby; Moonstone ModalHeader titles are <h4>.",
+      "fix": "Render dialog titles as <h2 id={titleId}> (Typography component=\"h2\") and use aria-labelledby={titleId} on the dialog; for Moonstone dialogs ModalHeader's h4 cannot be changed, so record it as a vendor issue.",
+      "evidence": "<Typography variant=\"heading\" weight=\"bold\">  // renders <p>Title</p> (Moonstone 2.21.0)",
+      "component": "DiffModal / CfgMetatypePropertyDialog"
+    },
+    {
+      "rule": "MODAL-METATYPE-TOOLTIP-NOT-FOCUSABLE",
+      "wcag": "2.1.1 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:695",
+      "summary": "The Metatype documentation popover for a property opens only on hover over a non-focusable 'i' div, so keyboard users cannot open it and screen readers read a bare 'i'.",
+      "fix": "Make the trigger a <button type=\"button\" aria-label={t('...propertyInfo', {name: key})}> with aria-describedby or a toggletip/popover that opens on focus and click and closes on Escape; mark the 'i' glyph aria-hidden.",
+      "evidence": "<Tooltip label={<CfgMetatypeInfoTooltip .../>}><div data-cy={`cfg-metatype-info-${index}`} style={{cursor: 'help', ...}}>i</div></Tooltip>",
+      "component": "CfgEditor metatype info tooltip"
+    },
+    {
+      "rule": "MODAL-FOOTER-REVERSED-ORDER",
+      "wcag": "2.4.3 A",
+      "severity": "minor",
+      "confidence": "low",
+      "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:502",
+      "summary": "Moonstone ModalFooter lays children out with flex-direction: row-reverse, so Tab goes Cancel then Confirm while they appear right-to-left (Confirm left, Cancel right).",
+      "fix": "Verify at runtime; if the reversal is confirmed, render the buttons in the order you want them read and tabbed rather than relying on row-reverse (e.g. wrap them in your own flex container inside ModalFooter).",
+      "evidence": "Moonstone xE (ModalFooter): className ['flexRow_reverse', ...]; DOM order here: modal-cancel-button, modal-confirm-button",
+      "component": "ModalDialog"
+    },
+    {
+      "rule": "MODAL-HOOK-EFFECT-DEPS",
+      "wcag": "2.4.3 A",
+      "severity": "minor",
+      "confidence": "low",
+      "location": "src/javascript/osgiConfigManager/App/hooks/useDialogA11y.ts:91",
+      "summary": "The hook's effect depends on onClose, which both callers pass as an inline arrow (index.jsx:351, CfgEditor.jsx:826); any parent re-render while open re-runs cleanup and setup, moving focus out and back to the first focusable element.",
+      "fix": "Hold onClose in a ref (onCloseRef.current = onClose) and depend only on isOpen, or memoize the callers' onClose with useCallback.",
+      "evidence": "}, [isOpen, onClose]);  // index.jsx: onClose={() => setDiffConfig(prev => ({ ...prev, isOpen: false }))}",
+      "component": "useDialogA11y"
+    }
+  ],
+  "passed": [
+    "Moonstone Modal (ModalDialog): role=dialog, aria-modal=true, focus moved inside on open, Tab trapped by Floating UI focus guards, background siblings set aria-hidden=true while open (probe)",
+    "Moonstone Modal: Escape and outside mousedown close via onOpenChange(false) -> onClose; focus returns to the still-connected trigger on close (probe: activeElement = trigger)",
+    "DiffModal and CfgMetatypePropertyDialog: role=dialog + aria-modal=true + non-empty aria-label; Escape closes via useDialogA11y; focus moves inside on open; Paper forwards the ref so the trap container is attached",
+    "DiffModal: focus returns to the Save trigger on Cancel/Escape/backdrop (no autoFocus inside)",
+    "All dialog triggers are real buttons (Moonstone Button/ActionButton)",
+    "Each dialog has a visible Cancel/OK action; ModalDialog's X is a real Button with an aria-label",
+    "Unsaved-changes confirmation wording is explicit ('Discard Changes' / 'Keep Editing'); disable and overwrite confirmations name the action",
+    "No nested modals: chained dialogs (upload conflict -> rename prompt, add-property error) close the first and open the next after a 100 ms timeout",
+    "Property picker options are real <button> elements; choosing one moves focus to the new value field (focusEntryValue)"
+  ],
+  "notes": [
+    "Upload conflict dialog passes otherLabel/onOther ('Rename', useFileActions.ts:267-284) but ModalDialog never renders otherLabel, so the rename choice is missing for everyone. Functional defect, not WCAG; flagged for the team.",
+    "Moonstone version in package.json is ^2.21.0; this worktree has no node_modules, so Moonstone 2.21.0 was inspected and probed in jsdom from the sibling worktree osgi-configurations-manager-lotA/node_modules. The self-referencing aria-labelledby, h4 ModalHeader and row-reverse footer are vendor behaviours; the module can override the first via props.",
+    "Runtime checks still needed: what the screen reader actually announces as the Moonstone dialog name; whether Chrome's focusable scrollers make the diff region tabbable; focus after save/delete in the real app; Moonstone Dropdown (editor mode, SelectedFileToolbar.jsx:104) popup keyboard and Escape behaviour and its missing 'editor mode' purpose label; Moonstone Tooltip hover/dismiss behaviour (1.4.13).",
+    "Recommended direction for the two custom overlays: move DiffModal and CfgMetatypePropertyDialog to Moonstone Modal (already used and correct for trap/inert/return) or to a native <dialog> with showModal(), instead of hardening useDialogA11y further."
+  ]
+}

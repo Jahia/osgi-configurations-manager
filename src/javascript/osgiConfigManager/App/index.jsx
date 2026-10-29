@@ -7,6 +7,7 @@ import {
 import { useOsgiConfigs } from './hooks/useOsgiConfigs';
 import {
     APP_LAYOUT_STYLE,
+    EDITOR_PANE_FLEX,
     EMPTY_STATE_STYLE,
     InlineLoader,
     PANEL_STYLE,
@@ -228,7 +229,7 @@ const AppContent = () => {
                         />
 
                         {/* RIGHT PANE: Editor */}
-                        <Paper style={{ ...PANEL_STYLE, flex: '1 1 0%', overflow: 'hidden', minWidth: 0, marginTop: 0 }}>
+                        <Paper style={{ ...PANEL_STYLE, ...EDITOR_PANE_FLEX, height: '100%', overflow: 'hidden', marginTop: 0 }}>
                             {!selectedFile ? (
                                 <div style={EMPTY_STATE_STYLE}>
                                     <Typography variant="heading">{t('app.selectConfig')}</Typography>

@@ -1,0 +1,270 @@
+{
+  "skill": "live-region-controller",
+  "scope": [
+    "src/javascript/osgiConfigManager/App/hooks/useToast.tsx",
+    "src/javascript/osgiConfigManager/App/hooks/useOsgiConfigs.ts",
+    "src/javascript/osgiConfigManager/App/hooks/useFileActions.ts",
+    "src/javascript/osgiConfigManager/App/hooks/useProperties.ts",
+    "src/javascript/osgiConfigManager/App/hooks/useDialogA11y.ts",
+    "src/javascript/osgiConfigManager/App/index.jsx",
+    "src/javascript/osgiConfigManager/App/components/AppChrome.jsx",
+    "src/javascript/osgiConfigManager/App/components/FileSidebar.jsx",
+    "src/javascript/osgiConfigManager/App/components/SelectedFileHeader.jsx",
+    "src/javascript/osgiConfigManager/App/components/SelectedFileToolbar.jsx",
+    "src/javascript/osgiConfigManager/App/components/AppHeaderBar.jsx",
+    "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx",
+    "src/javascript/osgiConfigManager/App/components/Editor.jsx",
+    "src/javascript/osgiConfigManager/App/components/MonacoEditor.jsx",
+    "src/javascript/osgiConfigManager/App/components/Dialogs.jsx",
+    "src/javascript/osgiConfigManager/App/components/DiffModal.tsx",
+    "src/javascript/osgiConfigManager/App/components/CfgMetatypePropertyDialog.jsx",
+    "src/javascript/osgiConfigManager/App/components/ConfigStateBadge.jsx",
+    "src/javascript/osgiConfigManager/App/components/ActionButton.jsx"
+  ],
+  "findings": [
+    {
+      "rule": "LIVE-TOAST-001",
+      "wcag": "4.1.3 AA",
+      "severity": "critical",
+      "location": "src/javascript/osgiConfigManager/App/hooks/useToast.tsx:76",
+      "summary": "The toast, the only feedback for save, delete, create, upload, enable/disable and mark-as-default, has no live region and is mounted with its text, so screen reader users hear nothing.",
+      "fix": "Render one wrapper unconditionally inside ToastProvider and change only its content: <div role=\"status\" aria-live=\"polite\" data-cy=\"toast-region\">{toast && <Paper ...>...</Paper>}</div>. Keep the wrapper visible (no display:none); position the Paper as today. Do not move focus to it.",
+      "evidence": "{toast && (<Paper data-cy=\"toast-message\" style={{position:'fixed',...}}> ... <Typography>{toast.message}</Typography></Paper>)}",
+      "component": "ToastProvider"
+    },
+    {
+      "rule": "LIVE-TOAST-002",
+      "wcag": "4.1.3 AA",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/hooks/useToast.tsx:37",
+      "summary": "Errors (save failure useOsgiConfigs.ts:447, delete/toggle/create/upload failures, encryptFailed, decryptRefused) use the same polite, transient toast as successes, so a failed save is easy to miss.",
+      "fix": "Add a second always-mounted region <div role=\"alert\">{errorToast && ...}</div> used only by error(); keep success/warning/info in the role=\"status\" region. Error toasts should stay until dismissed (duration: null) and start with a text prefix such as t('notification.errorPrefix') ('Error:').",
+      "evidence": "const error = useCallback((msg) => notify(msg, 'error'), [notify]); // same 6000 ms, same container as success",
+      "component": "ToastProvider"
+    },
+    {
+      "rule": "LIVE-TOAST-003",
+      "wcag": "2.2.1 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/hooks/useToast.tsx:30",
+      "summary": "Every toast, errors included, disappears after a fixed 6 s with no close button and no pause on hover/focus, too short for long messages such as notification.undecryptableValues or raw server error text.",
+      "fix": "Add a close Button (aria-label={t('notification.dismiss')}) inside the Paper; clear the timer on mouseenter/focusin and restart it on mouseleave/focusout; do not auto-dismiss error toasts; for others scale duration with length, e.g. Math.max(6000, message.length * 60).",
+      "evidence": "timeoutRef.current = window.setTimeout(() => { setToast(null); ... }, duration); // duration = 6000, no dismiss control rendered",
+      "component": "ToastProvider"
+    },
+    {
+      "rule": "LIVE-TOAST-004",
+      "wcag": "4.1.3 AA",
+      "severity": "moderate",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/hooks/useToast.tsx:24",
+      "summary": "The toast has a single slot and each notify() replaces the previous one; after a save, the success toast can be overwritten by the undecryptable-values warning raised by the reload before it is read.",
+      "fix": "Keep a short queue (array state) and render each message as its own child of the live region, removing each when it expires or is dismissed; or concatenate pending messages. Avoid clearing a message that is less than ~1 s old.",
+      "evidence": "useOsgiConfigs.ts:408 success(saveSuccess) -> :442 fetchFileContent -> :194 warnAboutUndecryptedValues -> toastWarning(...) clears the timer and replaces the toast",
+      "component": "ToastProvider"
+    },
+    {
+      "rule": "LIVE-TOAST-005",
+      "wcag": "1.4.1 A",
+      "severity": "minor",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/hooks/useToast.tsx:58",
+      "summary": "Warning and error toasts use the same Warning icon and differ only by border/icon colour, and the icons carry no text, so the severity of a message is not available to screen reader or colour-blind users.",
+      "fix": "Give the icon a text equivalent or prefix the message: <VisuallyHidden>{t('notification.type.error')}</VisuallyHidden> (or aria-label on a wrapping span with role=\"img\"), and use a distinct error icon. toastError(e.message) at useOsgiConfigs.ts:447 should also be wrapped in a translated sentence.",
+      "evidence": "case 'warning': icon: <Warning .../> ... case 'error': icon: <Warning .../> // only the colour differs",
+      "component": "ToastProvider"
+    },
+    {
+      "rule": "LIVE-ERR-001",
+      "wcag": "4.1.3 AA",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/index.jsx:249",
+      "summary": "A file load error (e.g. a filtered/blacklisted file) is shown in a StatusBanner that has no role and is mounted with its text, while the toolbar disappears, so screen reader users get no indication why the editor is empty.",
+      "fix": "Give StatusBanner an optional role prop and use role=\"alert\" for tone=\"error\": <div role={tone === 'error' ? 'alert' : undefined} ...>. Better: keep an always-mounted <div role=\"alert\"> in the editor pane and render {error} inside it, so the region exists before the text changes.",
+      "evidence": "{error && <StatusBanner tone=\"error\" message={error} />}  // AppChrome.jsx:131 <div data-cy={dataCy} style=...> without role",
+      "component": "StatusBanner"
+    },
+    {
+      "rule": "LIVE-LOAD-001",
+      "wcag": "4.1.3 AA",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/AppChrome.jsx:109",
+      "summary": "InlineLoader ('Loading file...', 'Loading files...') has no status role, its spinner has no text alternative, and it is mounted together with its label, so loading is not announced.",
+      "fix": "Render the loader inside a region that already exists: <div role=\"status\" aria-live=\"polite\">{loadingFile && t('app.loadingFile')}</div> in the editor pane (index.jsx:281), mark the spinner aria-hidden=\"true\", and set aria-busy={loadingFile} on the editor container. Announce completion briefly (e.g. '{{name}} loaded').",
+      "evidence": "export const InlineLoader = ({label}) => (<div style=...><div style={{animation: 'osgi-config-manager-spin ...'}}/>{label && <Typography>{label}</Typography>}</div>);",
+      "component": "InlineLoader"
+    },
+    {
+      "rule": "LIVE-LOAD-002",
+      "wcag": "4.1.3 AA",
+      "severity": "moderate",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/hooks/useOsgiConfigs.ts:397",
+      "summary": "Saving has no in-progress state: nothing visible or announced between confirming the diff and the server reply, and Save stays enabled, so a screen reader user cannot tell a slow save from a lost click.",
+      "fix": "Add a saving flag set before osgiService.save and cleared in finally; expose it to SelectedFileHeader to disable Save and show t('app.saving') ('Saving...') inside the editor pane's always-mounted role=\"status\" region.",
+      "evidence": "try { await osgiService.save({...}); ... setLoadingFile(true); success(t('notification.saveSuccess'));"
+    },
+    {
+      "rule": "LIVE-LOAD-003",
+      "wcag": "4.1.3 AA",
+      "severity": "moderate",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/index.jsx:235",
+      "summary": "The file-list loading indicator is only rendered in the empty state; with a file open, Refresh and deep search (useOsgiConfigs.ts:224-238) reload the list with no visible or announced progress or completion.",
+      "fix": "Expose loadingFiles to FileSidebar, set aria-busy={loadingFiles} on the list container, and update the sidebar's always-mounted role=\"status\" region: t('app.loadingFiles') while loading, then the result count (see LIVE-FILTER-001). After Refresh, announce t('notification.refreshed').",
+      "evidence": "{!selectedFile ? (<div ...>{loadingFiles && <InlineLoader label={t('app.loadingFiles')} />}</div>) : (...)}",
+      "component": "FileSidebar"
+    },
+    {
+      "rule": "LIVE-FILTER-001",
+      "wcag": "4.1.3 AA",
+      "severity": "moderate",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/FileSidebar.jsx:136",
+      "summary": "Typing in the sidebar search or toggling deep search changes the file list without any result count or 'no match' message, so screen reader users do not know how many files match or that none do.",
+      "fix": "Below the Switch add an always-mounted <Typography role=\"status\" variant=\"caption\">{t('app.searchCount', {count: processedFiles.length, total: files.length})}</Typography> (debounce ~500 ms, as the deep search already is), and show t('app.searchNoResults') in it when the list is empty.",
+      "evidence": "{processedFiles.map(f => (<TableRow ...>))}  // no count, no empty state",
+      "component": "FileSidebar"
+    },
+    {
+      "rule": "LIVE-FILTER-002",
+      "wcag": "4.1.3 AA",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:535",
+      "summary": "The visual editor's filter count ('n properties match') is a visible status message but has no role=\"status\" and is mounted only once filtering starts, so it is never announced.",
+      "fix": "Keep the element mounted and give it a status role: <Typography role=\"status\" variant=\"caption\" data-cy=\"cfg-filter-count\" ...>{filtering ? t('editor.filter.count', {count}) : ''}</Typography>. Compute count once (useMemo) instead of inline.",
+      "evidence": "{filtering && (<Typography variant=\"caption\" data-cy=\"cfg-filter-count\" ...>{t('editor.filter.count', {...})}</Typography>)}",
+      "component": "CfgEditor"
+    },
+    {
+      "rule": "LIVE-FILTER-003",
+      "wcag": "4.1.3 AA",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:370",
+      "summary": "In the create dialog, the template/factory filter shows 'no configuration'/'no factory' messages that mount with their text and gives no result count, so filtering is silent for screen reader users.",
+      "fix": "Add one always-mounted <Typography role=\"status\" variant=\"caption\"> under the filter input (Dialogs.jsx:353) carrying t('modal.create.filterCount', {count}) or the empty-state text for the active tab; keep the visible empty items as they are.",
+      "evidence": "{availableMetatypes.length === 0 && (<div style={EMPTY_LIST_ITEM_STYLE}><Typography ...>{t('modal.create.emptyMetatypes')}</Typography></div>)}",
+      "component": "ModalDialog"
+    },
+    {
+      "rule": "LIVE-FILTER-004",
+      "wcag": "4.1.3 AA",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/MonacoEditor.jsx:1490",
+      "summary": "The raw editor's 'Available properties' search shows its no-results text by conditional mount and gives no count, so results are not announced.",
+      "fix": "Add an always-mounted <Typography role=\"status\" variant=\"caption\"> below the Input at line 1469 that holds t('editor.metatype.searchCount', {count: filteredProperties.length}) or t('editor.metatype.noResults').",
+      "evidence": "{filteredProperties.length === 0 && (<Typography variant=\"caption\" color=\"textSecondary\">{t('editor.metatype.noResults')}</Typography>)}",
+      "component": "MonacoEditor"
+    },
+    {
+      "rule": "LIVE-FILTER-005",
+      "wcag": "4.1.3 AA",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgMetatypePropertyDialog.jsx:146",
+      "summary": "The visual editor's property picker filters its list with no count and no empty-state text at all, so a screen reader user typing a query gets no feedback.",
+      "fix": "Add an always-mounted <Typography role=\"status\" variant=\"caption\"> after the Input (line 118) with t('editor.metatype.searchCount', {count: filteredProperties.length}), and a visible no-results line when the list is empty.",
+      "evidence": "{filteredProperties.map(property => (<button ...>))}  // nothing rendered when empty",
+      "component": "CfgMetatypePropertyDialog"
+    },
+    {
+      "rule": "LIVE-VALID-001",
+      "wcag": "3.3.1 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:458",
+      "summary": "The 'identifier already exists' error mounts with its text, is not tied to the identifier input and is shown in red only, while Create is silently disabled, so screen reader users cannot learn why.",
+      "fix": "Give the message an id and keep it in an always-mounted container: <Typography id=\"factory-id-error\" role=\"alert\" ...>{isFactoryIdentifierTaken ? t('modal.create.factoryIdentifierExists') : ''}</Typography>; on the Input set aria-invalid={isFactoryIdentifierTaken} and aria-describedby=\"factory-id-error\".",
+      "evidence": "{isFactoryIdentifierTaken && (<Typography variant=\"caption\" style={{color: 'var(--color-danger)'}}>{t('modal.create.factoryIdentifierExists')}</Typography>)}",
+      "component": "ModalDialog"
+    },
+    {
+      "rule": "LIVE-VALID-002",
+      "wcag": "3.3.1 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgMetatypePropertyDialog.jsx:210",
+      "summary": "The 'property already exists' message mounts silently, in colour only, and pressing Enter with that name closes the dialog without adding anything or saying so.",
+      "fix": "Keep an always-mounted <Typography id=\"cfg-picker-msg\" role=\"status\"> holding customAlreadyExists / knownProperty text; set aria-describedby=\"cfg-picker-msg\" and aria-invalid={customAlreadyExists} on the search Input; in the Enter handler (line 124-130) do not call onClose() when customAlreadyExists.",
+      "evidence": "{customAlreadyExists && (<Typography variant=\"caption\" style={{ color: '#db3d44' }}>...)}; onKeyDown: if (exactMatch) ... else if (!customAlreadyExists) ...; onClose();",
+      "component": "CfgMetatypePropertyDialog"
+    },
+    {
+      "rule": "LIVE-VALID-003",
+      "wcag": "3.3.1 A",
+      "severity": "serious",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/SelectedFileHeader.jsx:25",
+      "summary": "When YAML/properties content is invalid, Save is silently disabled and the errors exist only as Monaco markers (squiggles), so a screen reader user gets no text explaining why Save no longer works.",
+      "fix": "Have onValidate report the error markers (count + first message/line). Show near Save an always-mounted <Typography id=\"save-validation\" role=\"status\">{t('editor.validation.errors', {count, line, message})}</Typography>, reference it with aria-describedby on Save, and mention F8 (next problem) in it.",
+      "evidence": "const isSaveDisabled = !hasUnsaved || ((isRawMode || isYamlFile) && !isYamlValid);  // MonacoEditor.jsx:826-829, 977-979 only pass a boolean",
+      "component": "SelectedFileHeader"
+    },
+    {
+      "rule": "LIVE-RAW-001",
+      "wcag": "n/a",
+      "severity": "moderate",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/MonacoEditor.jsx:1257",
+      "summary": "Encrypt and Decrypt in the raw editor rewrite the current line without any confirmation, so a screen reader user on the toolbar button cannot tell the value was encrypted or decrypted (failures do raise a toast).",
+      "fix": "After editor.executeEdits succeeds, call a polite announcement through the toast region or a raw-editor role=\"status\" region: t('notification.encryptedLine', {line: position.lineNumber}) / t('notification.decryptedLine', {...}). Never put the value itself in the announcement.",
+      "evidence": "editor.executeEdits('source', [{ range, text: result.encryptedValue }]);  // no success feedback; same at line 1311 for decrypt",
+      "component": "MonacoEditor"
+    },
+    {
+      "rule": "LIVE-REORDER-001",
+      "wcag": "2.4.3 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:614",
+      "summary": "Keyboard reordering announces nothing, and with key={index} (line 584) focus stays on the same position, so a second Arrow key moves the other row back; it also runs while filtering, swapping with hidden rows.",
+      "fix": "Key rows by a stable id, not index, so focus follows the moved row; after handleReorder announce through a role=\"status\" region t('editor.reorder.moved', {name: key, position: newIndex + 1, total: entries.length}); in onKeyDown return early when filtering, as the drag handlers already do.",
+      "evidence": "<TableRow key={index} ...> ... onKeyDown: if (e.key === 'ArrowUp' && index > 0) { e.preventDefault(); handleReorder(index, index - 1); }",
+      "component": "CfgEditor"
+    },
+    {
+      "rule": "LIVE-DIRTY-001",
+      "wcag": "n/a",
+      "severity": "minor",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/SelectedFileHeader.jsx:64",
+      "summary": "Unsaved changes are signalled only by Save/Cancel becoming enabled; there is no text indicator, so screen reader users editing a field get no cue that the file is now modified.",
+      "fix": "Add a visible 'Unsaved changes' label next to the file name rendered in an always-mounted <span role=\"status\">{hasUnsaved ? t('app.unsavedChanges') : ''}</span>, announced once when the state flips (not on every keystroke).",
+      "evidence": "disabled={!hasUnsaved}  // Cancel; Save: disabled={isSaveDisabled}; no other dirty indicator",
+      "component": "SelectedFileHeader"
+    },
+    {
+      "rule": "LIVE-FOCUS-001",
+      "wcag": "2.4.3 A",
+      "severity": "moderate",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/index.jsx:282",
+      "summary": "After a confirmed save, the Save button becomes disabled and the editor is swapped for the loader, so keyboard focus is likely dropped to the page body and the user loses their place.",
+      "fix": "Before the reload, move focus to a stable target (e.g. the file-name heading with tabIndex={-1}, or the editor container) and restore it to the editor once loadingFile is false; keep the loader inside the existing container rather than replacing it.",
+      "evidence": "{loadingFile ? (<div ...><InlineLoader label={t('app.loadingFile')} /></div>) : (<>...editors...</>)}"
+    },
+    {
+      "rule": "LIVE-TOAST-006",
+      "wcag": "4.1.3 AA",
+      "severity": "moderate",
+      "confidence": "low",
+      "location": "src/javascript/osgiConfigManager/App/hooks/useFileActions.ts:190",
+      "summary": "When loading templates fails, the error toast fires and the fallback modal opens in the same tick; if the Moonstone Modal hides content outside itself (aria-hidden/inert), the toast is unreachable and unannounced.",
+      "fix": "Show the failure inside the fallback modal (prefix its message with the error) instead of, or in addition to, the toast; or render the toast region via portal inside the open modal. Verify at runtime whether Moonstone Modal sets aria-hidden on siblings.",
+      "evidence": "toastError(t('modal.error.create', { error: e.message })); setModalConfig({ type: 'prompt', ... });"
+    }
+  ],
+  "passed": [
+    "No aria-live=\"assertive\" or role=\"alert\" misuse on routine updates (the module declares no live regions at all).",
+    "Toasts do not steal focus (useToast.tsx renders without focusing).",
+    "Deep search server query is debounced 500 ms (useOsgiConfigs.ts:223-238); no high-frequency updates found that would need further debouncing.",
+    "No live region hidden with display:none or visibility:hidden.",
+    "No streaming transcript or log-style content in scope.",
+    "useDialogA11y restores focus to the trigger on close (useDialogA11y.ts:84-89), so feedback after a confirm dialog starts from a known focus point."
+  ],
+  "notes": [
+    "Moonstone (third-party): Paper, Typography, Modal/ModalHeader, SearchInput, Checkbox and Button are used as-is. Runtime checks needed: whether Moonstone Modal sets aria-hidden/inert outside itself (affects LIVE-TOAST-006), whether ModalHeader's message is exposed via aria-describedby (the error modals for invalid extension, duplicate keys and invalid YAML rely on it), and whether a disabled Moonstone Button uses the disabled attribute (affects LIVE-FOCUS-001).",
+    "Monaco has its own accessibility support (Alt+F1 help, F8 next problem, aria status on marker navigation); verify with NVDA/VoiceOver whether markers are announced while typing before deciding the scope of LIVE-VALID-003.",
+    "Every new label proposed in the fixes (dismiss, saving, searchCount, noResults, unsavedChanges, reorder.moved, encryptedLine...) needs its key in every locale file under src/main/resources/javascript/locales, per CLAUDE.md (bundled translations).",
+    "Announcements for encrypt/decrypt and the decryption probe must never include the value itself (CLAUDE.md invariant on secrets and masking).",
+    "Out of this skill's scope, for the forms specialist: the visual editor's encryption Checkbox (CfgEditor.jsx:778) and ConfigEditor's encrypted toggle (Editor.jsx:126) have no accessible name besides a title on the cell; the sidebar compact ConfigStateBadge has an empty label (ConfigStateBadge.jsx:40).",
+    "The configuration-state banners (index.jsx:251-265) appear with a newly selected file; they are page content for the new view rather than status messages and do not need a live region.",
+    "The InlineLoader spinner ignores prefers-reduced-motion (2.3.3 AAA, outside the AA target)."
+  ]
+}

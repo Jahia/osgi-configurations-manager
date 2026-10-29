@@ -1,0 +1,353 @@
+{
+  "skill": "forms-specialist",
+  "scope": [
+    "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx",
+    "src/javascript/osgiConfigManager/App/components/CfgMetatypePropertyDialog.jsx",
+    "src/javascript/osgiConfigManager/App/components/Dialogs.jsx",
+    "src/javascript/osgiConfigManager/App/components/FileSidebar.jsx",
+    "src/javascript/osgiConfigManager/App/components/MonacoEditor.jsx",
+    "src/javascript/osgiConfigManager/App/components/SelectedFileHeader.jsx",
+    "src/javascript/osgiConfigManager/App/components/Editor.jsx",
+    "src/javascript/osgiConfigManager/App/components/DiffModal.tsx",
+    "src/javascript/osgiConfigManager/App/components/AppHeaderBar.jsx",
+    "src/javascript/osgiConfigManager/App/components/ActionButton.jsx",
+    "src/javascript/osgiConfigManager/App/index.jsx",
+    "src/javascript/osgiConfigManager/App/hooks/useFileActions.ts",
+    "src/javascript/osgiConfigManager/App/hooks/useOsgiConfigs.ts",
+    "src/javascript/osgiConfigManager/App/hooks/useProperties.ts",
+    "src/javascript/osgiConfigManager/App/hooks/useDialogA11y.ts",
+    "src/javascript/osgiConfigManager/App/utils/configUtils.ts",
+    "src/javascript/osgiConfigManager/App/utils/metatypeUtils.js",
+    "node_modules/@jahia/moonstone@2.21.0 (Input/BaseInput, SearchInput, Checkbox, Switch, Button, Modal, Tooltip, TableBodyCell)"
+  ],
+  "findings": [
+    {
+      "rule": "FORM-LABEL-001",
+      "wcag": "4.1.2 A",
+      "severity": "critical",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:778",
+      "summary": "The per-row encryption checkbox has no accessible name: a screen reader says only 'checkbox, not checked', with no hint that it encrypts the value or which property it belongs to.",
+      "fix": "Moonstone Checkbox spreads extra props onto the native input, so pass a name: <Checkbox aria-label={t('editor.encryptValueOf', {key: key || t('editor.placeholder.key')})} .../>. The title='Security' on the surrounding TableBodyCell (line 777) is on the <td>, not the input, and does not count.",
+      "evidence": "<TableBodyCell ... title={t('editor.header.security')}><Checkbox data-cy={`cfg-encrypted-${index}`} checked={isEncrypted || false} onChange=.../>",
+      "component": "CfgEditor row"
+    },
+    {
+      "rule": "FORM-LABEL-002",
+      "wcag": "4.1.2 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:652",
+      "summary": "The comment-row textarea has no label, no placeholder and no aria-label, so it has no accessible name: screen readers announce 'edit text, multi-line' with nothing else.",
+      "fix": "Add aria-label={t('editor.commentLabel')} (for example 'Comment') to the AutoResizeTextArea at line 652. AutoResizeTextArea already spreads ...props onto the <textarea>, so no component change is needed. Add the new key to every locale file.",
+      "evidence": "<AutoResizeTextArea inputRef=... value={commentValue} onChange=... onFocus=... style=.../>",
+      "component": "CfgEditor row"
+    },
+    {
+      "rule": "FORM-LABEL-003",
+      "wcag": "1.3.1 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:684",
+      "summary": "The key and value fields of each property row are named only by their placeholder ('Key', 'Value'). Every row has the same name, so a screen-reader user hears 'Value' 40 times and cannot tell which property a value field belongs to.",
+      "fix": "Give each field a unique programmatic name: on the key textarea, id={`cfg-key-${index}`} aria-label={t('editor.header.property')}; on the value textarea and masked Input, aria-labelledby={`cfg-header-value cfg-key-${index}`} (with id='cfg-header-value' on the header). This reads as 'Value, db.url'. Keep the placeholders only as hints.",
+      "evidence": "placeholder={t('editor.placeholder.key')} (684-693); placeholder={t('editor.placeholder.value')} (744, 757)",
+      "component": "CfgEditor row"
+    },
+    {
+      "rule": "FORM-LABEL-004",
+      "wcag": "1.3.1 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:181",
+      "summary": "The visual editor's column headers are TableBodyCell, which renders <td>, inside <thead>, and three of them are empty. Assistive technology therefore gets no column headers to relate the key, value and security controls to.",
+      "fix": "Render the header cells as headers: use Moonstone TableHeadCell (it renders <th>), or pass component=\"th\" scope=\"col\" to TableBodyCell. Give the empty drag, type and actions columns visually hidden text, for example 'Reorder', 'Type' and t('editor.header.actions'), which already exists.",
+      "confidence": "medium",
+      "evidence": "<thead><TableRow><TableBodyCell style=...></TableBodyCell> ... <TableBodyCell data-cy=\"cfg-header-property\">",
+      "component": "CfgEditorHeader"
+    },
+    {
+      "rule": "FORM-HELP-001",
+      "wcag": "1.3.1 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:694",
+      "summary": "A property's Metatype help (type, optional, default, allowed values, description) appears only in a tooltip on a non-focusable <div>: keyboard users cannot open it, and it is not linked to the value field.",
+      "fix": "Render the Metatype help as visible or expandable text with an id, for example id={`cfg-help-${index}`}, and reference it from the value field with aria-describedby. If a tooltip is kept, make the trigger a <button type=\"button\" aria-label={t('editor.metatype.info', {key})}> so it can receive focus.",
+      "evidence": "<Tooltip label={<CfgMetatypeInfoTooltip .../>}><div data-cy={`cfg-metatype-info-${index}`} style={{cursor:'help',...}}>i</div></Tooltip>",
+      "component": "CfgEditor row"
+    },
+    {
+      "rule": "FORM-REQ-001",
+      "wcag": "3.3.2 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:750",
+      "summary": "Metatype properties declared mandatory (optional: false) are not marked as required in the visual editor: there is no visible indicator and no aria-required. The only way to learn it is the hover tooltip ('Optional: No').",
+      "fix": "When propertyMap.get(key)?.optional === false, add aria-required=\"true\" to the value textarea or Input, and a visible marker with text next to the key (for example '*' plus visually hidden '(required)'), explained once above the table.",
+      "confidence": "medium",
+      "evidence": "buildPropertyDocumentation: details.push(`${t('editor.metatype.optional')}: ...`) - shown only in the tooltip",
+      "component": "CfgEditor row"
+    },
+    {
+      "rule": "FORM-TYPE-001",
+      "wcag": "3.3.2 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:750",
+      "summary": "Every Metatype type (Boolean, Integer, option lists) is edited in the same free-text field. Allowed values and format are neither offered nor stated, so the user must guess ('true' or 'TRUE'? option key or label?).",
+      "fix": "Render the control from the Metatype type: a native <select> (or Moonstone Dropdown) for properties with options; a checkbox, or a select with true/false, for Boolean; <input inputMode=\"numeric\"> for Integer/Long. If free text is kept, show the type and allowed values as visible hint text linked with aria-describedby.",
+      "confidence": "medium",
+      "evidence": "<AutoResizeTextArea data-cy={`cfg-value-${index}`} ... placeholder={t('editor.placeholder.value')}/> used for every type",
+      "component": "CfgEditor row"
+    },
+    {
+      "rule": "FORM-AUTOFILL-001",
+      "wcag": "n/a",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:735",
+      "summary": "The masked secret field is <input type=\"password\"> without autocomplete. A browser password manager can offer or autofill the admin's saved Jahia password into a configuration secret, which would then be saved to the file.",
+      "fix": "Add autoComplete=\"new-password\" (Chrome ignores 'off' on password fields) to the Moonstone Input; it is spread onto the native input. Also add spellCheck={false} and autoCapitalize=\"off\" to the key and value textareas, so mobile autocorrect does not change keys.",
+      "confidence": "medium",
+      "evidence": "<Input ... type={!isSecretVisible ? 'password' : 'text'} placeholder={t('editor.placeholder.value')} />",
+      "component": "CfgEditor row"
+    },
+    {
+      "rule": "FORM-STATUS-001",
+      "wcag": "4.1.3 AA",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:536",
+      "summary": "The property filter's result count ('Matching properties: N') appears without a live region, so screen-reader users get no feedback that rows were hidden or how many remain.",
+      "fix": "Wrap the count in an element that is always in the DOM, <div role=\"status\" aria-live=\"polite\">, and render the text inside it only while filtering (do not mount the live region conditionally).",
+      "evidence": "{filtering && (<Typography variant=\"caption\" data-cy=\"cfg-filter-count\">{t('editor.filter.count', ...)}</Typography>)}",
+      "component": "CfgEditor filter"
+    },
+    {
+      "rule": "FORM-SEARCH-001",
+      "wcag": "3.3.2 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:528",
+      "summary": "The property filter (Moonstone SearchInput) has no label, only the placeholder 'Filter by property name or value', which disappears when typing. Its role=\"search\" wrapper has no name either.",
+      "fix": "Pass aria-label={t('editor.filter.label')} to SearchInput (rest props reach the native <input role=\"searchbox\">), or render a visible <label htmlFor> with an id on the input. Keep the placeholder as a hint only.",
+      "evidence": "<SearchInput value={filter} placeholder={t('editor.filter.placeholder')} onChange=... onClear=.../>",
+      "component": "SearchInput usage"
+    },
+    {
+      "rule": "FORM-SEARCH-002",
+      "wcag": "3.3.2 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/FileSidebar.jsx:101",
+      "summary": "The sidebar file filter has only the placeholder 'Filter configs...' as its label. The filtered list then changes with no announced result count, and a deep search refetches from the server silently.",
+      "fix": "Add aria-label={t('app.searchLabel')} (or a visible label) to SearchInput. Add an always-present <div role=\"status\" aria-live=\"polite\"> stating the result count, for example '12 configurations', updated after filtering or after the deep-search fetch resolves.",
+      "evidence": "<SearchInput value={searchTerm} placeholder={t('app.searchPlaceholder')} onChange=... onClear=.../>",
+      "component": "SearchInput usage"
+    },
+    {
+      "rule": "FORM-LABEL-005",
+      "wcag": "4.1.2 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/FileSidebar.jsx:117",
+      "summary": "The 'Search in content' switch has no accessible name: the visible text is a sibling Typography that is not associated with it, so a screen reader says only 'checkbox, not checked'.",
+      "fix": "Moonstone Switch spreads props onto its native checkbox input. Give the text an id and use aria-labelledby: <Switch id=\"deep-search\" aria-labelledby=\"deep-search-label\" .../> <Typography id=\"deep-search-label\" component=\"label\" htmlFor=\"deep-search\">{t('app.searchDeep')}</Typography>. Move the tooltip text into aria-describedby.",
+      "evidence": "<Switch data-cy=\"deep-search-toggle-control\" checked={searchInContent} onChange=.../> ... <Typography variant=\"body\">{t('app.searchDeep')}</Typography>",
+      "component": "FileSidebar"
+    },
+    {
+      "rule": "FORM-LABEL-006",
+      "wcag": "1.3.1 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:337",
+      "summary": "In the Create dialog, the visible labels ('Manual filename', 'Filter', 'New instance identifier') are not linked to their inputs, which are named by placeholders such as 'e.g. org.test.config.cfg'.",
+      "fix": "Associate each label: give the Input an id, for example id=\"create-manual-filename\", and render the label with <Typography component=\"label\" htmlFor=\"create-manual-filename\">. Same for the filter (353) and factory identifier (445) inputs. Keep the 'e.g.' text as a hint linked by aria-describedby.",
+      "evidence": "<Typography variant=\"subheading\" weight=\"bold\">{t('modal.create.manualLabel')}</Typography><Input ... placeholder={t('modal.create.manualPlaceholder')}/>",
+      "component": "ModalDialog createConfig"
+    },
+    {
+      "rule": "FORM-LABEL-007",
+      "wcag": "3.3.2 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:301",
+      "summary": "The prompt input (Add Property without Metatype, Rename uploaded file, create fallback) is labelled only by the placeholder 'Type here...'; the question in ModalHeader is not linked to it.",
+      "fix": "Name the input after the question: <Input aria-label={config.message || config.title} .../>. Better, render the question as a <label htmlFor> for an id on the input. Remove the generic 'Type here...' placeholder, or make it a real example.",
+      "evidence": "<Input data-cy=\"modal-prompt-input\" autoFocus value={promptValue} ... placeholder={t('modal.prompt.placeholder')}/>",
+      "component": "ModalDialog prompt"
+    },
+    {
+      "rule": "FORM-CUSTOM-001",
+      "wcag": "2.1.1 A",
+      "severity": "critical",
+      "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:90",
+      "summary": "The Metatype and factory choices in the Create dialog are clickable <div>s (no role, tabindex or key handler; selection shown by color only), so keyboard users cannot create from Metatype or a factory.",
+      "fix": "Make it a native single-choice group: <fieldset><legend>{t('modal.create.templateLabel')}</legend> and, per option, <label><input type=\"radio\" name=\"metatype\" value={pid} checked={isSelected} onChange={onClick}/> title, subtitle, description</label>. The arrow keys, focus and the checked state then come from the browser. Same for the factory list (line 418).",
+      "evidence": "const CreateOptionCard = (...) => (<div data-cy={dataCy} style={getSelectableCardStyle(isSelected)} onClick={onClick}>",
+      "component": "ModalDialog createConfig"
+    },
+    {
+      "rule": "FORM-ERR-001",
+      "wcag": "3.3.1 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:458",
+      "summary": "The error 'An instance with this name already exists.' is shown in red text that is not linked to the identifier field (no aria-describedby, no aria-invalid) and not announced. The Create button just becomes disabled with no stated reason.",
+      "fix": "Give the message an id and role=\"alert\" (or put it in a live region that is always present). On the Input set aria-invalid={isFactoryIdentifierTaken} and aria-describedby=\"factory-id-error factory-id-hint\". Also link the 'Created file: ...' hint (453) through aria-describedby.",
+      "evidence": "{isFactoryIdentifierTaken && (<Typography variant=\"caption\" style={{color: 'var(--color-danger)'}}>{t('modal.create.factoryIdentifierExists')}</Typography>)}",
+      "component": "ModalDialog createConfig"
+    },
+    {
+      "rule": "FORM-REQ-002",
+      "wcag": "3.3.2 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:224",
+      "summary": "The Create dialog's required inputs are not marked as required, and the .cfg/.yml extension rule is not stated before submitting. Create is natively disabled, so it leaves the tab order with no reason given.",
+      "fix": "Add required / aria-required=\"true\" to the filename and identifier inputs, and state the allowed extensions in a hint linked by aria-describedby. Prefer to keep Create enabled and validate on click: show an inline error with aria-invalid and move focus to the field, instead of disabling silently.",
+      "evidence": "const isConfirmDisabled = isCreateConfig ? ((activeCreateTab === 'manual' && !manualFilename.trim()) || ...) : false;",
+      "component": "ModalDialog createConfig"
+    },
+    {
+      "rule": "FORM-ERR-002",
+      "wcag": "3.3.7 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/hooks/useFileActions.ts:118",
+      "summary": "A manual filename with a wrong extension is rejected only after the Create dialog has closed, in a separate error modal. The typed name is lost, so the user must reopen the dialog and type it again.",
+      "fix": "Validate the extension inside ModalDialog before calling onClose(): show the 'Filename must end with .cfg, .yml, .cfg.disabled or .yml.disabled' message inline, linked to the input with aria-describedby and aria-invalid, and keep focus and the value in the field. Keep the server-side check as a fallback.",
+      "evidence": "if (!isValid) { setModalConfig({ type: 'confirm', severity: 'warning', title: t('modal.error.title'), message: t('modal.error.invalidExtension'), ... }); return; }",
+      "component": "ModalDialog createConfig"
+    },
+    {
+      "rule": "FORM-REDUNDANT-001",
+      "wcag": "3.3.7 A",
+      "severity": "minor",
+      "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:389",
+      "summary": "Clicking a Metatype or factory option clears the filename already typed in the Manual tab, so a user who looks at the other tabs and comes back must type it again.",
+      "fix": "Do not reset manualFilename when a Metatype or factory option is picked. The active tab already decides which payload is sent (handleConfirm), so the manual value can safely stay.",
+      "evidence": "onClick={() => { setSelectedPid(definition.pid); setManualFilename(''); }}  (also line 429)",
+      "component": "ModalDialog createConfig"
+    },
+    {
+      "rule": "FORM-PREVENT-001",
+      "wcag": "n/a",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/hooks/useFileActions.ts:267",
+      "summary": "The upload-conflict dialog sets otherLabel/onOther ('Rename'), but ModalDialog never renders a third button. The only choices are Overwrite or Cancel, so the documented non-destructive way to keep both files cannot be used.",
+      "fix": "Render config.otherLabel in ModalDialog's footer (Dialogs.jsx:502-524) as a button that calls onClose() and then config.onOther(). Add a Cypress check that the conflict dialog shows three actions.",
+      "evidence": "otherLabel: t('modal.conflict.rename'), onOther: () => { ... setModalConfig({ type: 'prompt', title: t('modal.rename.title'), ... }) }",
+      "component": "ModalDialog"
+    },
+    {
+      "rule": "FORM-SEARCH-003",
+      "wcag": "3.3.2 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgMetatypePropertyDialog.jsx:118",
+      "summary": "The Add Property search field is labelled only by its placeholder. The dialog description that explains it doubles as the custom-name field is not linked to it, and the result list changes with no announced count.",
+      "fix": "Add aria-label={t('editor.metatype.cfgPicker.searchPlaceholder')} or a visible <label>, and aria-describedby pointing to the description Typography (line 110, given an id). Add an always-present <div role=\"status\" aria-live=\"polite\"> with the number of matching properties.",
+      "evidence": "<Input data-cy=\"cfg-metatype-property-search\" autoFocus value={query} ... placeholder={t('editor.metatype.cfgPicker.searchPlaceholder')} variant=\"outlined\"/>",
+      "component": "CfgMetatypePropertyDialog"
+    },
+    {
+      "rule": "FORM-ERR-003",
+      "wcag": "3.3.1 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgMetatypePropertyDialog.jsx:123",
+      "summary": "When the typed name already exists in the file, pressing Enter closes the dialog without adding or focusing anything. The 'already exists' message (line 210) is not linked or announced, so the user is not told what happened.",
+      "fix": "On Enter with customAlreadyExists, keep the dialog open, set aria-invalid on the input and link the message with aria-describedby and role=\"alert\". Alternatively, call onCreateCustomProperty(trimmedQuery), whose insertOrFocusProperty already focuses the existing row, then close the dialog.",
+      "evidence": "if (exactMatch) {...} else if (!customAlreadyExists) { onCreateCustomProperty(trimmedQuery); } onClose();",
+      "component": "CfgMetatypePropertyDialog"
+    },
+    {
+      "rule": "FORM-NAME-001",
+      "wcag": "1.3.1 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgMetatypePropertyDialog.jsx:153",
+      "summary": "Each property option button sets aria-label={property.id}, which replaces the visible type, default value and description: screen-reader users hear only the identifier and lose the information needed to choose.",
+      "fix": "Remove the aria-label so the name comes from the button content, or keep the name short and add aria-describedby pointing to the type, default and description elements (give them ids).",
+      "evidence": "<button type=\"button\" ... aria-label={property.id} onClick=...>",
+      "component": "CfgMetatypePropertyDialog"
+    },
+    {
+      "rule": "FORM-CTRL-001",
+      "wcag": "4.1.2 A",
+      "severity": "minor",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgMetatypePropertyDialog.jsx:112",
+      "summary": "The dialog's close 'X' is a clickable <div> with no role, no name and no focus. Escape and Cancel still close the dialog, but this visible control cannot be used by keyboard and is not announced.",
+      "fix": "Replace it with <Button variant=\"ghost\" icon={<Close/>} aria-label={t('modal.cancel')} onClick={onClose}/>, as ModalDialog already does in Dialogs.jsx:285-291.",
+      "evidence": "<div style={{ cursor: 'pointer' }} onClick={onClose}><Close /></div>",
+      "component": "CfgMetatypePropertyDialog"
+    },
+    {
+      "rule": "FORM-ERR-004",
+      "wcag": "3.3.1 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/SelectedFileHeader.jsx:25",
+      "summary": "With a validation error in the raw or YAML editor, Save is silently disabled. The error shows only as Monaco squiggles, with no summary or announcement, so screen-reader users cannot tell why they cannot save.",
+      "fix": "Under the editor toolbar, render an error summary in an always-present role=\"status\" region: 'N errors: line 12, missing key', with a button that puts the cursor on the first marker (editor.setPosition + focus). Use aria-disabled (still focusable) for Save, with aria-describedby pointing to the summary.",
+      "evidence": "const isSaveDisabled = !hasUnsaved || ((isRawMode || isYamlFile) && !isYamlValid);",
+      "component": "SelectedFileHeader / MonacoEditor"
+    },
+    {
+      "rule": "FORM-LABEL-008",
+      "wcag": "4.1.2 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/MonacoEditor.jsx:742",
+      "summary": "monaco.editor.create sets no ariaLabel, so the raw editor's textarea gets Monaco's generic name ('Editor content; Press Alt+F1 for Accessibility Options') and never says which file or format is being edited.",
+      "fix": "Pass ariaLabel: t('editor.raw.ariaLabel', {filename, language}), for example 'Raw content of org.foo.cfg (properties)', in the create options, and update it with editor.updateOptions when the file changes. Mention Ctrl+M (Tab moves focus) in visible help or in the label.",
+      "evidence": "monaco.editor.create(containerRef.current, { value, language, theme: ..., minimap: { enabled: false }, ... automaticLayout: false })",
+      "component": "MonacoEditor"
+    },
+    {
+      "rule": "FORM-SEARCH-004",
+      "wcag": "3.3.2 A",
+      "severity": "minor",
+      "location": "src/javascript/osgiConfigManager/App/components/MonacoEditor.jsx:1471",
+      "summary": "The raw editor's 'Available properties' search input is labelled only by the placeholder 'Filter properties...', and the 'no results' text is not announced.",
+      "fix": "Add aria-label (or a <label> linked to an id) to the Input, and put the result count and the no-results message in an always-present role=\"status\" region.",
+      "evidence": "<Input data-cy=\"raw-editor-property-search\" ... placeholder={t('editor.metatype.searchPlaceholder')} style={RAW_EDITOR_SEARCH_STYLE}/>",
+      "component": "MonacoEditor property panel"
+    },
+    {
+      "rule": "FORM-ERR-005",
+      "wcag": "3.3.1 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/hooks/useOsgiConfigs.ts:345",
+      "summary": "Duplicate keys in the visual editor are reported only in a modal. The offending rows get no aria-invalid and no inline message, and focus does not move to the first duplicate once the modal is closed.",
+      "fix": "Keep the modal text, and also mark the duplicate rows: aria-invalid=\"true\" plus aria-describedby pointing to an inline message 'Duplicate key' on each key textarea. Once the modal closes, focus the first duplicate's key field (inputRefs[index].key.focus()).",
+      "confidence": "medium",
+      "evidence": "if (duplicateKeys.size > 0) { setModalConfig({ type: 'alert', title: t('modal.error.title'), message: t('modal.error.duplicateKeys', {...}) }); return; }",
+      "component": "Visual editor save"
+    },
+    {
+      "rule": "FORM-ERR-006",
+      "wcag": "3.3.1 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/utils/configUtils.ts:370",
+      "summary": "A property row with an empty key is saved as ' = value' without any warning. The raw editor flags the same line as an error (missingKey), but visual mode does not detect it, so a broken line can be written to a server configuration.",
+      "fix": "In handleSave (useOsgiConfigs.ts, next to the duplicate check), refuse property entries with an empty key: show an error that names the row, set aria-invalid on its key field and focus it. Or drop empty rows explicitly, with a notice.",
+      "confidence": "medium",
+      "evidence": "if (type === 'property') { return `${key} = ${withLineContinuations(key, value)}`; }",
+      "component": "Visual editor save"
+    },
+    {
+      "rule": "FORM-LEGACY-001",
+      "wcag": "2.1.1 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/Editor.jsx:101",
+      "summary": "The tree editor (ConfigEditor) edits only on double-click of a <div>; its Input, textarea and encryption Checkbox (125) have no name. It renders for files that are neither .cfg nor .yml, which may be unreachable.",
+      "fix": "If the branch is reachable: make each value a focusable button or an always-editable field, labelled with aria-labelledby={rowLabelId}, and give the Checkbox aria-label={t('editor.encryptValueOf', {key: rowLabel})}. If it is not reachable, remove ConfigEditor so it cannot come back unlabelled.",
+      "confidence": "low",
+      "evidence": "<div ... onDoubleClick={() => { onHideOverlay(); setEditingValueKey(keyString); }} style={{cursor: 'text', ...}}>",
+      "component": "ConfigEditor"
+    }
+  ],
+  "passed": [
+    "3.3.4 Error Prevention (save): every save of a changed configuration goes through a review-before-save diff (useOsgiConfigs.ts:381-394, DiffModal) with separate Cancel and Confirm.",
+    "3.3.4 Error Prevention (destructive actions): deleting a file, disabling a file, deleting a property, marking a file as default, overwriting on upload and discarding unsaved changes all ask for confirmation first (useFileActions.ts:59-116, useOsgiConfigs.ts:670-675, index.jsx:110-125).",
+    "3.3.3 Error Suggestion: the invalid-extension messages name the accepted extensions (modal.error.invalidExtension, invalidExtensionUpload), and the duplicate-key message names the keys.",
+    "Password visibility toggle: a native button whose aria-label follows its state, 'Show secret value' or 'Hide secret value' (CfgEditor.jsx:762-773).",
+    "The reorder handle is a native <button type=\"button\"> with an aria-label that explains Arrow Up/Down (CfgEditor.jsx:608-626).",
+    "File upload: a native <input type=\"file\" accept=\".yml,.cfg\"> opened by a labelled button (AppHeaderBar.jsx:65-72); the file name is checked and an error is shown when it is wrong.",
+    "Prompt inputs submit on Enter, and every dialog has a real <button> (Moonstone Button renders <button type=\"button\">).",
+    "CfgMetatypePropertyDialog: role=dialog, aria-modal, aria-label; useDialogA11y moves focus into the dialog, keeps Tab inside it, closes on Escape and gives focus back on close.",
+    "3.3.8 Accessible Authentication: not applicable. The module has no sign-in; Jahia's own login handles it. The cryptoSecret passphrase is configuration data, not a login step.",
+    "1.3.5 Identify Input Purpose: not applicable. No field collects the user's own personal data, so no autocomplete token from the WCAG list applies."
+  ],
+  "notes": [
+    "Moonstone 2.21.0 was read from a sibling checkout (osgi-configurations-manager-lotA/node_modules), the version yarn.lock pins. This worktree has no node_modules.",
+    "Moonstone Input/SearchInput render a native <input> with no <label>; extra props (aria-label, aria-describedby, aria-invalid, autoComplete, id) are spread onto the input, so every fix above can be made in the module. Props do not reach the SearchInput wrapper div that carries role=\"search\", so the two search landmarks (sidebar, property filter) stay unnamed unless the module wraps them in its own <search>/<form role=\"search\" aria-label>.",
+    "Moonstone defects to report upstream, not fixable here: the SearchInput clear button has the English-only aria-label 'Reset'; Checkbox and Switch set aria-checked on a native checkbox, which ARIA in HTML forbids; Modal sets aria-labelledby to its own id, so its accessible name is the whole dialog text, and the ModalHeader message is not linked with aria-describedby.",
+    "The task mentions checkboxes and selects for Metatype types: the visual .cfg editor has none. Every value is a free-text textarea or a password Input (see FORM-TYPE-001). The only checkbox is the per-row encryption toggle.",
+    "Monaco's own accessibility (Alt+F1 help, F8 to step through markers with announcement, Ctrl+M to stop Tab being captured) was not checked at runtime. Confirm in the runtime scan with NVDA/VoiceOver that markers are announced and that Ctrl+M lets focus leave the editor (2.1.2).",
+    "Keyboard operation of the sidebar file list (a focusable div with arrow keys, rows with no role or option semantics) and the Create dialog's Tab/TabItem pattern are outside the forms scope; they are left to the keyboard and ARIA specialists.",
+    "Moonstone Input receives an 'inputRef' prop at CfgEditor.jsx:737 that is spread onto the DOM input as an unknown attribute. Not an accessibility defect, but React logs a warning about it."
+  ]
+}
