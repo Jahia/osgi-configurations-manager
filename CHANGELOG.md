@@ -59,6 +59,26 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
     1.14:1 and 2.26:1.
   - The **Toggle comments** and **Toggle empty lines** buttons say whether they are on, and the
     number of properties matching the filter is announced.
+- **The dialogs keep the keyboard inside them, and give it back (WCAG 2.1.1, 2.4.3, 4.1.2).**
+  - In the review before saving and the **Add Property** picker, Tab was blocked behind the
+    dialog: the Moonstone version Jahia serves did not pass on the reference the focus trap
+    relied on. The focus now goes into the dialog, Tab cycles through it, the page behind is
+    inert, and closing returns the focus to the button that opened it.
+  - Their close icons are buttons with a name, where they were mouse-only.
+  - After a file is deleted, the focus goes to the file list instead of the top of the page.
+- **The review before saving shows what changed without relying on colour (WCAG 1.3.1, 1.4.1,
+  1.4.3, 1.4.10).** Each added or removed line starts with + or − and is read as "Added" or
+  "Removed"; the changes can be scrolled from the keyboard; the Save button is readable (5.2:1,
+  was 2.9:1); and the dialog scrolls when zoomed in.
+- **The dialogs and their fields have names (WCAG 1.3.1, 3.3.1, 4.1.2, 4.1.3).**
+  - A dialog is named by its title and described by its message, not by its whole content.
+  - The fields of **New** are tied to their visible labels, and the answer field of a question is
+    named by the question.
+  - "An instance with this name already exists" and "This property already exists" are announced
+    and tied to their field. Enter on an existing property name no longer closes the picker
+    without a word.
+  - The picker announces how many properties match, and its options read their type and default.
+  - The delete confirmation's button reads **Delete**, not **OK**.
 
 ## [1.2.1] - 2026-09-29
 

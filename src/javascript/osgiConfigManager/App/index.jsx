@@ -372,6 +372,13 @@ const App = () => (
                     outline: 2px solid var(--color-accent_dark);
                     outline-offset: 1px;
                 }
+                .osgi-scroll-region:focus {
+                    outline: none;
+                }
+                .osgi-scroll-region:focus-visible {
+                    outline: 2px solid var(--color-accent_dark);
+                    outline-offset: 2px;
+                }
                 .osgi-file-list:focus {
                     outline: none;
                 }

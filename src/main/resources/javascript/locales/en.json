@@ -33,6 +33,7 @@
     },
     "modal": {
         "cancel": "Cancel",
+        "close": "Close",
         "ok": "OK",
         "create": {
             "title": "Create new configuration",
@@ -71,7 +72,8 @@
         },
         "deleteFile": {
             "title": "Delete configuration",
-            "message": "Are you sure you want to delete {{name}}?"
+            "message": "Are you sure you want to delete {{name}}?",
+            "confirm": "Delete"
         },
         "disableFile": {
             "title": "Disable configuration",
@@ -123,7 +125,10 @@
             "placeholder": "Type here..."
         },
         "diff": {
-            "title": "Review Changes: {{name}}"
+            "title": "Review Changes: {{name}}",
+            "changes": "Changes",
+            "added": "Added:",
+            "removed": "Removed:"
         }
     },
     "editor": {
@@ -179,7 +184,8 @@
                 "customDescription": "Use the same field to add a property not declared in Metatype.",
                 "customAction": "Add custom property \"{{name}}\"",
                 "customAlreadyExists": "This property already exists in the current file.",
-                "knownProperty": "This name matches a known Metatype property. Selecting it from the list will also apply its default value."
+                "knownProperty": "This name matches a known Metatype property. Selecting it from the list will also apply its default value.",
+                "count": "{{count}} matching properties"
             },
             "type": "Type",
             "optional": "Optional",

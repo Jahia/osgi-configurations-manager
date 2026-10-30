@@ -33,6 +33,7 @@
     },
     "modal": {
         "cancel": "Annuler",
+        "close": "Fermer",
         "ok": "OK",
         "create": {
             "title": "Créer une nouvelle configuration",
@@ -71,7 +72,8 @@
         },
         "deleteFile": {
             "title": "Supprimer la configuration",
-            "message": "Êtes-vous sûr de vouloir supprimer {{name}} ?"
+            "message": "Êtes-vous sûr de vouloir supprimer {{name}} ?",
+            "confirm": "Supprimer"
         },
         "disableFile": {
             "title": "Désactiver la configuration",
@@ -123,7 +125,10 @@
             "placeholder": "Saisissez une valeur..."
         },
         "diff": {
-            "title": "Vérifier les modifications : {{name}}"
+            "title": "Vérifier les modifications : {{name}}",
+            "changes": "Modifications",
+            "added": "Ajouté :",
+            "removed": "Supprimé :"
         }
     },
     "editor": {
@@ -179,7 +184,8 @@
                 "customDescription": "Utilisez le même champ pour ajouter une propriété non déclarée dans le Metatype.",
                 "customAction": "Ajouter la propriété personnalisée \"{{name}}\"",
                 "customAlreadyExists": "Cette propriété existe déjà dans le fichier courant.",
-                "knownProperty": "Ce nom correspond à une propriété Metatype connue. La sélectionner dans la liste appliquera aussi sa valeur par défaut."
+                "knownProperty": "Ce nom correspond à une propriété Metatype connue. La sélectionner dans la liste appliquera aussi sa valeur par défaut.",
+                "count": "{{count}} propriété(s) correspondante(s)"
             },
             "type": "Type",
             "optional": "Optionnelle",

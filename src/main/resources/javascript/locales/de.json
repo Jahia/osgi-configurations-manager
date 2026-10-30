@@ -33,6 +33,7 @@
     },
     "modal": {
         "cancel": "Abbrechen",
+        "close": "Schließen",
         "ok": "OK",
         "create": {
             "title": "Neue Konfiguration erstellen",
@@ -71,7 +72,8 @@
         },
         "deleteFile": {
             "title": "Konfiguration löschen",
-            "message": "Sind Sie sicher, dass Sie {{name}} löschen möchten?"
+            "message": "Sind Sie sicher, dass Sie {{name}} löschen möchten?",
+            "confirm": "Löschen"
         },
         "disableFile": {
             "title": "Konfiguration deaktivieren",
@@ -118,7 +120,10 @@
             "placeholder": "Hier eingeben..."
         },
         "diff": {
-            "title": "Änderungen überprüfen: {{name}}"
+            "title": "Änderungen überprüfen: {{name}}",
+            "changes": "Änderungen",
+            "added": "Hinzugefügt:",
+            "removed": "Entfernt:"
         },
         "markAsDefault": {
             "title": "Als Standardkonfiguration markieren",
@@ -179,7 +184,8 @@
                 "customDescription": "Verwenden Sie dasselbe Feld, um eine nicht im Metatype deklarierte Eigenschaft hinzuzufügen.",
                 "customAction": "Benutzerdefinierte Eigenschaft \"{{name}}\" hinzufügen",
                 "customAlreadyExists": "Diese Eigenschaft existiert bereits in der aktuellen Datei.",
-                "knownProperty": "Dieser Name entspricht einer bekannten Metatype-Eigenschaft. Die Auswahl aus der Liste übernimmt auch den Standardwert."
+                "knownProperty": "Dieser Name entspricht einer bekannten Metatype-Eigenschaft. Die Auswahl aus der Liste übernimmt auch den Standardwert.",
+                "count": "{{count}} passende Eigenschaft(en)"
             },
             "type": "Typ",
             "optional": "Optional",

@@ -33,6 +33,7 @@
     },
     "modal": {
         "cancel": "Annulla",
+        "close": "Chiudi",
         "ok": "OK",
         "create": {
             "title": "Crea nuova configurazione",
@@ -71,7 +72,8 @@
         },
         "deleteFile": {
             "title": "Elimina configurazione",
-            "message": "Sei sicuro di voler eliminare {{name}}?"
+            "message": "Sei sicuro di voler eliminare {{name}}?",
+            "confirm": "Elimina"
         },
         "disableFile": {
             "title": "Disabilita configurazione",
@@ -118,7 +120,10 @@
             "placeholder": "Digita qui..."
         },
         "diff": {
-            "title": "Revisione modifiche: {{name}}"
+            "title": "Revisione modifiche: {{name}}",
+            "changes": "Modifiche",
+            "added": "Aggiunto:",
+            "removed": "Rimosso:"
         },
         "markAsDefault": {
             "title": "Contrassegna come configurazione predefinita",
@@ -179,7 +184,8 @@
                 "customDescription": "Usa lo stesso campo per aggiungere una proprietà non dichiarata nel Metatype.",
                 "customAction": "Aggiungi la proprietà personalizzata \"{{name}}\"",
                 "customAlreadyExists": "Questa proprietà esiste già nel file corrente.",
-                "knownProperty": "Questo nome corrisponde a una proprietà Metatype nota. Selezionarla dalla lista applicherà anche il valore predefinito."
+                "knownProperty": "Questo nome corrisponde a una proprietà Metatype nota. Selezionarla dalla lista applicherà anche il valore predefinito.",
+                "count": "{{count}} proprietà corrispondente/i"
             },
             "type": "Tipo",
             "optional": "Opzionale",
