@@ -1,6 +1,7 @@
 import React from 'react';
-import { render, fireEvent, waitFor } from '@testing-library/react';
+import { render, fireEvent, waitFor, act } from '@testing-library/react';
 import * as monaco from 'monaco-editor'; // resolves to jest-mocks/monaco-editor.js
+import { TabFocus } from 'monaco-editor/esm/vs/editor/browser/config/tabFocus.js'; // jest-mocks/monaco-tabFocus.js
 import { MonacoEditor } from './MonacoEditor';
 import { osgiService } from '../api/osgiService';
 import { forgetKnownPlaintexts, lookupKnownPlaintext, rememberPlaintext } from '../utils/cryptoTree';
@@ -59,6 +60,36 @@ describe('MonacoEditor', () => {
         monaco.__getLastEditor().__fireChange('beta.key = beta value');
 
         expect(onChange).toHaveBeenCalledWith('beta.key = beta value');
+    });
+
+    // Monaco takes Tab to indent: without a visible way out, a keyboard user was trapped (2.1.2).
+    describe('Tab focus mode', () => {
+        const toggle = container => container.querySelector('[data-cy="raw-editor-tab-focus"] > div');
+
+        afterEach(() => act(() => TabFocus.setTabFocusMode(false)));
+
+        it('names the editor with the way to make Tab leave it', () => {
+            render(<MonacoEditor value="" language="properties" onChange={jest.fn()} />);
+            expect(monaco.__getLastEditor().__options.ariaLabel).toBe('editor.rawEditorLabel');
+        });
+
+        it('switches Tab to moving the focus from the toolbar, as a pressed toggle', () => {
+            const { container } = render(<MonacoEditor value="" language="properties" onChange={jest.fn()} />);
+            expect(toggle(container).getAttribute('aria-pressed')).toBe('false');
+
+            fireEvent.click(toggle(container));
+
+            expect(TabFocus.getTabFocusMode()).toBe(true);
+            expect(toggle(container).getAttribute('aria-pressed')).toBe('true');
+        });
+
+        it('follows the mode when Monaco changes it itself (Ctrl+M)', () => {
+            const { container } = render(<MonacoEditor value="" language="properties" onChange={jest.fn()} />);
+
+            act(() => TabFocus.setTabFocusMode(true));
+
+            expect(toggle(container).getAttribute('aria-pressed')).toBe('true');
+        });
     });
 
     describe('Encrypt / Decrypt buttons', () => {

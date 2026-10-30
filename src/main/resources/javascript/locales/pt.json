@@ -12,8 +12,11 @@
         "enable": "Ativar",
         "save": "Salvar alterações",
         "searchPlaceholder": "Filtrar configurações...",
+        "searchLabel": "Filtrar arquivos de configuração",
         "searchDeep": "Pesquisar no conteúdo",
         "searchDeepTooltip": "Habilitar para pesquisar dentro dos arquivos",
+        "fileList": "Arquivos de configuração",
+        "fileDisabled": "desativado",
         "unsaved": "Alterações não salvas"
     },
     "notification": {
@@ -147,13 +150,15 @@
             "toggleEmptyLines": "Alternar linhas vazias",
             "showSecrets": "Mostrar segredos ({{count}})",
             "hideSecrets": "Ocultar segredos",
-            "showSecretsInDiff": "Mostrar segredos"
+            "showSecretsInDiff": "Mostrar segredos",
+            "tabMovesFocus": "Tab sai do editor"
         },
         "placeholder": {
             "key": "Chave",
             "value": "Valor"
         },
         "encryptValueOf": "Criptografar o valor de {{key}}",
+        "rawEditorLabel": "Origem da configuração. Pressione Ctrl+M (Ctrl+Shift+M no macOS) para que Tab saia do editor.",
         "validation": {
             "missingKey": "A propriedade deve ter uma chave antes do separador",
             "duplicateKey": "Chave duplicada '{{key}}'",
@@ -234,7 +239,8 @@
         "toggleEmptyLines": "Mostrar ou ocultar linhas vazias (exceto o cabeçalho)",
         "markAsDefault": "Adicionar o cabeçalho '# default configuration' para que o Jahia preserve as alterações locais dos valores padrão do módulo",
         "showSecrets": "Mostrar os valores dos segredos deste arquivo. Eles voltam a ser ocultados ao abrir outro arquivo.",
-        "hideSecrets": "Ocultar os valores dos segredos"
+        "hideSecrets": "Ocultar os valores dos segredos",
+        "tabMovesFocus": "Ativado, Tab move o foco para fora do editor em vez de indentar. Ctrl+M também alterna (Ctrl+Shift+M no macOS)."
     },
     "sidebar": {
         "on": "Ligado",

@@ -31,6 +31,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   readers do not announce.
 - **The encryption checkbox of each visual-editor row has a name (WCAG 4.1.2):** "Encrypt the
   value of `<key>`", where a screen reader said only "checkbox".
+- **The file list is one Tab stop, and says which file is open (WCAG 2.1.1, 2.4.7, 4.1.2,
+  1.3.1).** Every file was a separate Tab stop that Enter did not open, so reaching the editor took
+  one Tab per file. The list is now a single stop: the arrow keys, Home and End open a file, a
+  focus outline shows when the list has the keyboard, and screen readers hear the open file as
+  selected, along with whether each file is disabled and where it comes from (shown before only by
+  colour and an icon). The filter field and the **Search in content** switch now have names.
+- **The keyboard can leave the raw editor (WCAG 2.1.2).** Tab indents in the raw editor, and the
+  only way out was Monaco's Ctrl+M (Ctrl+Shift+M on macOS), which nothing mentioned. The toolbar
+  now has a **Tab leaves the editor** toggle, kept in step with that shortcut, and the editor's
+  name tells screen reader users the shortcut.
 
 ## [1.2.1] - 2026-09-29
 

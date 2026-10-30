@@ -12,8 +12,11 @@
         "enable": "Aktivieren",
         "save": "Änderungen speichern",
         "searchPlaceholder": "Konfigurationen filtern...",
+        "searchLabel": "Konfigurationsdateien filtern",
         "searchDeep": "Im Inhalt suchen",
         "searchDeepTooltip": "Aktivieren, um innerhalb des Dateiinhalts zu suchen",
+        "fileList": "Konfigurationsdateien",
+        "fileDisabled": "deaktiviert",
         "unsaved": "Ungespeicherte Änderungen"
     },
     "notification": {
@@ -147,13 +150,15 @@
             "toggleComments": "Kommentare umschalten",
             "showSecrets": "Geheimnisse anzeigen ({{count}})",
             "hideSecrets": "Geheimnisse ausblenden",
-            "showSecretsInDiff": "Geheimnisse anzeigen"
+            "showSecretsInDiff": "Geheimnisse anzeigen",
+            "tabMovesFocus": "Tab verlässt den Editor"
         },
         "placeholder": {
             "key": "Schlüssel",
             "value": "Wert"
         },
         "encryptValueOf": "Wert von {{key}} verschlüsseln",
+        "rawEditorLabel": "Konfigurationsquelle. Drücken Sie Strg+M (Ctrl+Umschalt+M unter macOS), damit Tab den Editor verlässt.",
         "validation": {
             "missingKey": "Eigenschaft muss vor dem Trennzeichen einen Schlüssel haben",
             "duplicateKey": "Doppelter Schlüssel '{{key}}'",
@@ -234,7 +239,8 @@
         "toggleEmptyLines": "Sichtbarkeit leerer Zeilen umschalten (außer Kopfzeile)",
         "markAsDefault": "Den Header '# default configuration' hinzufügen, damit Jahia lokale Änderungen für Modul-Standardwerte bewahrt",
         "showSecrets": "Die Werte der Geheimnisse dieser Datei anzeigen. Beim Öffnen einer anderen Datei werden sie wieder maskiert.",
-        "hideSecrets": "Die Werte der Geheimnisse maskieren"
+        "hideSecrets": "Die Werte der Geheimnisse maskieren",
+        "tabMovesFocus": "Wenn aktiviert, verschiebt Tab den Fokus aus dem Editor, statt einzurücken. Auch Strg+M schaltet um (Ctrl+Umschalt+M unter macOS)."
     },
     "sidebar": {
         "on": "Ein",

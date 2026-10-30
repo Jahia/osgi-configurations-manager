@@ -12,8 +12,11 @@
         "enable": "Activer",
         "save": "Enregistrer",
         "searchPlaceholder": "Filtrer les configs...",
+        "searchLabel": "Filtrer les fichiers de configuration",
         "searchDeep": "Rechercher dans le contenu",
         "searchDeepTooltip": "Activer pour rechercher à l'intérieur des fichiers",
+        "fileList": "Fichiers de configuration",
+        "fileDisabled": "désactivé",
         "unsaved": "Modifications non enregistrées"
     },
     "notification": {
@@ -147,13 +150,15 @@
             "toggleEmptyLines": "Afficher les lignes vides",
             "showSecrets": "Afficher les secrets ({{count}})",
             "hideSecrets": "Masquer les secrets",
-            "showSecretsInDiff": "Afficher les secrets"
+            "showSecretsInDiff": "Afficher les secrets",
+            "tabMovesFocus": "Tab quitte l'éditeur"
         },
         "placeholder": {
             "key": "Clé",
             "value": "Valeur"
         },
         "encryptValueOf": "Chiffrer la valeur de {{key}}",
+        "rawEditorLabel": "Source de la configuration. Appuyez sur Ctrl+M (Ctrl+Maj+M sur macOS) pour que Tab quitte l'éditeur.",
         "validation": {
             "missingKey": "La propriété doit avoir une clé avant le séparateur",
             "duplicateKey": "Clé dupliquée '{{key}}'",
@@ -255,7 +260,8 @@
         "toggleComments": "Afficher/Masquer les commentaires (sauf en-tête)",
         "toggleEmptyLines": "Afficher ou masquer les lignes vides (sauf l’en-tête)",
         "showSecrets": "Afficher les valeurs des secrets de ce fichier. Elles sont de nouveau masquées à l'ouverture d'un autre fichier.",
-        "hideSecrets": "Masquer les valeurs des secrets"
+        "hideSecrets": "Masquer les valeurs des secrets",
+        "tabMovesFocus": "Activé, Tab sort de l'éditeur au lieu d'indenter. Ctrl+M bascule aussi ce mode (Ctrl+Maj+M sur macOS)."
     },
     "sidebar": {
         "on": "On",

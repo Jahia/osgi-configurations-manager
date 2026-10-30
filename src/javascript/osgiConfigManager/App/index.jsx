@@ -365,6 +365,13 @@ const App = () => (
         <style>
             {`
                 @keyframes osgi-config-manager-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+                .osgi-file-list:focus {
+                    outline: none;
+                }
+                .osgi-file-list:focus-visible {
+                    outline: 2px solid var(--color-accent_dark);
+                    outline-offset: -2px;
+                }
                 .osgi-sidebar-status-cell .moonstone-TableCell {
                     padding-left: 0;
                     padding-right: 0;

@@ -12,8 +12,11 @@
         "enable": "Attiva",
         "save": "Salva modifiche",
         "searchPlaceholder": "Filtra configurazioni...",
+        "searchLabel": "Filtra i file di configurazione",
         "searchDeep": "Cerca nel contenuto",
         "searchDeepTooltip": "Abilita per cercare all'interno dei file",
+        "fileList": "File di configurazione",
+        "fileDisabled": "disattivato",
         "unsaved": "Modifiche non salvate"
     },
     "notification": {
@@ -147,13 +150,15 @@
             "toggleEmptyLines": "Mostra/nascondi righe vuote",
             "showSecrets": "Mostra segreti ({{count}})",
             "hideSecrets": "Nascondi segreti",
-            "showSecretsInDiff": "Mostra segreti"
+            "showSecretsInDiff": "Mostra segreti",
+            "tabMovesFocus": "Tab esce dall'editor"
         },
         "placeholder": {
             "key": "Chiave",
             "value": "Valore"
         },
         "encryptValueOf": "Cifra il valore di {{key}}",
+        "rawEditorLabel": "Sorgente della configurazione. Premere Ctrl+M (Ctrl+Maiusc+M su macOS) perché Tab esca dall'editor.",
         "validation": {
             "missingKey": "La proprietà deve avere una chiave prima del separatore",
             "duplicateKey": "Chiave duplicata '{{key}}'",
@@ -234,7 +239,8 @@
         "toggleEmptyLines": "Mostra o nasconde le righe vuote (tranne l’intestazione)",
         "markAsDefault": "Aggiungi l'intestazione '# default configuration' affinché Jahia conservi le modifiche locali per i valori predefiniti del modulo",
         "showSecrets": "Mostra i valori dei segreti di questo file. Vengono nascosti di nuovo all'apertura di un altro file.",
-        "hideSecrets": "Nascondi i valori dei segreti"
+        "hideSecrets": "Nascondi i valori dei segreti",
+        "tabMovesFocus": "Se attivo, Tab sposta il focus fuori dall'editor invece di indentare. Anche Ctrl+M lo attiva o disattiva (Ctrl+Maiusc+M su macOS)."
     },
     "sidebar": {
         "on": "On",

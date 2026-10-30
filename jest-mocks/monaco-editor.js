@@ -43,6 +43,8 @@ function createEditor(container, options = {}) {
             } };
         },
         updateOptions: () => {},
+        // the options the editor was created with, for the tests
+        __options: options,
         layout: () => {},
         trigger: () => {},
         getAction: () => ({ run: () => {} }),
