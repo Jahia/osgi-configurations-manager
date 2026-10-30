@@ -26,7 +26,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   copy of that package (`src/javascript/vendor/monaco-worker-manager`), and webpack resolves the
   package to it. The `monaco-editor` hold in `.github/dependabot.yml` is lifted. `tsconfig.json`
   now excludes the build output, which since this version contains the TypeScript compiler and
-  made every second build fail.
+  made every second build fail. The editor keeps taking keyboard input through its hidden textarea
+  (`editContext: false`), as up to 0.52, rather than the experimental EditContext API Monaco now
+  uses in Chromium.
 
 ## [1.2.1] - 2026-09-29
 

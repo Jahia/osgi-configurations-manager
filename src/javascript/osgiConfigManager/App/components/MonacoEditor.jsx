@@ -751,7 +751,13 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                 glyphMargin: true,
                 folding: true,
                 fixedOverflowWidgets: true, // Allow popups to escape container clipping (e.g. z-index issues with toolbar)
-                automaticLayout: false // We use ResizeObserver
+                automaticLayout: false, // We use ResizeObserver
+                // Since 0.53 Monaco takes keyboard input through the browser's EditContext API where
+                // it exists (Chromium), which its own typings call experimental, instead of its hidden
+                // textarea. Keep the textarea, the input path up to 0.52: with EditContext, focusing
+                // the textarea no longer focuses the editor, and the raw editor e2e specs could not
+                // type into it.
+                editContext: false
             });
 
             // Explicitly handle resizing
