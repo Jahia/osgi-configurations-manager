@@ -31,6 +31,54 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   readers do not announce.
 - **The encryption checkbox of each visual-editor row has a name (WCAG 4.1.2):** "Encrypt the
   value of `<key>`", where a screen reader said only "checkbox".
+- **The file list is one Tab stop, and says which file is open (WCAG 2.1.1, 2.4.7, 4.1.2,
+  1.3.1).** Every file was a separate Tab stop that Enter did not open, so reaching the editor took
+  one Tab per file. The list is now a single stop: the arrow keys, Home and End open a file, a
+  focus outline shows when the list has the keyboard, and screen readers hear the open file as
+  selected, along with whether each file is disabled and where it comes from (shown before only by
+  colour and an icon). The filter field and the **Search in content** switch now have names.
+- **The keyboard can leave the raw editor (WCAG 2.1.2).** Tab indents in the raw editor, and the
+  only way out was Monaco's Ctrl+M (Ctrl+Shift+M on macOS), which nothing mentioned. The toolbar
+  now has a **Tab leaves the editor** toggle, kept in step with that shortcut, and the editor's
+  name tells screen reader users the shortcut.
+- **The Visual Edit / Raw Edit choice works from the keyboard (WCAG 2.1.1, 4.1.2).** It was a
+  menu that Enter opened but the arrow keys and Enter could not use, so the mode could only be
+  changed with a mouse. It is now two buttons, the current one marked as pressed.
+- **The visual editor can be used without a mouse or sight (WCAG 1.3.1, 1.4.3, 1.4.11, 2.1.1,
+  2.4.3, 2.4.7, 2.5.7, 4.1.2, 4.1.3).**
+  - Every field is named after its row ("Value of `db.url`"); before, it was "Value" forty times,
+    and the comment field had no name.
+  - The columns are real headers, the rows are no longer Tab stops, and the focused field shows an
+    outline.
+  - Moving an entry with the arrow keys keeps the focus on it, skips hidden comments and empty
+    lines, and is announced; a second key press used to move its neighbour back.
+  - **Move up** and **Move down** buttons reorder in one click, where a drag was the only way with
+    a pointer.
+  - A property's Metatype documentation opens from the keyboard.
+  - The comment text, the field borders and the empty-line label are readable: they were 2.35:1,
+    1.14:1 and 2.26:1.
+  - The **Toggle comments** and **Toggle empty lines** buttons say whether they are on, and the
+    number of properties matching the filter is announced.
+- **The dialogs keep the keyboard inside them, and give it back (WCAG 2.1.1, 2.4.3, 4.1.2).**
+  - In the review before saving and the **Add Property** picker, Tab was blocked behind the
+    dialog: the Moonstone version Jahia serves did not pass on the reference the focus trap
+    relied on. The focus now goes into the dialog, Tab cycles through it, the page behind is
+    inert, and closing returns the focus to the button that opened it.
+  - Their close icons are buttons with a name, where they were mouse-only.
+  - After a file is deleted, the focus goes to the file list instead of the top of the page.
+- **The review before saving shows what changed without relying on colour (WCAG 1.3.1, 1.4.1,
+  1.4.3, 1.4.10).** Each added or removed line starts with + or − and is read as "Added" or
+  "Removed"; the changes can be scrolled from the keyboard; the Save button is readable (5.2:1,
+  was 2.9:1); and the dialog scrolls when zoomed in.
+- **The dialogs and their fields have names (WCAG 1.3.1, 3.3.1, 4.1.2, 4.1.3).**
+  - A dialog is named by its title and described by its message, not by its whole content.
+  - The fields of **New** are tied to their visible labels, and the answer field of a question is
+    named by the question.
+  - "An instance with this name already exists" and "This property already exists" are announced
+    and tied to their field. Enter on an existing property name no longer closes the picker
+    without a word.
+  - The picker announces how many properties match, and its options read their type and default.
+  - The delete confirmation's button reads **Delete**, not **OK**.
 
 ## [1.2.1] - 2026-09-29
 

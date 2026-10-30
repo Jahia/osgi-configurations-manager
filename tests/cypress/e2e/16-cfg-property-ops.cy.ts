@@ -102,6 +102,10 @@ describe('OSGi Configurations Manager - CFG property operations', () => {
         // Assert: the two rows swapped.
         cy.get('[data-cy="cfg-key-0"]', {timeout: 30000}).should('have.value', 're.two');
         cy.get('[data-cy="cfg-key-1"]').should('have.value', 're.one');
+
+        // The focus follows the moved entry, so the next key press moves it again rather than
+        // moving its former neighbour back (rows are keyed by index).
+        cy.focused().should('have.attr', 'data-cy', 'cfg-reorder-0');
     });
 
     it('inserts a Metatype property via the visual picker and shows its info affordance', () => {

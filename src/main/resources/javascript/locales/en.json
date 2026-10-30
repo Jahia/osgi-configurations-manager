@@ -12,8 +12,11 @@
         "enable": "Enable",
         "save": "Save Changes",
         "searchPlaceholder": "Filter configs...",
+        "searchLabel": "Filter configuration files",
         "searchDeep": "Search in content",
         "searchDeepTooltip": "Enable to search within the file content",
+        "fileList": "Configuration files",
+        "fileDisabled": "disabled",
         "unsaved": "Unsaved Changes"
     },
     "notification": {
@@ -30,6 +33,7 @@
     },
     "modal": {
         "cancel": "Cancel",
+        "close": "Close",
         "ok": "OK",
         "create": {
             "title": "Create new configuration",
@@ -68,7 +72,8 @@
         },
         "deleteFile": {
             "title": "Delete configuration",
-            "message": "Are you sure you want to delete {{name}}?"
+            "message": "Are you sure you want to delete {{name}}?",
+            "confirm": "Delete"
         },
         "disableFile": {
             "title": "Disable configuration",
@@ -120,7 +125,10 @@
             "placeholder": "Type here..."
         },
         "diff": {
-            "title": "Review Changes: {{name}}"
+            "title": "Review Changes: {{name}}",
+            "changes": "Changes",
+            "added": "Added:",
+            "removed": "Removed:"
         }
     },
     "editor": {
@@ -128,7 +136,9 @@
             "property": "Property / Key",
             "value": "Value",
             "security": "Security",
-            "actions": "Actions"
+            "actions": "Actions",
+            "reorder": "Reorder",
+            "type": "Type"
         },
         "button": {
             "addProperty": "Add Property",
@@ -147,13 +157,16 @@
             "toggleEmptyLines": "Toggle Empty Lines",
             "showSecrets": "Show secrets ({{count}})",
             "hideSecrets": "Hide secrets",
-            "showSecretsInDiff": "Show secrets"
+            "showSecretsInDiff": "Show secrets",
+            "tabMovesFocus": "Tab leaves the editor"
         },
         "placeholder": {
             "key": "Key",
             "value": "Value"
         },
         "encryptValueOf": "Encrypt the value of {{key}}",
+        "modeLabel": "Editor mode",
+        "rawEditorLabel": "Configuration source. Press Ctrl+M (Ctrl+Shift+M on macOS) to make Tab leave the editor.",
         "validation": {
             "missingKey": "Property must have a key before the separator",
             "duplicateKey": "Duplicate key '{{key}}'",
@@ -171,7 +184,8 @@
                 "customDescription": "Use the same field to add a property not declared in Metatype.",
                 "customAction": "Add custom property \"{{name}}\"",
                 "customAlreadyExists": "This property already exists in the current file.",
-                "knownProperty": "This name matches a known Metatype property. Selecting it from the list will also apply its default value."
+                "knownProperty": "This name matches a known Metatype property. Selecting it from the list will also apply its default value.",
+                "count": "{{count}} matching properties"
             },
             "type": "Type",
             "optional": "Optional",
@@ -204,7 +218,27 @@
         "reorderHandle": "Reorder this entry — press Arrow Up or Arrow Down to move it",
         "filter": {
             "placeholder": "Filter by property name or value",
-            "count": "Matching properties: {{count}}"
+            "count": "Matching properties: {{count}}",
+            "label": "Filter properties"
+        },
+        "entry": {
+            "comment": "comment {{position}}",
+            "emptyLine": "empty line {{position}}",
+            "property": "property {{position}}"
+        },
+        "aria": {
+            "table": "Properties",
+            "key": "Key of entry {{position}}",
+            "value": "Value of {{name}}",
+            "comment": "Text of {{name}}",
+            "reorder": "Move {{name}}: Arrow Up or Arrow Down",
+            "moveUp": "Move {{name}} up",
+            "moveDown": "Move {{name}} down",
+            "delete": "Delete {{name}}",
+            "showSecret": "Show the value of {{name}}",
+            "hideSecret": "Hide the value of {{name}}",
+            "metatypeInfo": "Documentation of {{name}}",
+            "moved": "{{name}} moved to position {{position}} of {{total}}"
         }
     },
     "configState": {
@@ -255,7 +289,8 @@
         "toggleComments": "Toggle comments visibility (except header)",
         "toggleEmptyLines": "Toggle empty line visibility (except header)",
         "showSecrets": "Show the values of the secrets of this file. They are masked again when another file is opened.",
-        "hideSecrets": "Mask the values of the secrets"
+        "hideSecrets": "Mask the values of the secrets",
+        "tabMovesFocus": "When on, Tab moves the focus out of the editor instead of indenting. Ctrl+M toggles it too (Ctrl+Shift+M on macOS)."
     },
     "sidebar": {
         "on": "On",

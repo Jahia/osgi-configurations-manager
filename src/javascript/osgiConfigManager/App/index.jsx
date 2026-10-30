@@ -365,6 +365,27 @@ const App = () => (
         <style>
             {`
                 @keyframes osgi-config-manager-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+                .osgi-cfg-field:focus {
+                    outline: none;
+                }
+                .osgi-cfg-field:focus-visible {
+                    outline: 2px solid var(--color-accent_dark);
+                    outline-offset: 1px;
+                }
+                .osgi-scroll-region:focus {
+                    outline: none;
+                }
+                .osgi-scroll-region:focus-visible {
+                    outline: 2px solid var(--color-accent_dark);
+                    outline-offset: 2px;
+                }
+                .osgi-file-list:focus {
+                    outline: none;
+                }
+                .osgi-file-list:focus-visible {
+                    outline: 2px solid var(--color-accent_dark);
+                    outline-offset: -2px;
+                }
                 .osgi-sidebar-status-cell .moonstone-TableCell {
                     padding-left: 0;
                     padding-right: 0;

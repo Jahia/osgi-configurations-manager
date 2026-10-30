@@ -23,7 +23,8 @@ describe('OSGi Configurations Manager - Selected file header', () => {
         cy.get('[data-cy="config-state-badge-user"]').should('be.visible');
         cy.get('[data-cy="header-actions-row"]').should('be.visible');
         cy.get('[data-cy="selected-file-toolbar"]').should('be.visible');
-        cy.get('[data-cy="editor-mode-dropdown"] [role="listbox"]').should('be.visible');
+        cy.get('[data-cy="editor-mode-toggle"][role="group"]').should('be.visible');
+        cy.get('[data-cy="editor-mode-visual"]').should('have.attr', 'aria-pressed', 'true');
         cy.get('[data-cy="cancel-config-button"] button').should('be.disabled');
         cy.get('[data-cy="save-config-button"] button').should('be.disabled');
         cy.ensureVisualCfgMode();

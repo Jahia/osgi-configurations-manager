@@ -5,6 +5,10 @@ import { useTranslation } from 'react-i18next';
 import { useDialogA11y } from '../hooks/useDialogA11y';
 // @ts-ignore - plain JS module
 import { languageOfFile, maskSecrets, secretKeyTester } from '../utils/secretMask';
+// @ts-ignore - plain JS module
+import { VISUALLY_HIDDEN_STYLE as HIDDEN_STYLE } from './AppChrome';
+
+const VISUALLY_HIDDEN_STYLE = HIDDEN_STYLE as React.CSSProperties;
 
 interface DiffModalProps {
     isOpen: boolean;
@@ -53,6 +57,7 @@ export const DiffModal: React.FC<DiffModalProps> = ({
     metatypeDefinition
 }) => {
     const { t } = useTranslation('osgi-configurations-manager');
+    const titleId = React.useId();
     // Masked on every opening: the review shows the whole file, secrets included.
     const [secretsVisible, setSecretsVisible] = useState(false);
     useEffect(() => {
@@ -85,9 +90,12 @@ export const DiffModal: React.FC<DiffModalProps> = ({
     return (
         <div
             data-cy="diff-modal"
+            // On the dialog element itself: the Paper of the Moonstone version Jahia serves does not
+            // forward its ref, so the hook found no container, and Tab was blocked behind the dialog.
+            ref={dialogRef}
             role="dialog"
             aria-modal="true"
-            aria-label={t('modal.diff.title', { name: filename })}
+            aria-labelledby={titleId}
             style={{
             position: 'fixed',
             top: 0,
@@ -99,14 +107,18 @@ export const DiffModal: React.FC<DiffModalProps> = ({
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 100000,
+            // At 400% zoom the dialog is taller than the window: the overlay scrolls (WCAG 1.4.10).
+            overflowY: 'auto',
+            padding: '16px',
+            boxSizing: 'border-box',
             backdropFilter: 'blur(4px)',
             transition: 'all 0.2s ease'
         }} onClick={onClose}>
             <Paper
-                ref={dialogRef}
                 style={{
                     width: '900px',
-                    maxWidth: '90%',
+                    maxWidth: '100%',
+                    margin: 'auto',
                     padding: 0,
                     display: 'flex',
                     flexDirection: 'column',
@@ -128,7 +140,7 @@ export const DiffModal: React.FC<DiffModalProps> = ({
                     alignItems: 'center',
                     justifyContent: 'space-between'
                 }}>
-                    <Typography variant="heading" weight="bold" style={{ fontSize: '18px', color: '#111' }}>
+                    <Typography id={titleId} component="h2" variant="heading" weight="bold" style={{ fontSize: '18px', color: '#111', margin: 0 }}>
                         {t('modal.diff.title', { name: filename }) || `Changes: ${filename}`}
                     </Typography>
                     {hasSecrets && (
@@ -142,17 +154,27 @@ export const DiffModal: React.FC<DiffModalProps> = ({
                             />
                         </div>
                     )}
-                    <div style={{ cursor: 'pointer', color: '#888', transition: 'color 0.2s' }}
+                    {/* A button: the clickable icon could not be reached by Tab nor named (WCAG 4.1.2). */}
+                    <Button
+                        data-cy="diff-modal-close"
+                        variant="ghost"
+                        icon={<Close />}
+                        aria-label={t('modal.close')}
+                        title={t('modal.close')}
                         onClick={onClose}
-                        onMouseOver={e => e.currentTarget.style.color = '#333'}
-                        onMouseOut={e => e.currentTarget.style.color = '#888'}>
-                        <Close />
-                    </div>
+                    />
                 </div>
 
                 {/* Body */}
                 <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                    <div style={{
+                    {/* Focusable and named, so the keyboard can scroll a long diff (WCAG 2.1.1). */}
+                    <div
+                        data-cy="diff-modal-changes"
+                        className="osgi-scroll-region"
+                        role="region"
+                        aria-label={t('modal.diff.changes')}
+                        tabIndex={0}
+                        style={{
                         fontFamily: 'monospace',
                         whiteSpace: 'pre-wrap',
                         backgroundColor: '#f5f5f5',
@@ -171,12 +193,23 @@ export const DiffModal: React.FC<DiffModalProps> = ({
                                 display: 'block',
                                 textDecoration: 'none'
                             };
-
                             // diffLines returns parts that end with newline usually
+                            const lines = (secretsVisible ? part.value : text).replace(/\n$/, '').split('\n');
+                            // Added and removed lines differed only by colour (WCAG 1.4.1, 1.3.1): each
+                            // line now starts with a visible + or − and, for screen readers, a word.
+                            const marker = part.added ? '+' : part.removed ? '−' : ' ';
+                            const spoken = part.added ? t('modal.diff.added') : part.removed ? t('modal.diff.removed') : null;
+                            const Tag = part.added ? 'ins' : part.removed ? 'del' : 'span';
                             return (
-                                <span key={index} style={style}>
-                                    {secretsVisible ? part.value : text}
-                                </span>
+                                <Tag key={index} data-diff={part.added ? 'added' : part.removed ? 'removed' : 'same'} style={style}>
+                                    {lines.map((line, lineIndex) => (
+                                        <span key={lineIndex} style={{ display: 'block' }}>
+                                            <span aria-hidden="true" style={{ display: 'inline-block', width: '2ch', userSelect: 'none' }}>{marker}</span>
+                                            {spoken && <span style={VISUALLY_HIDDEN_STYLE}>{spoken} </span>}
+                                            {line}
+                                        </span>
+                                    ))}
+                                </Tag>
                             );
                         })}
                     </div>
@@ -199,7 +232,8 @@ export const DiffModal: React.FC<DiffModalProps> = ({
                             label={t('app.save')}
                             color="accent"
                             onClick={onConfirm}
-                            style={{ backgroundColor: '#00a0e3', color: '#fff', fontWeight: '600' }}
+                            // accent_dark: white on Moonstone's accent (#00a0e3) is 2.9:1 (WCAG 1.4.3).
+                            style={{ backgroundColor: 'var(--color-accent_dark)', color: '#fff', fontWeight: '600' }}
                         />
                     </div>
                 </div>
