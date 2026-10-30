@@ -12,8 +12,11 @@
         "enable": "Ativar",
         "save": "Salvar alterações",
         "searchPlaceholder": "Filtrar configurações...",
+        "searchLabel": "Filtrar arquivos de configuração",
         "searchDeep": "Pesquisar no conteúdo",
         "searchDeepTooltip": "Habilitar para pesquisar dentro dos arquivos",
+        "fileList": "Arquivos de configuração",
+        "fileDisabled": "desativado",
         "unsaved": "Alterações não salvas"
     },
     "notification": {
@@ -30,6 +33,7 @@
     },
     "modal": {
         "cancel": "Cancelar",
+        "close": "Fechar",
         "ok": "OK",
         "create": {
             "title": "Criar nova configuração",
@@ -68,7 +72,8 @@
         },
         "deleteFile": {
             "title": "Excluir configuração",
-            "message": "Tem certeza que deseja excluir {{name}}?"
+            "message": "Tem certeza que deseja excluir {{name}}?",
+            "confirm": "Excluir"
         },
         "disableFile": {
             "title": "Desabilitar configuração",
@@ -115,7 +120,10 @@
             "placeholder": "Digite aqui..."
         },
         "diff": {
-            "title": "Revisar alterações: {{name}}"
+            "title": "Revisar alterações: {{name}}",
+            "changes": "Alterações",
+            "added": "Adicionado:",
+            "removed": "Removido:"
         },
         "markAsDefault": {
             "title": "Marcar como configuração padrão",
@@ -128,7 +136,9 @@
             "property": "Propriedade / Chave",
             "value": "Valor",
             "security": "Segurança",
-            "actions": "Ações"
+            "actions": "Ações",
+            "reorder": "Reordenar",
+            "type": "Tipo"
         },
         "button": {
             "addProperty": "Adicionar Propriedade",
@@ -147,13 +157,16 @@
             "toggleEmptyLines": "Alternar linhas vazias",
             "showSecrets": "Mostrar segredos ({{count}})",
             "hideSecrets": "Ocultar segredos",
-            "showSecretsInDiff": "Mostrar segredos"
+            "showSecretsInDiff": "Mostrar segredos",
+            "tabMovesFocus": "Tab sai do editor"
         },
         "placeholder": {
             "key": "Chave",
             "value": "Valor"
         },
         "encryptValueOf": "Criptografar o valor de {{key}}",
+        "modeLabel": "Modo do editor",
+        "rawEditorLabel": "Origem da configuração. Pressione Ctrl+M (Ctrl+Shift+M no macOS) para que Tab saia do editor.",
         "validation": {
             "missingKey": "A propriedade deve ter uma chave antes do separador",
             "duplicateKey": "Chave duplicada '{{key}}'",
@@ -171,7 +184,8 @@
                 "customDescription": "Use o mesmo campo para adicionar uma propriedade não declarada no Metatype.",
                 "customAction": "Adicionar propriedade personalizada \"{{name}}\"",
                 "customAlreadyExists": "Esta propriedade já existe no arquivo atual.",
-                "knownProperty": "Este nome corresponde a uma propriedade conhecida do Metatype. Selecioná-la na lista também aplicará o valor padrão."
+                "knownProperty": "Este nome corresponde a uma propriedade conhecida do Metatype. Selecioná-la na lista também aplicará o valor padrão.",
+                "count": "{{count}} propriedade(s) correspondente(s)"
             },
             "type": "Tipo",
             "optional": "Opcional",
@@ -204,7 +218,27 @@
         "reorderHandle": "Reordenar esta entrada — utilize Seta para cima ou Seta para baixo para a mover",
         "filter": {
             "placeholder": "Filtrar por nome da propriedade ou valor",
-            "count": "Propriedades correspondentes: {{count}}"
+            "count": "Propriedades correspondentes: {{count}}",
+            "label": "Filtrar propriedades"
+        },
+        "entry": {
+            "comment": "comentário {{position}}",
+            "emptyLine": "linha vazia {{position}}",
+            "property": "propriedade {{position}}"
+        },
+        "aria": {
+            "table": "Propriedades",
+            "key": "Chave da entrada {{position}}",
+            "value": "Valor de {{name}}",
+            "comment": "Texto de {{name}}",
+            "reorder": "Mover {{name}}: seta para cima ou para baixo",
+            "moveUp": "Subir {{name}}",
+            "moveDown": "Descer {{name}}",
+            "delete": "Excluir {{name}}",
+            "showSecret": "Mostrar o valor de {{name}}",
+            "hideSecret": "Ocultar o valor de {{name}}",
+            "metatypeInfo": "Documentação de {{name}}",
+            "moved": "{{name}} movido para a posição {{position}} de {{total}}"
         }
     },
     "tooltip": {
@@ -234,7 +268,8 @@
         "toggleEmptyLines": "Mostrar ou ocultar linhas vazias (exceto o cabeçalho)",
         "markAsDefault": "Adicionar o cabeçalho '# default configuration' para que o Jahia preserve as alterações locais dos valores padrão do módulo",
         "showSecrets": "Mostrar os valores dos segredos deste arquivo. Eles voltam a ser ocultados ao abrir outro arquivo.",
-        "hideSecrets": "Ocultar os valores dos segredos"
+        "hideSecrets": "Ocultar os valores dos segredos",
+        "tabMovesFocus": "Ativado, Tab move o foco para fora do editor em vez de indentar. Ctrl+M também alterna (Ctrl+Shift+M no macOS)."
     },
     "sidebar": {
         "on": "Ligado",
