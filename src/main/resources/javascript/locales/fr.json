@@ -131,7 +131,9 @@
             "property": "Propriété / Clé",
             "value": "Valeur",
             "security": "Sécurité",
-            "actions": "Actions"
+            "actions": "Actions",
+            "reorder": "Réordonner",
+            "type": "Type"
         },
         "button": {
             "addProperty": "Ajouter une propriété",
@@ -158,6 +160,7 @@
             "value": "Valeur"
         },
         "encryptValueOf": "Chiffrer la valeur de {{key}}",
+        "modeLabel": "Mode de l'éditeur",
         "rawEditorLabel": "Source de la configuration. Appuyez sur Ctrl+M (Ctrl+Maj+M sur macOS) pour que Tab quitte l'éditeur.",
         "validation": {
             "missingKey": "La propriété doit avoir une clé avant le séparateur",
@@ -209,7 +212,27 @@
         "reorderHandle": "Réorganiser cette entrée — utilisez Flèche haut ou Flèche bas pour la déplacer",
         "filter": {
             "placeholder": "Filtrer par nom de propriété ou valeur",
-            "count": "Propriétés correspondantes : {{count}}"
+            "count": "Propriétés correspondantes : {{count}}",
+            "label": "Filtrer les propriétés"
+        },
+        "entry": {
+            "comment": "commentaire {{position}}",
+            "emptyLine": "ligne vide {{position}}",
+            "property": "propriété {{position}}"
+        },
+        "aria": {
+            "table": "Propriétés",
+            "key": "Clé de l'entrée {{position}}",
+            "value": "Valeur de {{name}}",
+            "comment": "Texte du {{name}}",
+            "reorder": "Déplacer {{name}} : flèche haut ou flèche bas",
+            "moveUp": "Monter {{name}}",
+            "moveDown": "Descendre {{name}}",
+            "delete": "Supprimer {{name}}",
+            "showSecret": "Afficher la valeur de {{name}}",
+            "hideSecret": "Masquer la valeur de {{name}}",
+            "metatypeInfo": "Documentation de {{name}}",
+            "moved": "{{name}} déplacé en position {{position}} sur {{total}}"
         }
     },
     "configState": {

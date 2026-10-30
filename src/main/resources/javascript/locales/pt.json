@@ -131,7 +131,9 @@
             "property": "Propriedade / Chave",
             "value": "Valor",
             "security": "Segurança",
-            "actions": "Ações"
+            "actions": "Ações",
+            "reorder": "Reordenar",
+            "type": "Tipo"
         },
         "button": {
             "addProperty": "Adicionar Propriedade",
@@ -158,6 +160,7 @@
             "value": "Valor"
         },
         "encryptValueOf": "Criptografar o valor de {{key}}",
+        "modeLabel": "Modo do editor",
         "rawEditorLabel": "Origem da configuração. Pressione Ctrl+M (Ctrl+Shift+M no macOS) para que Tab saia do editor.",
         "validation": {
             "missingKey": "A propriedade deve ter uma chave antes do separador",
@@ -209,7 +212,27 @@
         "reorderHandle": "Reordenar esta entrada — utilize Seta para cima ou Seta para baixo para a mover",
         "filter": {
             "placeholder": "Filtrar por nome da propriedade ou valor",
-            "count": "Propriedades correspondentes: {{count}}"
+            "count": "Propriedades correspondentes: {{count}}",
+            "label": "Filtrar propriedades"
+        },
+        "entry": {
+            "comment": "comentário {{position}}",
+            "emptyLine": "linha vazia {{position}}",
+            "property": "propriedade {{position}}"
+        },
+        "aria": {
+            "table": "Propriedades",
+            "key": "Chave da entrada {{position}}",
+            "value": "Valor de {{name}}",
+            "comment": "Texto de {{name}}",
+            "reorder": "Mover {{name}}: seta para cima ou para baixo",
+            "moveUp": "Subir {{name}}",
+            "moveDown": "Descer {{name}}",
+            "delete": "Excluir {{name}}",
+            "showSecret": "Mostrar o valor de {{name}}",
+            "hideSecret": "Ocultar o valor de {{name}}",
+            "metatypeInfo": "Documentação de {{name}}",
+            "moved": "{{name}} movido para a posição {{position}} de {{total}}"
         }
     },
     "tooltip": {

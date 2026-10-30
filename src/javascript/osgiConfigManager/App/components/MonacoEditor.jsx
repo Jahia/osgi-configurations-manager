@@ -6,7 +6,7 @@ import { configureMonacoYaml } from 'monaco-yaml';
 // public API, so the toolbar reads and sets it here.
 import { TabFocus } from 'monaco-editor/esm/vs/editor/browser/config/tabFocus.js';
 import { Button, Input, Typography } from '@jahia/moonstone';
-import { Add, Undo, RotateRight, Code, Lock, Unlock, Visibility, Hidden } from '@jahia/moonstone';
+import { Add, Undo, RotateRight, Code, Lock, Unlock, Visibility, Hidden, Check } from '@jahia/moonstone';
 import { useTranslation } from 'react-i18next';
 import { osgiService } from '../api/osgiService';
 import { lookupKnownPlaintext, rememberPlaintext } from '../utils/cryptoTree';
@@ -1419,6 +1419,10 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                                 dataState={tabMovesFocus ? 'on' : 'off'}
                                 label={t('editor.button.tabMovesFocus')}
                                 aria-pressed={tabMovesFocus}
+                                // aria-pressed is not drawn: on, the button is outlined and ticked, like
+                                // the current editor mode, so the state shows without a screen reader.
+                                variant={tabMovesFocus ? 'default' : 'ghost'}
+                                icon={tabMovesFocus ? <Check style={TOOLBAR_BUTTON_ICON_STYLE} /> : undefined}
                                 onClick={() => TabFocus.setTabFocusMode(!TabFocus.getTabFocusMode())}
                                 title={t('tooltip.tabMovesFocus')}
                             />

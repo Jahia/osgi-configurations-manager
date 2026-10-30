@@ -41,6 +41,24 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   only way out was Monaco's Ctrl+M (Ctrl+Shift+M on macOS), which nothing mentioned. The toolbar
   now has a **Tab leaves the editor** toggle, kept in step with that shortcut, and the editor's
   name tells screen reader users the shortcut.
+- **The Visual Edit / Raw Edit choice works from the keyboard (WCAG 2.1.1, 4.1.2).** It was a
+  menu that Enter opened but the arrow keys and Enter could not use, so the mode could only be
+  changed with a mouse. It is now two buttons, the current one marked as pressed.
+- **The visual editor can be used without a mouse or sight (WCAG 1.3.1, 1.4.3, 1.4.11, 2.1.1,
+  2.4.3, 2.4.7, 2.5.7, 4.1.2, 4.1.3).**
+  - Every field is named after its row ("Value of `db.url`"); before, it was "Value" forty times,
+    and the comment field had no name.
+  - The columns are real headers, the rows are no longer Tab stops, and the focused field shows an
+    outline.
+  - Moving an entry with the arrow keys keeps the focus on it, skips hidden comments and empty
+    lines, and is announced; a second key press used to move its neighbour back.
+  - **Move up** and **Move down** buttons reorder in one click, where a drag was the only way with
+    a pointer.
+  - A property's Metatype documentation opens from the keyboard.
+  - The comment text, the field borders and the empty-line label are readable: they were 2.35:1,
+    1.14:1 and 2.26:1.
+  - The **Toggle comments** and **Toggle empty lines** buttons say whether they are on, and the
+    number of properties matching the filter is announced.
 
 ## [1.2.1] - 2026-09-29
 

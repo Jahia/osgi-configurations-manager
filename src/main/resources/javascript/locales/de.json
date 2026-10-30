@@ -131,7 +131,9 @@
             "property": "Eigenschaft / Schlüssel",
             "value": "Wert",
             "security": "Sicherheit",
-            "actions": "Aktionen"
+            "actions": "Aktionen",
+            "reorder": "Neu anordnen",
+            "type": "Typ"
         },
         "button": {
             "addProperty": "Eigenschaft hinzufügen",
@@ -158,6 +160,7 @@
             "value": "Wert"
         },
         "encryptValueOf": "Wert von {{key}} verschlüsseln",
+        "modeLabel": "Editormodus",
         "rawEditorLabel": "Konfigurationsquelle. Drücken Sie Strg+M (Ctrl+Umschalt+M unter macOS), damit Tab den Editor verlässt.",
         "validation": {
             "missingKey": "Eigenschaft muss vor dem Trennzeichen einen Schlüssel haben",
@@ -209,7 +212,27 @@
         "reorderHandle": "Eintrag neu anordnen – mit Pfeil-hoch oder Pfeil-runter verschieben",
         "filter": {
             "placeholder": "Nach Eigenschaftsname oder Wert filtern",
-            "count": "Passende Eigenschaften: {{count}}"
+            "count": "Passende Eigenschaften: {{count}}",
+            "label": "Eigenschaften filtern"
+        },
+        "entry": {
+            "comment": "Kommentar {{position}}",
+            "emptyLine": "Leerzeile {{position}}",
+            "property": "Eigenschaft {{position}}"
+        },
+        "aria": {
+            "table": "Eigenschaften",
+            "key": "Schlüssel von Eintrag {{position}}",
+            "value": "Wert von {{name}}",
+            "comment": "Text von {{name}}",
+            "reorder": "{{name}} verschieben: Pfeil nach oben oder unten",
+            "moveUp": "{{name}} nach oben",
+            "moveDown": "{{name}} nach unten",
+            "delete": "{{name}} löschen",
+            "showSecret": "Wert von {{name}} anzeigen",
+            "hideSecret": "Wert von {{name}} ausblenden",
+            "metatypeInfo": "Dokumentation von {{name}}",
+            "moved": "{{name}} an Position {{position}} von {{total}} verschoben"
         }
     },
     "tooltip": {

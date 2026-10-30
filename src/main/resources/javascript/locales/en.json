@@ -131,7 +131,9 @@
             "property": "Property / Key",
             "value": "Value",
             "security": "Security",
-            "actions": "Actions"
+            "actions": "Actions",
+            "reorder": "Reorder",
+            "type": "Type"
         },
         "button": {
             "addProperty": "Add Property",
@@ -158,6 +160,7 @@
             "value": "Value"
         },
         "encryptValueOf": "Encrypt the value of {{key}}",
+        "modeLabel": "Editor mode",
         "rawEditorLabel": "Configuration source. Press Ctrl+M (Ctrl+Shift+M on macOS) to make Tab leave the editor.",
         "validation": {
             "missingKey": "Property must have a key before the separator",
@@ -209,7 +212,27 @@
         "reorderHandle": "Reorder this entry — press Arrow Up or Arrow Down to move it",
         "filter": {
             "placeholder": "Filter by property name or value",
-            "count": "Matching properties: {{count}}"
+            "count": "Matching properties: {{count}}",
+            "label": "Filter properties"
+        },
+        "entry": {
+            "comment": "comment {{position}}",
+            "emptyLine": "empty line {{position}}",
+            "property": "property {{position}}"
+        },
+        "aria": {
+            "table": "Properties",
+            "key": "Key of entry {{position}}",
+            "value": "Value of {{name}}",
+            "comment": "Text of {{name}}",
+            "reorder": "Move {{name}}: Arrow Up or Arrow Down",
+            "moveUp": "Move {{name}} up",
+            "moveDown": "Move {{name}} down",
+            "delete": "Delete {{name}}",
+            "showSecret": "Show the value of {{name}}",
+            "hideSecret": "Hide the value of {{name}}",
+            "metatypeInfo": "Documentation of {{name}}",
+            "moved": "{{name}} moved to position {{position}} of {{total}}"
         }
     },
     "configState": {

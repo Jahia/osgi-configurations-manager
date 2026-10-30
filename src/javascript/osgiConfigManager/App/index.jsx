@@ -365,6 +365,13 @@ const App = () => (
         <style>
             {`
                 @keyframes osgi-config-manager-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+                .osgi-cfg-field:focus {
+                    outline: none;
+                }
+                .osgi-cfg-field:focus-visible {
+                    outline: 2px solid var(--color-accent_dark);
+                    outline-offset: 1px;
+                }
                 .osgi-file-list:focus {
                     outline: none;
                 }

@@ -76,11 +76,14 @@ describe('MonacoEditor', () => {
         it('switches Tab to moving the focus from the toolbar, as a pressed toggle', () => {
             const { container } = render(<MonacoEditor value="" language="properties" onChange={jest.fn()} />);
             expect(toggle(container).getAttribute('aria-pressed')).toBe('false');
+            expect(toggle(container).getAttribute('variant')).toBe('ghost');
 
             fireEvent.click(toggle(container));
 
             expect(TabFocus.getTabFocusMode()).toBe(true);
             expect(toggle(container).getAttribute('aria-pressed')).toBe('true');
+            // The state is drawn too, not only exposed: aria-pressed alone left the button unchanged.
+            expect(toggle(container).getAttribute('variant')).toBe('default');
         });
 
         it('follows the mode when Monaco changes it itself (Ctrl+M)', () => {
