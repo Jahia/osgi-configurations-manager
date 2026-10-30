@@ -26,7 +26,13 @@
         "esModuleInterop": true,
         "allowJs": true
     },
+    // With allowJs and no "include", every .js under the project joins the program ts-loader
+    // type-checks, including the previous build's output. Since Monaco 0.56 that output holds
+    // the TypeScript compiler (its ts.worker), and checking it overflowed the stack, so a second
+    // `yarn build` failed until the output was deleted. "node" is the toolchain Maven installs.
     "exclude": [
+        "src/main/resources/javascript/apps",
+        "node",
         "node_modules",
         "tests",
         "target",
