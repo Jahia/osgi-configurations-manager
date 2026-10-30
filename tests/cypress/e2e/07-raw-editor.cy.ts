@@ -20,8 +20,8 @@ describe('OSGi Configurations Manager - Raw editor', () => {
         cy.ensureRawCfgMode();
 
         cy.get('[data-cy="raw-editor-toolbar"]').should('be.visible');
-        cy.get('.monaco-editor textarea', {timeout: 30000}).click({force: true});
-        cy.get('.monaco-editor textarea', {timeout: 30000}).type('alpha.key = alpha value', {force: true});
+        cy.focusRawEditor();
+        cy.get('.monaco-editor textarea').type('alpha.key = alpha value', {force: true});
 
         cy.get('[data-cy="save-config-button"] button').click();
         cy.confirmDiffSave();

@@ -1,0 +1,356 @@
+{
+  "skill": "contrast-master",
+  "scope": [
+    "src/javascript/osgiConfigManager/App/index.jsx",
+    "src/javascript/osgiConfigManager/App/components/AppChrome.jsx",
+    "src/javascript/osgiConfigManager/App/components/AppHeaderBar.jsx",
+    "src/javascript/osgiConfigManager/App/components/ActionButton.jsx",
+    "src/javascript/osgiConfigManager/App/components/ConfigStateBadge.jsx",
+    "src/javascript/osgiConfigManager/App/components/FileSidebar.jsx",
+    "src/javascript/osgiConfigManager/App/components/SelectedFileHeader.jsx",
+    "src/javascript/osgiConfigManager/App/components/SelectedFileToolbar.jsx",
+    "src/javascript/osgiConfigManager/App/components/DiffModal.tsx",
+    "src/javascript/osgiConfigManager/App/components/Dialogs.jsx",
+    "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx",
+    "src/javascript/osgiConfigManager/App/components/CfgMetatypePropertyDialog.jsx",
+    "src/javascript/osgiConfigManager/App/components/Editor.jsx",
+    "src/javascript/osgiConfigManager/App/components/MonacoEditor.jsx",
+    "src/javascript/osgiConfigManager/App/hooks/useToast.tsx",
+    "src/javascript/init.js"
+  ],
+  "findings": [
+    {
+      "rule": "CONTRAST-TEXT-001",
+      "wcag": "1.4.3 AA",
+      "severity": "critical",
+      "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:110",
+      "summary": "Metatype/factory descriptions in the Create dialog use --color-gray_dark20 (#293136 at 20% alpha), about 1.46:1 on white.",
+      "fix": "Use an opaque token that reaches 4.5:1, e.g. color: 'var(--color-gray_dark)' (#293136, 12.9:1) or drop the inline colour and use Typography color=\"textSecondary\" after runtime check. Never use the 20/40/60 alpha tokens for text.",
+      "evidence": "style={{color: 'var(--color-gray_dark20)'}} -> composited #d4d6d7 on #fff = 1.46:1 (Moonstone 2.21: --moon-color-gray_dark20:#29313633)",
+      "component": "CreateOptionCard"
+    },
+    {
+      "rule": "COLOR-ONLY-001",
+      "wcag": "1.4.1 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/DiffModal.tsx:169",
+      "summary": "Added and removed lines in the review-before-save diff are distinguished only by green/red text and background colour, with no +/- marker or text.",
+      "fix": "Prefix each line of an added part with '+ ' and a removed part with '- ' (or render a gutter column with +/-), and wrap parts in <ins>/<del> or add visually-hidden 'Added'/'Removed' text. Keep the colours as a secondary cue; add a left border so the cue survives forced-colors mode.",
+      "evidence": "added #1e7e34 on #e6ffec (4.86:1), removed #cb2431 on #ffebe9 (4.77:1); added vs removed text luminance 1.07:1, backgrounds 1.09:1 - indistinguishable for red/green colour-blind users and lost entirely in forced-colors mode",
+      "component": "DiffModal"
+    },
+    {
+      "rule": "CONTRAST-TEXT-002",
+      "wcag": "1.4.3 AA",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/DiffModal.tsx:202",
+      "summary": "The diff modal Save button overrides its background to #00a0e3 with white text, 2.94:1.",
+      "fix": "Remove the inline style and let Moonstone's accent button render, or use backgroundColor 'var(--color-accent_dark)' (#0072b1, white text 5.20:1).",
+      "evidence": "style={{ backgroundColor: '#00a0e3', color: '#fff', fontWeight: '600' }} -> #fff on #00a0e3 = 2.94:1 at ~14px",
+      "component": "DiffModal"
+    },
+    {
+      "rule": "FOCUS-VISIBLE-001",
+      "wcag": "2.4.7 AA",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:259",
+      "summary": "Key, value and comment textareas of the visual .cfg editor set outline: 'none'; the only focus cue is the row background #def4fd (1.14:1 vs white), unchanged when moving between fields of the same row.",
+      "fix": "Remove outline: 'none' and add a :focus-visible rule for the textareas (e.g. a class with outline: 2px solid var(--color-accent_dark); outline-offset: 1px; #0072b1 is 5.20:1 on white, 4.57:1 on #def4fd). Do not rely on the row selection background as focus indicator.",
+      "evidence": "AutoResizeTextArea style { border: 'none', outline: 'none', ... }; row backgroundColor: isSelected ? '#def4fd' : 'transparent' (CfgEditor.jsx:575) = 1.14:1",
+      "component": "AutoResizeTextArea"
+    },
+    {
+      "rule": "FOCUS-VISIBLE-002",
+      "wcag": "2.4.7 AA",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/FileSidebar.jsx:130",
+      "summary": "The focusable file list container (tabIndex=0, Arrow-key navigation) suppresses its focus outline, so keyboard users cannot see that the list has focus.",
+      "fix": "Remove outline: 'none' and give the container a visible :focus-visible style (e.g. outline: 2px solid var(--color-accent_dark); outline-offset: -2px), at least 3:1 against white and the highlighted row.",
+      "evidence": "style={{ flex: 1, overflowY: 'auto', outline: 'none' }} tabIndex={0}",
+      "component": "FileSidebar"
+    },
+    {
+      "rule": "NONTEXT-CONTRAST-001",
+      "wcag": "1.4.11 AA",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:81",
+      "summary": "Key/value inputs of the visual .cfg editor are bounded only by a --color-gray_light40 border (#dadada at 40%), 1.14:1 against white.",
+      "fix": "Use an opaque border reaching 3:1, e.g. 1px solid var(--color-gray) (#7a7f88, 4.0:1 on white). Same issue applies to any other inline border built on gray_light40 that identifies a control.",
+      "evidence": "cfgTextInputStyle.border: '1px solid var(--color-gray_light40)' -> composited #f0f0f0 on #fff = 1.14:1",
+      "component": "CfgEditor"
+    },
+    {
+      "rule": "STATE-INDICATOR-001",
+      "wcag": "1.4.11 AA",
+      "severity": "serious",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:75",
+      "summary": "The selected metatype/factory card in the Create dialog is shown only by background var(--color-accent_light80), a token Moonstone 2.21 does not define, so the selected state is invisible (and would be colour-only even if defined).",
+      "fix": "Use a defined token and a non-colour cue: e.g. background var(--color-accent_light_plain20) plus a 2px left border var(--color-accent_dark) (5.20:1) and a check icon or bold 'Selected' text; also expose selection with aria-selected/aria-pressed. Replace --color-gray_light98 (lines 33, 48), also undefined.",
+      "evidence": "background: isSelected ? 'var(--color-accent_light80)' : 'transparent'; no --color-accent_light80 / --color-gray_light98 in @jahia/moonstone 2.21.0 legacy-global-bundle.css",
+      "component": "CreateOptionCard"
+    },
+    {
+      "rule": "CONTRAST-TEXT-003",
+      "wcag": "1.4.3 AA",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:89",
+      "summary": "Comment rows of the visual .cfg editor ('#' marker and comment text) are drawn in --color-success #6abb6d, 2.35:1 on white and 2.06:1 on the selected row.",
+      "fix": "Use a dark green that reaches 4.5:1 on both #fff and #def4fd, e.g. #2e7d32 (5.1:1 on white) or Moonstone's success_dark token if defined; keep italic + '#' + icon as non-colour cues.",
+      "evidence": "const cfgCommentColor = 'var(--color-success)'; used at CfgEditor.jsx:630, 645, 659",
+      "component": "CfgEditor"
+    },
+    {
+      "rule": "CONTRAST-TEXT-004",
+      "wcag": "1.4.3 AA",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:141",
+      "summary": "The 'Add comment' button label and border are overridden to --color-success #6abb6d, 2.35:1 on white.",
+      "fix": "Drop the inline colour override (use Moonstone's default outlined button) or use a green reaching 4.5:1 for the label and 3:1 for the border, e.g. #2e7d32.",
+      "evidence": "style={{color: 'var(--color-success)', borderColor: 'var(--color-success)'}}",
+      "component": "CfgEditorFooter"
+    },
+    {
+      "rule": "REFLOW-001",
+      "wcag": "1.4.10 AA",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/FileSidebar.jsx:97",
+      "summary": "The file sidebar has a fixed 350px width inside a non-wrapping, overflow-hidden flex row, so at 320 CSS px the editor pane collapses to zero width and its content is lost.",
+      "fix": "Make the layout responsive: e.g. width: 'min(350px, 100%)' with flex: '0 1 350px', and below ~768px switch APP_LAYOUT_STYLE (AppChrome.jsx:19) to flexDirection: 'column' (or flexWrap: 'wrap') with overflow: 'auto' so sidebar and editor stack.",
+      "evidence": "Paper style={{ ...PANEL_STYLE, width: '350px', height: '100%' }}; APP_LAYOUT_STYLE { display: 'flex', overflow: 'hidden' } with no wrap or media query",
+      "component": "FileSidebar"
+    },
+    {
+      "rule": "REFLOW-002",
+      "wcag": "1.4.10 AA",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/DiffModal.tsx:105",
+      "summary": "The diff dialog has no max-height and its fixed overlay does not scroll, so at 400% zoom (320x256 CSS px) the header and the Save/Cancel footer are clipped off-screen; the non-wrapping header also clips the title and secrets toggle.",
+      "fix": "Give the Paper maxHeight: 'calc(100vh - 32px)' with the body as the only flex: 1 / minHeight: 0 / overflow: auto region (replace maxHeight: '60vh'), set overflow: 'auto' on the overlay, and flexWrap: 'wrap' on the header row (line 123).",
+      "evidence": "Paper: width 900px, maxWidth 90%, overflow hidden, no maxHeight; body maxHeight 60vh + 24/28px paddings + header + footer > 256px",
+      "component": "DiffModal"
+    },
+    {
+      "rule": "CONTRAST-TEXT-005",
+      "wcag": "1.4.3 AA",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/SelectedFileHeader.jsx:43",
+      "summary": "The selected file's path (caption size) uses CHROME_TOKENS.subtleTextColor = --color-gray_dark60 (#293136 at 60%), 3.82:1 on white.",
+      "fix": "Change CHROME_TOKENS.subtleTextColor (AppChrome.jsx:9) to an opaque colour, e.g. var(--color-gray_dark) (12.9:1) or #5c6166 (~6:1). This also fixes EMPTY_STATE_STYLE and InlineLoader text.",
+      "evidence": "subtleTextColor: 'var(--color-gray_dark60)' -> #7f8386 on #fff = 3.82:1 (3.70:1 on #f6f6f6)",
+      "component": "AppChrome CHROME_TOKENS"
+    },
+    {
+      "rule": "CONTRAST-TEXT-006",
+      "wcag": "1.4.3 AA",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:536",
+      "summary": "The filter match count caption uses --color-gray_dark60, 3.82:1 on white.",
+      "fix": "Use CHROME_TOKENS.subtleTextColor once fixed, or var(--color-gray_dark).",
+      "evidence": "style={{color: 'var(--color-gray_dark60)'}} -> 3.82:1",
+      "component": "CfgEditor"
+    },
+    {
+      "rule": "CONTRAST-TEXT-007",
+      "wcag": "1.4.3 AA",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:674",
+      "summary": "The '(empty line)' placeholder text uses --color-gray_dark40 italic caption, 2.26:1 on white (2.21:1 on the selected row).",
+      "fix": "Use an opaque colour reaching 4.5:1, e.g. #5c6166, keeping the italic style.",
+      "evidence": "style={{ color: 'var(--color-gray_dark40)', fontStyle: 'italic' }} -> #a9adaf on #fff = 2.26:1",
+      "component": "CfgEditor"
+    },
+    {
+      "rule": "CONTRAST-TEXT-008",
+      "wcag": "1.4.3 AA",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/Dialogs.jsx:459",
+      "summary": "The 'identifier already exists' error caption uses --color-danger #f44053, 3.68:1 on white.",
+      "fix": "Use a darker red reaching 4.5:1, e.g. #c62828 (5.6:1), and keep an icon or 'Error:' prefix so the error is not colour-only.",
+      "evidence": "style={{color: 'var(--color-danger)'}} on FACTORY_DETAILS_STYLE white background",
+      "component": "ModalDialog"
+    },
+    {
+      "rule": "CONTRAST-TEXT-009",
+      "wcag": "1.4.3 AA",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgMetatypePropertyDialog.jsx:211",
+      "summary": "The 'property already exists' caption uses #db3d44, 4.41:1 on white (just under 4.5:1).",
+      "fix": "Darken to #c62828 (5.6:1) or the same token chosen for Dialogs.jsx:459.",
+      "evidence": "style={{ color: '#db3d44' }} -> 4.41:1",
+      "component": "CfgMetatypePropertyDialog"
+    },
+    {
+      "rule": "COLOR-ONLY-002",
+      "wcag": "1.4.1 A",
+      "severity": "moderate",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/hooks/useToast.tsx:58",
+      "summary": "Error and warning toasts use the same Warning icon and differ only by the colour of the icon and the 4px left border.",
+      "fix": "Use a distinct icon for errors (e.g. a cross/close-circle icon) and/or prefix the message with a visible 'Error:'/'Warning:' label, so the toast type does not depend on colour.",
+      "evidence": "warning: <Warning style={{color:'var(--color-warning)'}}/>, error: <Warning style={{color:'var(--color-danger)'}}/>",
+      "component": "ToastProvider"
+    },
+    {
+      "rule": "NONTEXT-CONTRAST-002",
+      "wcag": "1.4.11 AA",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/hooks/useToast.tsx:50",
+      "summary": "Toast type icons and left borders fall below 3:1 on the white toast: warning #fb0 1.70:1, success #6abb6d 2.35:1, info #00a0e3 2.94:1 (error #f44053 3.68:1 passes).",
+      "fix": "Use darker variants for icon and border colours (e.g. warning #a36b00, success #2e7d32, info var(--color-accent_dark) #0072b1), each at least 3:1 on #fff.",
+      "evidence": "borderLeft: `4px solid ${toastMeta?.borderColor}`; icon colours var(--color-warning|success|accent)",
+      "component": "ToastProvider"
+    },
+    {
+      "rule": "TEXT-SPACING-001",
+      "wcag": "1.4.12 AA",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:218",
+      "summary": "AutoResizeTextArea recomputes its height only when its value changes and has overflow: hidden, so wrapping added by user text spacing, zoom or a narrower viewport clips the text.",
+      "fix": "Also resize on width/font changes: observe the textarea with a ResizeObserver (and on window resize), or drop JS sizing for CSS field-sizing: content with overflow: auto as fallback.",
+      "evidence": "useEffect(() => { resize(); }, [value]); style { overflow: 'hidden', ... }",
+      "component": "AutoResizeTextArea"
+    },
+    {
+      "rule": "REFLOW-003",
+      "wcag": "1.4.10 AA",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/FileSidebar.jsx:163",
+      "summary": "File names, the selected file heading and its path are truncated with an ellipsis; the full text appears only in a mouse-hover preview (none for the heading), so at 320 CSS px or with text spacing keyboard and touch users lose the names.",
+      "fix": "Allow wrapping (overflow-wrap: anywhere, no isNowrap) in the sidebar and in SelectedFileHeader.jsx:31-44, or show the preview on focus too; also remove whiteSpace: 'nowrap' from FLOATING_TOOLTIP_STYLE (AppChrome.jsx:78) and cap it at calc(100vw - 32px).",
+      "evidence": "OverflowPreviewText: isNowrap + textOverflow: 'ellipsis', preview on onMouseEnter only; heading uses showPreview={false}",
+      "component": "OverflowPreviewText"
+    },
+    {
+      "rule": "REFLOW-004",
+      "wcag": "1.4.10 AA",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/MonacoEditor.jsx:79",
+      "summary": "The metatype property panel is a fixed 340px non-shrinking column beside the raw editor in a non-wrapping flex row, squeezing the editor to zero width on narrow viewports.",
+      "fix": "Let RAW_EDITOR_SURFACE_STYLE wrap (flexWrap: 'wrap') or stack below ~768px, and give the panel flex: '1 1 340px', maxWidth: '100%'.",
+      "evidence": "RAW_EDITOR_PANEL_STYLE { flex: '0 0 340px', width: '340px' }",
+      "component": "MonacoEditor"
+    },
+    {
+      "rule": "REFLOW-005",
+      "wcag": "1.4.10 AA",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgMetatypePropertyDialog.jsx:117",
+      "summary": "At 400% zoom the property picker body (overflow: hidden) shrinks inside the max-height dialog and clips the 'custom property' section and its button with no way to scroll to them.",
+      "fix": "Set overflow: 'auto' and minHeight: 0 on the body section and let the inner list use flex: '1 1 auto' instead of a fixed maxHeight: 360px.",
+      "evidence": "Paper maxHeight: calc(100vh - 60px), overflow hidden; body div overflow: 'hidden'; list maxHeight: '360px'",
+      "component": "CfgMetatypePropertyDialog"
+    },
+    {
+      "rule": "REFLOW-006",
+      "wcag": "1.4.10 AA",
+      "severity": "minor",
+      "confidence": "low",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:52",
+      "summary": "The visual .cfg table columns sum to at least 704px of min-width, forcing horizontal scrolling at 320 CSS px.",
+      "fix": "A key/value data table may qualify for the two-dimensional-layout exception; if not, lower the property/value minWidth (e.g. 120px) or switch to a stacked key-over-value layout below ~600px.",
+      "evidence": "property/value minWidth 240px each + 48+40+88+48px fixed columns",
+      "component": "CfgEditor"
+    },
+    {
+      "rule": "NONTEXT-CONTRAST-003",
+      "wcag": "1.4.11 AA",
+      "severity": "minor",
+      "location": "src/javascript/osgiConfigManager/App/components/AppChrome.jsx:84",
+      "summary": "The 3px enabled/disabled bar in the sidebar is #6abb6d (2.35:1) vs #7a7f88 at 40% (1.61:1) on white, 1.71:1 from each other, and disappears in forced-colors mode.",
+      "fix": "The line-through on disabled names is a non-colour cue, so keep it; darken the bar colours (e.g. #2e7d32 and var(--color-gray) #7a7f88 opaque) and render the bar as a border-left rather than a background so it survives forced colors, or add a visible 'Disabled' text/icon.",
+      "evidence": "backgroundColor: enabled ? 'var(--color-success)' : 'var(--color-gray40)'",
+      "component": "FileSidebar"
+    },
+    {
+      "rule": "NONTEXT-CONTRAST-004",
+      "wcag": "1.4.11 AA",
+      "severity": "minor",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/AppChrome.jsx:97",
+      "summary": "StatusBanner icons are below 3:1 on their tinted backgrounds: warning #fb0 on #fff1cc 1.51:1, error #f44053 on #fbd7db 2.78:1 (info #0072b1 on #def4fd 4.57:1 passes).",
+      "fix": "Use darker icon colours (e.g. warning #8a5a00, error #b71c1c). Low impact since the banner text carries the message.",
+      "evidence": "BANNER_VARIANTS.warning.iconColor 'var(--color-warning)', error.iconColor 'var(--color-danger)'",
+      "component": "StatusBanner"
+    },
+    {
+      "rule": "FORCED-COLORS-001",
+      "wcag": "n/a",
+      "severity": "moderate",
+      "confidence": "low",
+      "location": "src/javascript/osgiConfigManager/App/components/MonacoEditor.jsx:103",
+      "summary": "Secret masking in the raw editor relies on color: transparent plus a gradient background; in Windows forced-colors mode the UA may force the text colour and drop the gradient, showing the secret in clear.",
+      "fix": "Add @media (forced-colors: active) { .ocm-masked-secret { forced-color-adjust: none; color: transparent !important; background-image: radial-gradient(circle, CanvasText 2px, transparent 2.5px); } } and verify in Edge with forced colors on.",
+      "evidence": ".ocm-masked-secret { color: transparent !important; background-image: radial-gradient(... #4a5561 ...) }",
+      "component": "MonacoEditor"
+    },
+    {
+      "rule": "CONTRAST-TEXT-010",
+      "wcag": "1.4.3 AA",
+      "severity": "minor",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/Editor.jsx:120",
+      "summary": "The '(empty)' placeholder in the generic ConfigEditor is #ccc italic, 1.61:1 on white.",
+      "fix": "Use #6b6b6b or darker (at least 4.5:1). Editor.jsx is only rendered for files whose extension is not exactly lower-case .cfg/.yml, hence minor.",
+      "evidence": "<span style={{ color: '#ccc', fontStyle: 'italic' }}>",
+      "component": "ConfigEditor"
+    },
+    {
+      "rule": "NONTEXT-CONTRAST-005",
+      "wcag": "1.4.11 AA",
+      "severity": "minor",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/Editor.jsx:34",
+      "summary": "The multiline value textarea of the generic ConfigEditor has a #ccc border, 1.61:1 on white.",
+      "fix": "Use a border of at least 3:1, e.g. #8a8a8a or var(--color-gray).",
+      "evidence": "border: '1px solid #ccc'",
+      "component": "ConfigEditor"
+    },
+    {
+      "rule": "MOTION-001",
+      "wcag": "2.3.3 AAA",
+      "severity": "minor",
+      "location": "src/javascript/osgiConfigManager/App/components/DiffModal.tsx:118",
+      "summary": "No prefers-reduced-motion handling anywhere: modal slide-in, overlay transition, infinite loader spin (AppChrome.jsx:118) and smooth scrollIntoView (FileSidebar.jsx:72) always animate.",
+      "fix": "Add @media (prefers-reduced-motion: reduce) in the App <style> block (index.jsx:364) disabling modalSlideIn and transitions, slowing or replacing the spinner, and pass behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' to scrollIntoView.",
+      "evidence": "animation: 'modalSlideIn 0.3s ease-out'; transition: 'all 0.2s ease'; animation: 'osgi-config-manager-spin 0.8s linear infinite'; behavior: 'smooth'",
+      "component": "DiffModal / InlineLoader / FileSidebar"
+    },
+    {
+      "rule": "MONACO-THEME-001",
+      "wcag": "n/a",
+      "severity": "minor",
+      "location": "src/javascript/osgiConfigManager/App/components/MonacoEditor.jsx:745",
+      "summary": "YAML files use theme 'vs-light', which is not a Monaco built-in theme name; Monaco silently falls back to 'vs'.",
+      "fix": "Use 'vs' explicitly (keep autoDetectHighContrast at its default true so forced-colors users get hc-light/hc-black).",
+      "evidence": "theme: language === 'properties' ? 'properties-theme' : 'vs-light'",
+      "component": "MonacoEditor"
+    }
+  ],
+  "passed": [
+    "Monaco 'properties-theme' token colours on #fffffe: key #0000FF 8.59:1, comment #008000 5.13:1, delimiter/string #000000 21:1",
+    "Masked-secret dots #4a5561: 7.60:1 on white, 5.01:1 on Monaco selection #add6ff",
+    "DiffModal context text #333 on #f5f5f5 11.59:1; title #111 18.88:1; added 4.86:1 and removed 4.77:1 each pass 1.4.3 individually",
+    "DiffModal close icon #888 on white 3.54:1 (1.4.11)",
+    "YAML filenames in sidebar var(--color-accent_dark) #0072b1 on white 5.20:1; file type also stated by the extension, not colour-only",
+    "Metatype info badge 'i' #0072b1 on #def4fd 4.57:1",
+    "CfgEditor drag-handle icon gray_dark60: 3.82:1 on white, 3.63:1 on selected row (1.4.11)",
+    "CfgMetatypePropertyDialog: #666 on white 5.74:1, #555 on #fafafa 7.14:1, #0077b6 on white 4.87:1; tooltip doc text #fff/#d7e2e8/#f1f5f7 on dark tooltip >= 13:1 (assuming Moonstone tooltip bg #131c21)",
+    "Editor.jsx floating overlay #333 on #fff 12.63:1",
+    "ConfigStateBadge: MODULE / MODULE_DEFAULT / USER differ by icon shape (Build/Module/Edit) and label, not colour alone",
+    "Disabled config files: line-through on name and Enable/Disable label in toolbar give a non-colour cue",
+    "Comment rows: italic + '#' marker + Comments icon give a non-colour cue (contrast fails separately)",
+    "Moonstone tooltip label CSS (index.jsx:371-383) wraps and caps width at calc(100vw - 32px) - reflow-safe",
+    "Toast: minWidth 280px + 20px offset fits a 320px viewport; maxWidth 520px",
+    "1.4.4 Resize text: all font sizes are px/rem and scale with browser zoom; no viewport-unit font sizes; fixed 48px sidebar row heights still fit one 200% text line"
+  ],
+  "notes": [
+    "Moonstone 2.21 tokens with suffix 20/40/60 (e.g. --color-gray_dark60 = #29313699) are alpha colours; ratios above are computed after compositing on the actual background. Every text use of an alpha token in this module fails 4.5:1.",
+    "Third-party, for runtime confirmation and possible upstream report (not counted as findings): Moonstone focus ring outline 2px var(--moon-color-accent_light) #63d1ff is 1.74:1 on white (fails 1.4.11 / 2.4.7 contrast); ghost accent buttons use #00a0e3 text (2.94:1); default accent button colours, Typography color=textSecondary, Chip colours and TableRow isHighlighted were not measured from source.",
+    "Whether Typography inherits EMPTY_STATE_STYLE / InlineLoader colour (subtleTextColor 3.82:1) depends on Moonstone's Typography class; confirm in the runtime contrast pass.",
+    "Editor.jsx (generic ConfigEditor) is reached only when a listed file's extension is not exactly lower-case .cfg/.yml (backend matches case-insensitively, the UI uses case-sensitive endsWith); its other hard-coded colours (#007cb0 folder icon 4.46:1 on #fafafa, gradient #f0f4f7) are decorative or pass.",
+    "Monaco marker squiggles distinguish error vs warning by colour; this is Monaco's built-in rendering and markers are also listed in the hover/problems text.",
+    "For other specialists: the DiffModal close control (DiffModal.tsx:145) and CfgMetatypePropertyDialog close (line 112) are non-focusable divs with no accessible name; toasts have no live region; the compact sidebar ConfigStateBadge has no text alternative besides a hover tooltip.",
+    "Windows forced-colors mode was reviewed from source only: background-only cues (diff colours, sidebar status bar, selected create card, selected cfg row) disappear there; verify in Edge with forced colors active."
+  ]
+}

@@ -70,32 +70,43 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const toastMeta = toast ? getToastMeta(toast.type) : null;
 
+    const toastPaper = toast && (
+        <Paper
+            data-cy="toast-message"
+            style={{
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            borderLeft: `4px solid ${toastMeta?.borderColor}`,
+            padding: '8px 12px',
+            borderRadius: '6px',
+            zIndex: 10000,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            minWidth: '280px',
+            maxWidth: '520px'
+        }}
+        >
+            <span aria-hidden="true" style={{ display: 'flex' }}>{toastMeta?.icon}</span>
+            <Typography style={{ flex: 1 }}>{toast.message}</Typography>
+        </Paper>
+    );
+
+    // The toast is the only feedback for save, delete, create, import and toggle. Screen readers
+    // announce a change inside a live region that already exists, not a region mounted together
+    // with its text (WCAG 4.1.3), so both regions stay mounted and only their content changes.
+    // Errors go to the assertive one.
     return (
         <ToastContext.Provider value={{ notify, success, error, warning }}>
             {children}
-            {toast && (
-                <Paper
-                    data-cy="toast-message"
-                    style={{
-                    position: 'fixed',
-                    bottom: '20px',
-                    right: '20px',
-                    borderLeft: `4px solid ${toastMeta?.borderColor}`,
-                    padding: '8px 12px',
-                    borderRadius: '6px',
-                    zIndex: 10000,
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    minWidth: '280px',
-                    maxWidth: '520px'
-                }}
-                >
-                    {toastMeta?.icon}
-                    <Typography style={{ flex: 1 }}>{toast.message}</Typography>
-                </Paper>
-            )}
+            <div data-cy="toast-status-region" role="status" aria-live="polite" aria-atomic="true">
+                {toast?.type !== 'error' && toastPaper}
+            </div>
+            <div data-cy="toast-alert-region" role="alert" aria-atomic="true">
+                {toast?.type === 'error' && toastPaper}
+            </div>
         </ToastContext.Provider>
     );
 };

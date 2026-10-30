@@ -25,8 +25,9 @@ export const SelectedFileHeader = ({
     const isSaveDisabled = !hasUnsaved || ((isRawMode || isYamlFile) && !isYamlValid);
 
     return (
-        <div style={{...PANEL_HEADER_STYLE, alignItems: 'flex-start', gap: '16px'}}>
-            <div style={{minWidth: 0, flex: '1 1 auto'}}>
+        <div style={{...PANEL_HEADER_STYLE, alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap'}}>
+            {/* A 240px basis, not auto: the path's full length would otherwise always push Save to a second line. */}
+            <div style={{minWidth: 0, flex: '1 1 240px'}}>
                 <div data-cy="selected-file-name">
                     <OverflowPreviewText
                         text={selectedFile.name}

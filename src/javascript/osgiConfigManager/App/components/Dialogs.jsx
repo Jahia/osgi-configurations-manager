@@ -75,9 +75,16 @@ const getSelectableCardStyle = isSelected => ({
     background: isSelected ? 'var(--color-accent_light80)' : 'transparent',
     cursor: 'pointer',
     display: 'flex',
-    flexDirection: 'column',
-    gap: '4px'
+    alignItems: 'flex-start',
+    gap: 'var(--spacing-small)'
 });
+
+const OPTION_TEXT_STYLE = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    minWidth: 0
+};
 
 const EXISTING_INSTANCE_STYLE = {
     padding: '10px 12px',
@@ -87,31 +94,40 @@ const EXISTING_INSTANCE_STYLE = {
     gap: '2px'
 };
 
-const CreateOptionCard = ({dataCy, isSelected, onClick, title, subtitle, meta, description}) => (
-    <div
-        data-cy={dataCy}
-        style={getSelectableCardStyle(isSelected)}
-        onClick={onClick}
-    >
-        <Typography variant="body" weight="bold" style={{wordBreak: 'break-word'}}>
-            {title}
-        </Typography>
-        {subtitle && (
-            <Typography variant="caption" color="textSecondary" style={{wordBreak: 'break-word'}}>
-                {subtitle}
+// A native radio, not a clickable div: the options were unreachable by keyboard and their
+// selection was conveyed by a background colour only (WCAG 2.1.1, 4.1.2). The label keeps
+// the whole card clickable; the texts are spans because a label only holds phrasing content.
+const CreateOptionCard = ({dataCy, name, value, isSelected, onSelect, title, subtitle, meta, description}) => (
+    <label data-cy={dataCy} style={getSelectableCardStyle(isSelected)}>
+        <input
+            type="radio"
+            name={name}
+            value={value}
+            checked={isSelected}
+            onChange={onSelect}
+        />
+        <span style={OPTION_TEXT_STYLE}>
+            <Typography component="span" variant="body" weight="bold" style={{wordBreak: 'break-word'}}>
+                {title}
             </Typography>
-        )}
-        {meta && (
-            <Typography variant="caption" color="textSecondary">
-                {meta}
-            </Typography>
-        )}
-        {description && (
-            <Typography variant="caption" style={{color: 'var(--color-gray_dark20)'}}>
-                {description}
-            </Typography>
-        )}
-    </div>
+            {subtitle && (
+                <Typography component="span" variant="caption" color="textSecondary" style={{wordBreak: 'break-word'}}>
+                    {subtitle}
+                </Typography>
+            )}
+            {meta && (
+                <Typography component="span" variant="caption" color="textSecondary">
+                    {meta}
+                </Typography>
+            )}
+            {description && (
+                // gray_dark is opaque (12.9:1); the 20/40/60 variants are alpha and fail 4.5:1.
+                <Typography component="span" variant="caption" style={{color: 'var(--color-gray_dark)'}}>
+                    {description}
+                </Typography>
+            )}
+        </span>
+    </label>
 );
 
 export const ModalDialog = ({config, onClose}) => {
@@ -123,6 +139,8 @@ export const ModalDialog = ({config, onClose}) => {
     const [selectedFactoryPid, setSelectedFactoryPid] = React.useState('');
     const [factoryIdentifier, setFactoryIdentifier] = React.useState('');
     const [activeCreateTab, setActiveCreateTab] = React.useState('manual');
+    const metatypeGroupLabelId = React.useId();
+    const factoryGroupLabelId = React.useId();
 
     React.useEffect(() => {
         setPromptValue(config?.defaultValue || '');
@@ -360,9 +378,11 @@ export const ModalDialog = ({config, onClose}) => {
                                     </div>
                                 )}
 
+                                {/* role="radiogroup", not <fieldset>: Jahia's administration stylesheet gives every
+                                    fieldset an !important padding and border that inline styles cannot undo. */}
                                 {activeCreateTab === 'configuration' && (
-                                    <div style={SECTION_STYLE}>
-                                        <Typography variant="subheading" weight="bold">
+                                    <div role="radiogroup" aria-labelledby={metatypeGroupLabelId} style={SECTION_STYLE}>
+                                        <Typography id={metatypeGroupLabelId} variant="subheading" weight="bold">
                                             {t('modal.create.templateLabel')}
                                         </Typography>
 
@@ -379,12 +399,14 @@ export const ModalDialog = ({config, onClose}) => {
                                                 <CreateOptionCard
                                                     key={definition.pid}
                                                     dataCy={`modal-create-metatype-option-${encodeURIComponent(definition.pid)}`}
+                                                    name="osgi-create-metatype"
+                                                    value={definition.pid}
                                                     description={definition.description}
                                                     isSelected={selectedPid === definition.pid}
                                                     meta={definition.bundleName ? `${t('modal.create.bundle')}: ${definition.bundleName}` : null}
                                                     subtitle={definition.pid}
                                                     title={definition.name || definition.pid}
-                                                    onClick={() => {
+                                                    onSelect={() => {
                                                         setSelectedPid(definition.pid);
                                                         setManualFilename('');
                                                     }}
@@ -401,8 +423,8 @@ export const ModalDialog = ({config, onClose}) => {
                                 )}
 
                                 {activeCreateTab === 'factory' && (
-                                    <div style={SECTION_STYLE}>
-                                        <Typography variant="subheading" weight="bold">
+                                    <div role="radiogroup" aria-labelledby={factoryGroupLabelId} style={SECTION_STYLE}>
+                                        <Typography id={factoryGroupLabelId} variant="subheading" weight="bold">
                                             {t('modal.create.factoryLabel')}
                                         </Typography>
 
@@ -419,12 +441,14 @@ export const ModalDialog = ({config, onClose}) => {
                                                 <CreateOptionCard
                                                     key={`factory-${definition.pid}`}
                                                     dataCy={`modal-create-factory-option-${encodeURIComponent(definition.pid)}`}
+                                                    name="osgi-create-factory"
+                                                    value={definition.pid}
                                                     description={definition.description}
                                                     isSelected={selectedFactoryPid === definition.pid}
                                                     meta={definition.bundleName ? `${t('modal.create.bundle')}: ${definition.bundleName}` : t('modal.create.instanceCount', {count: definition.instanceCount || 0})}
                                                     subtitle={definition.pid}
                                                     title={definition.name || definition.pid}
-                                                    onClick={() => {
+                                                    onSelect={() => {
                                                         setSelectedFactoryPid(definition.pid);
                                                         setManualFilename('');
                                                     }}

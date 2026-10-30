@@ -1,0 +1,240 @@
+{
+  "skill": "tables-data-specialist",
+  "scope": [
+    "src/javascript/osgiConfigManager/**/*.{jsx,tsx,js,ts} (excluding *.test.*) - 26 files, 7579 lines"
+  ],
+  "findings": [
+    {
+      "rule": "TABLE-HEADER-TD",
+      "wcag": "1.3.1 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:179",
+      "summary": "The .cfg visual editor's header row is built from TableBodyCell, which renders <td>, so the table has no <th>: Property / Key, Value and Security are not associated with the cells or controls below them.",
+      "fix": "Use moonstone's TableHeadCell (renders <th>) or <TableBodyCell component=\"th\" scope=\"col\"> for every cell of CfgEditorHeader, with scope=\"col\".",
+      "evidence": "<thead><TableRow><TableBodyCell ...></TableBodyCell>... <TableBodyCell data-cy=\"cfg-header-property\"><Typography ...>{t('editor.header.property')}</Typography></TableBodyCell>",
+      "component": "CfgEditorHeader"
+    },
+    {
+      "rule": "TABLE-HEADER-TD",
+      "wcag": "1.3.1 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/Editor.jsx:326",
+      "summary": "The YAML visual editor's header row (Property / Key, Value, Security, Actions) uses TableBodyCell, i.e. <td>, so no cell has a column header.",
+      "fix": "Replace the four TableBodyCell in the <thead> with <TableHeadCell scope=\"col\"> (or TableBodyCell component=\"th\" scope=\"col\"), keeping the sticky styles.",
+      "evidence": "<thead><TableRow><TableBodyCell style={{ flex: '0 0 25%', position: 'sticky', ... }}><Typography variant=\"caption\" weight=\"bold\">{t('editor.header.property')}</Typography></TableBodyCell>",
+      "component": "ConfigEditor"
+    },
+    {
+      "rule": "TABLE-EMPTY-HEADER",
+      "wcag": "1.3.1 A",
+      "severity": "minor",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:181",
+      "summary": "Three columns of the .cfg table (reorder handle, entry type, delete action at lines 181, 182, 202) have empty header cells, so their content has no header once headers become <th>.",
+      "fix": "Give each header a visually hidden text: e.g. <th scope=\"col\"><span className=\"sr-only\">{t('editor.header.order')}</span></th>, ...{t('editor.header.type')}..., and {t('editor.header.actions')} (key already exists in en.json). Add the new keys to every locale file.",
+      "evidence": "<TableBodyCell style={{...cfgTableHeaderCellStyle, ...CFG_COLUMN_WIDTHS.drag}}></TableBodyCell>",
+      "component": "CfgEditorHeader"
+    },
+    {
+      "rule": "TABLE-CAPTION",
+      "wcag": "1.3.1 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:545",
+      "summary": "The .cfg properties table has no <caption>, aria-label or aria-labelledby, so screen readers announce an unnamed table.",
+      "fix": "Name the table after the file: <Table aria-label={t('editor.table.label', {name: filename})}> or a visually hidden <caption> as the first child (CfgEditor needs the filename prop, available in index.jsx as selectedFile.name).",
+      "evidence": "<Table style={{ width: '100%' }}><CfgEditorHeader t={t} />",
+      "component": "CfgEditor"
+    },
+    {
+      "rule": "TABLE-CAPTION",
+      "wcag": "1.3.1 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/Editor.jsx:325",
+      "summary": "The YAML properties table has no <caption> or accessible name.",
+      "fix": "Add a visually hidden <caption> or aria-label naming the file, e.g. 'Properties of {{name}}', as for CfgEditor.",
+      "evidence": "<Table style={{ width: '100%' }}><thead>...",
+      "component": "ConfigEditor"
+    },
+    {
+      "rule": "TABLE-ROW-HEADER",
+      "wcag": "1.3.1 A",
+      "severity": "minor",
+      "location": "src/javascript/osgiConfigManager/App/components/Editor.jsx:62",
+      "summary": "In the YAML table the property key cell identifies each row but is a <td>, so the Value, Security and Actions cells are not announced with their property name.",
+      "fix": "Render the key cell as <TableBodyCell component=\"th\" scope=\"row\">. Include the parent path in it as visually hidden text (see TREE-HIERARCHY) so a nested key is unambiguous.",
+      "evidence": "<TableBodyCell style={{ flex: '0 0 25%', paddingLeft: `${level * 20 + 20}px`, ... }}><div ...><Typography variant=\"caption\">{rowLabel}</Typography>",
+      "component": "LeafRow"
+    },
+    {
+      "rule": "TABLE-CELL-CONTROL-NAME",
+      "wcag": "4.1.2 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:778",
+      "summary": "The per-row encryption checkbox has no accessible name: moonstone's Checkbox renders a bare <input type=\"checkbox\">, and the title on the parent <td> does not name it.",
+      "fix": "Pass a name with row context: <Checkbox aria-label={t('editor.encryptValueOf', {key})} .../> (e.g. 'Encrypt value of {{key}}'); add the key to every locale file.",
+      "evidence": "<TableBodyCell ... title={t('editor.header.security')}><Checkbox data-cy={`cfg-encrypted-${index}`} checked={isEncrypted || false} onChange={...} /></TableBodyCell>",
+      "component": "CfgEditor"
+    },
+    {
+      "rule": "TABLE-CELL-CONTROL-NAME",
+      "wcag": "4.1.2 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/Editor.jsx:125",
+      "summary": "In the YAML table the encryption checkbox (line 125) and the value editors shown on edit (MultilineInput line 87, Input line 93) have no accessible name.",
+      "fix": "Add aria-label with the property: Checkbox aria-label 'Encrypt value of {{key}}'; Input and textarea aria-label 'Value of {{key}}' (pass rowLabel or keyString into LeafRow's editors).",
+      "evidence": "<Checkbox checked={node.encrypted} onChange={() => handlePropUpdate(currentPath, 'encrypted', !node.encrypted)} />",
+      "component": "LeafRow"
+    },
+    {
+      "rule": "TABLE-CELL-CONTROL-CONTEXT",
+      "wcag": "2.4.6 AA",
+      "severity": "moderate",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:684",
+      "summary": "Row controls of the .cfg table carry the same name in every row: textareas named only by placeholders 'Key'/'Value', and 'Delete this property', 'Reorder this entry...', 'Show secret value' with no property name.",
+      "fix": "Include the key in each name: key textarea aria-label 'Key of row {{n}}', value aria-label 'Value of {{key}}', delete aria-label 'Delete {{key}}', reorder aria-label 'Reorder {{key}}...', secret toggle 'Show value of {{key}}'. Keep the visible text inside each aria-label (2.5.3).",
+      "evidence": "placeholder={t('editor.placeholder.key')} / title={t('tooltip.deleteProperty')} (line 802) / aria-label={t('editor.reorderHandle')} (line 611) / aria-label={...t('tooltip.showSecret')} (line 769)",
+      "component": "CfgEditor"
+    },
+    {
+      "rule": "TABLE-ROW-TABSTOP",
+      "wcag": "2.4.3 A",
+      "severity": "moderate",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:583",
+      "summary": "moonstone TableRow renders <tr tabIndex=0> by default, so every row of the .cfg table, the YAML table (Editor.jsx:61, 160) and the file list (FileSidebar.jsx:137) is an extra Tab stop with no action of its own.",
+      "fix": "Pass tabIndex={-1} to TableRow in CfgEditor.jsx:583 and Editor.jsx:61/160 (rows stay clickable, Tab goes straight to the cell controls). In FileSidebar, replace the rows as per the file-list finding instead.",
+      "evidence": "moonstone 2.20.3 TableRow: z.createElement(t /* 'tr' */, { className: ..., tabIndex: 0, ...o, ref: s })",
+      "component": "moonstone TableRow"
+    },
+    {
+      "rule": "TABLE-REORDER-FOCUS",
+      "wcag": "2.4.3 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:614",
+      "summary": "After Arrow Up/Down moves an entry, focus stays on the handle at the old index (rows are keyed by index, line 584), which now belongs to the neighbouring entry; a second key press moves the wrong row, and nothing announces the new position.",
+      "fix": "After handleReorder(index, target), focus the reorder button of row target (keep a ref map like inputRefs) and announce 'Moved {{key}} to position {{n}} of {{total}}' in a role=\"status\" region. Also ignore the keys while filtering, as the drag handler does at line 600, since index±1 may be a hidden row.",
+      "evidence": "key={index} ... onKeyDown={(e) => { if (e.key === 'ArrowUp' && index > 0) { e.preventDefault(); handleReorder(index, index - 1); } ... }}",
+      "component": "CfgEditor"
+    },
+    {
+      "rule": "TABLE-FILTER-STATUS",
+      "wcag": "4.1.3 AA",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:536",
+      "summary": "Filtering the .cfg table updates a visible count 'Matching properties: N' that is not a status message, so screen reader users are not told how many rows remain, including when none match.",
+      "fix": "Render a container that always exists with role=\"status\" (aria-live polite) and put the count text inside it only while filtering, so the update is announced.",
+      "evidence": "{filtering && (<Typography variant=\"caption\" data-cy=\"cfg-filter-count\" ...>{t('editor.filter.count', {count: ...})}</Typography>)}",
+      "component": "CfgEditor"
+    },
+    {
+      "rule": "TREE-COLLAPSE-CONTROL",
+      "wcag": "2.1.1 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/Editor.jsx:170",
+      "summary": "YAML sections collapse through onClick on a <td> with chevron icons: not focusable, no button role, no aria-expanded, so keyboard and screen reader users cannot open or close a section or know its state.",
+      "fix": "Put a real button in the container cell: <button type=\"button\" aria-expanded={!isCollapsed} onClick={toggleCollapse}>{chevron}{folder}{displayLabel}</button>, with the icons aria-hidden. Keep the Add Property button outside it.",
+      "evidence": "<TableBodyCell colSpan={4} style={{ ..., cursor: 'pointer' }} onClick={toggleCollapse}>{isCollapsed ? <ChevronRight size=\"small\" /> : <ChevronDown size=\"small\" />}",
+      "component": "ContainerRow"
+    },
+    {
+      "rule": "TREE-HIERARCHY",
+      "wcag": "1.3.1 A",
+      "severity": "moderate",
+      "location": "src/javascript/osgiConfigManager/App/components/Editor.jsx:65",
+      "summary": "The nesting of YAML keys is shown only by left padding (level * 20px), a blue left border and backgrounds; a screen reader reads a flat list of rows where 'port' under two parents is indistinguishable.",
+      "fix": "Simplest: make the key cell a row header (th scope=\"row\") holding a visually hidden parent path, e.g. 'server › http › ' before the key. Full option: role=\"treegrid\" with aria-level, aria-expanded and aria-posinset/setsize, which also requires grid keyboard navigation; prefer the simple option.",
+      "evidence": "paddingLeft: `${level * 20 + 20}px` (LeafRow) / paddingLeft: `${level * 20 + 10}px`, borderLeft: level > 0 ? '4px solid #007cb0' : 'none' (ContainerRow, line 164)",
+      "component": "ConfigEditor"
+    },
+    {
+      "rule": "TABLE-INLINE-EDIT",
+      "wcag": "2.1.1 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/Editor.jsx:105",
+      "summary": "A YAML value becomes editable only on double-click of a non-focusable div, so keyboard users cannot edit values in the visual editor (only the raw Monaco mode remains).",
+      "fix": "Make the value cell's trigger focusable: a <button type=\"button\" aria-label={`Edit value of ${rowLabel}`}> that sets editingValueKey on click/Enter, or always render the Input. Return focus to that trigger when the editor blurs.",
+      "evidence": "<div onMouseEnter=... onDoubleClick={() => { onHideOverlay(); setEditingValueKey(keyString); }} style={{ cursor: 'text', ... }}>",
+      "component": "LeafRow"
+    },
+    {
+      "rule": "TABLE-EMPTY-STATE",
+      "wcag": "n/a",
+      "severity": "minor",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/CfgEditor.jsx:547",
+      "summary": "When a file has no entries (or every row is hidden by filter or comment toggles) the .cfg and YAML tables (Editor.jsx:334) render only their header row, with no message.",
+      "fix": "When no row renders, add <TableRow><TableBodyCell colSpan={6}>{t('editor.noEntries')}</TableBodyCell></TableRow> (colSpan={4} in Editor.jsx), with a filter-specific text when filtering.",
+      "evidence": "<TableBody>{Array.isArray(entries) && entries.map(...)}</TableBody>",
+      "component": "CfgEditor, ConfigEditor"
+    },
+    {
+      "rule": "DATA-LIST-AS-TABLE",
+      "wcag": "1.3.1 A",
+      "severity": "minor",
+      "location": "src/javascript/osgiConfigManager/App/components/FileSidebar.jsx:134",
+      "summary": "The file list is a one-dimensional list drawn as a two-column <table> with no headers or caption; the first column holds only a colour bar, so table navigation adds noise and Chromium may expose it as a layout table.",
+      "fix": "Use list or listbox semantics instead of a table (see link-checker LINK-CONTROL-ELEMENT at FileSidebar.jsx:137): <ul aria-label={t('app.fileListLabel')}> with one item per file, or role=\"listbox\". 1.3.1 does not require table semantics here.",
+      "evidence": "<Table style={{ width: '100%', tableLayout: 'fixed' }}><TableBody>{processedFiles.map(f => (<TableRow ...><TableBodyCell className=\"osgi-sidebar-status-cell\" width=\"12px\">",
+      "component": "FileSidebar"
+    },
+    {
+      "rule": "DATA-STATE-VISUAL-ONLY",
+      "wcag": "1.3.1 A",
+      "severity": "serious",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/FileSidebar.jsx:158",
+      "summary": "Each file's enabled/disabled status is shown only by a 3px green/grey bar and a line-through (line 173), and its origin (module, module default, user) only by an unlabelled icon chip (line 176) whose tooltip needs hover.",
+      "fix": "Add text for each state to every file item: visually hidden ', disabled' when !f.enabled, and the state label (t(config.labelKey)) as visually hidden text next to the compact chip, or aria-describedby. Keep the bar and the chip as decoration (aria-hidden).",
+      "evidence": "<div data-cy={`sidebar-file-status-...`} style={getFileStatusIndicatorStyle(f.enabled)} /> ... textDecoration: f.enabled ? 'none' : 'line-through' ... <ConfigStateBadge state={f.configState} compact />",
+      "component": "FileSidebar, ConfigStateBadge"
+    },
+    {
+      "rule": "DATA-DIFF-SEMANTICS",
+      "wcag": "1.3.1 A",
+      "severity": "serious",
+      "location": "src/javascript/osgiConfigManager/App/components/DiffModal.tsx:177",
+      "summary": "The review diff marks added and removed lines only by background and text colour on <span>s, with no +/- marker, <ins>/<del> or text, so screen reader users and users who cannot tell red from green cannot see which lines change.",
+      "fix": "Render added parts as <ins> and removed parts as <del>, each starting with visually hidden 'Added:' / 'Removed:' text (screen readers often ignore ins/del by default), plus a visible +/- gutter for 1.4.1. Table semantics are not needed: the unified diff is a single column.",
+      "evidence": "<span key={index} style={{ backgroundColor: part.added ? '#e6ffec' : part.removed ? '#ffebe9' : 'transparent', color: part.added ? '#1e7e34' : part.removed ? '#cb2431' : '#333', display: 'block' }}>",
+      "component": "DiffModal"
+    },
+    {
+      "rule": "DATA-SCROLL-REGION",
+      "wcag": "2.1.1 A",
+      "severity": "moderate",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/DiffModal.tsx:155",
+      "summary": "The diff body is a scroll container (maxHeight 60vh, overflowY auto) with nothing focusable inside, so in browsers that do not make scrollers focusable, keyboard users cannot scroll a long diff.",
+      "fix": "Make the region focusable and named: tabIndex={0} role=\"region\" aria-label={t('modal.diff.title', {name: filename})}, with a visible focus outline.",
+      "evidence": "<div style={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap', ..., maxHeight: '60vh', overflowY: 'auto', ... }}>",
+      "component": "DiffModal"
+    },
+    {
+      "rule": "DATA-LIST-SEMANTICS",
+      "wcag": "1.3.1 A",
+      "severity": "minor",
+      "confidence": "medium",
+      "location": "src/javascript/osgiConfigManager/App/components/MonacoEditor.jsx:1496",
+      "summary": "Collections of property and template cards are bare divs (here, CfgMetatypePropertyDialog.jsx:146 and Dialogs.jsx:369/409), so screen readers do not announce a list or the number of items.",
+      "fix": "Wrap each collection in <ul role=\"list\"> with one <li> per card (role=\"list\" keeps semantics when list-style is none in Safari), keeping the button or radio inside each item.",
+      "evidence": "{filteredProperties.map(property => (<div data-cy={`metatype-property-card-...`} key={property.id} style={{ border: ..., borderRadius: '6px', ... }}>",
+      "component": "MonacoEditor property panel, CfgMetatypePropertyDialog, Dialogs"
+    }
+  ],
+  "passed": [
+    "The .cfg and YAML property lists are real tables (moonstone Table/TableBody/TableRow/TableBodyCell render <table>/<tbody>/<tr>/<td>), not div grids, so 1.3.1 does not require converting div layouts there.",
+    "No role=\"grid\" or treegrid misuse, and no layout table needing role=\"presentation\" (the file list is reported as a list drawn as a table).",
+    "colSpan values match the column count: CfgEditor comment row 1+1+2+1+1 = 6 columns (line 636), YAML container row colSpan=4 for 4 columns (Editor.jsx:162).",
+    "No sortable columns, pagination, select-all checkbox or row multi-selection, so aria-sort, aria-current pagination and indeterminate-state checks do not apply.",
+    "Drag reordering has a keyboard alternative (reorder button, CfgEditor.jsx:608-622), so it is not drag-only (2.5.7).",
+    "DiffModal: a unified single-column diff with no line numbers or side-by-side columns is not tabular data; 1.3.1 does not require table semantics, only change markers (reported separately).",
+    "Metatype metadata inside cards ('Type: x', 'Optional: yes', 'Default: y', MonacoEditor.jsx:1551-1567; CfgMetatypePropertyDialog.jsx:179-188) keeps the label in the same text as the value, so <dl> markup is not required.",
+    "Masked values in the YAML table show a text placeholder ('*****', Editor.jsx:120) rather than an empty cell."
+  ],
+  "notes": [
+    "moonstone internals (TableRow defaults to tabIndex=0, TableBodyCell renders <td>, TableHeadCell renders <th>, Checkbox renders an unlabelled <input>) were read from @jahia/moonstone 2.20.3 in a sibling worktree; this worktree has no node_modules and package.json asks for ^2.21.0. Confirm in the browser that the behaviour did not change.",
+    "moonstone Table and TableRow add flex display classes (flexCol_nowrap, flexRow) to <table> and <tr>. Some browser/screen-reader pairs, notably WebKit with VoiceOver, have dropped table semantics when the display is overridden. Check the accessibility tree at the page URL (run_playwright_a11y_tree) for role table/row/columnheader after the <th> fix.",
+    "Decision for the team: for the YAML editor, a hidden parent path in a row header plus disclosure buttons (recommended) versus a full ARIA treegrid, which also requires arrow-key cell navigation and roving tabindex.",
+    "Overlap with other specialists: hover-only overflow previews (Editor.jsx:46, CfgEditor.jsx:313, AppChrome.jsx:163) and the hover-only metatype 'i' tooltip trigger (CfgEditor.jsx:696, a non-focusable div) fall under 1.4.13 / 2.1.1 and are left to the keyboard and ARIA specialists."
+  ]
+}

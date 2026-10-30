@@ -16,14 +16,25 @@ export const CHROME_TOKENS = {
     selectionColor: 'var(--color-accent_light_plain20)'
 };
 
+// Jahia's LayoutContent sizes itself to its content's max-content width, so a long file path
+// widened the whole page to ~1060px and pushed Save, Cancel and Delete off-screen below
+// ~1420px of window width (WCAG 1.4.10). contain: inline-size makes the module take the width
+// it is given instead, and wrapping stacks the file list above the editor when that is narrow.
 export const APP_LAYOUT_STYLE = {
     display: 'flex',
+    flexWrap: 'wrap',
     height: '100%',
-    overflow: 'hidden',
+    overflow: 'auto',
+    contain: 'inline-size',
     padding: CHROME_TOKENS.panelPadding,
     gap: CHROME_TOKENS.panelGap,
     minWidth: 0
 };
+
+// The sidebar keeps its 350px when there is room; the editor's large grow factor gives it
+// all the remaining width, and the pair wraps once the editor would fall under 420px.
+export const SIDEBAR_PANE_FLEX = {flex: '1 1 350px', minWidth: 0};
+export const EDITOR_PANE_FLEX = {flex: '999 1 420px', minWidth: 0};
 
 export const PANEL_STYLE = {
     display: 'flex',

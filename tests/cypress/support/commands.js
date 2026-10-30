@@ -350,6 +350,17 @@ Cypress.Commands.add('ensureRawCfgMode', () => {
 });
 
 /**
+ * Give the raw editor the keyboard focus. Clicking its textarea is not enough: the textarea is
+ * 1px wide at the left edge of the text, and when the layout puts it at a fractional x, the
+ * click's rounded coordinate lands in the gutter, which Monaco handles without focusing, so
+ * every key typed afterwards was lost.
+ */
+Cypress.Commands.add('focusRawEditor', () => {
+    cy.get('.monaco-editor textarea', {timeout: 30000}).focus();
+    cy.get('.monaco-editor', {timeout: 10000}).should('have.class', 'focused');
+});
+
+/**
  * Open the create configuration dialog and wait for it to be ready.
  */
 Cypress.Commands.add('openCreateConfigDialog', () => {
