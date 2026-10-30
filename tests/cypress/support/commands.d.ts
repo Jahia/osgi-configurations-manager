@@ -34,6 +34,7 @@ declare namespace Cypress {
         openOsgiFile(filename: string): Chainable<void>;
         ensureVisualCfgMode(): Chainable<void>;
         ensureRawCfgMode(): Chainable<void>;
+        focusRawEditor(): Chainable<void>;
         openCreateConfigDialog(): Chainable<void>;
         confirmModal(): Chainable<void>;
         cancelModal(): Chainable<void>;
