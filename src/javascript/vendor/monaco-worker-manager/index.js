@@ -1,3 +1,9 @@
+/**
+ * @license MIT
+ * Based on monaco-worker-manager 2.0.1, Copyright © 2022 Remco Haszing.
+ * Distributed under the MIT License; see LICENSE.md in this folder.
+ */
+
 // Replaces monaco-worker-manager 2.0.1 (unmaintained since 2022), which monaco-yaml uses to run
 // its language service in a web worker. webpack.config.js aliases the package to this folder.
 //

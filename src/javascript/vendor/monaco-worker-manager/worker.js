@@ -1,3 +1,9 @@
+/**
+ * @license MIT
+ * Based on monaco-worker-manager 2.0.1, Copyright © 2022 Remco Haszing.
+ * Distributed under the MIT License; see LICENSE.md in this folder.
+ */
+
 // Worker half of the monaco-worker-manager replacement (see index.js); imported by monaco-yaml's
 // yaml.worker.js. 2.0.1 imported 'monaco-editor/esm/vs/editor/editor.worker.js', a path the exports
 // map of Monaco 0.53+ no longer resolves; 'monaco-editor/editor/editor.worker' is the same file
