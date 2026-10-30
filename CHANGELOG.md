@@ -16,6 +16,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   translations built with it (the user's language and English), as hashed chunks, over the ones
   Jahia fetched.
 
+### Changed
+
+- **The raw editor runs on Monaco 0.57** (from 0.52, held since #60). `monaco-yaml` 5.5.1, still
+  its latest release, depends on `monaco-worker-manager` 2.0.1, which no longer works with Monaco
+  0.55+: its worker imports a path the new exports map does not resolve, which failed the build,
+  and it calls `monaco.editor.createWebWorker` with options that call no longer takes, which would
+  have silently dropped YAML validation, hover and completion. The module now carries a corrected
+  copy of that package (`src/javascript/vendor/monaco-worker-manager`), and webpack resolves the
+  package to it. The `monaco-editor` hold in `.github/dependabot.yml` is lifted. `tsconfig.json`
+  now excludes the build output, which since this version contains the TypeScript compiler and
+  made every second build fail.
+
 ## [1.2.1] - 2026-09-29
 
 ### Added

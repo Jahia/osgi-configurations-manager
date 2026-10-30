@@ -23,7 +23,14 @@ module.exports = (env, argv) => {
         },
         resolve: {
             mainFields: ['module', 'main'],
-            extensions: ['.mjs', '.js', '.jsx', '.json', '.ts', '.tsx']
+            extensions: ['.mjs', '.js', '.jsx', '.json', '.ts', '.tsx'],
+            // monaco-yaml's monaco-worker-manager 2.0.1 does not work with Monaco 0.55+: its worker
+            // import fails the build and its createWebWorker call silently loses the YAML service.
+            // See src/javascript/vendor/monaco-worker-manager/index.js.
+            alias: {
+                'monaco-worker-manager$': path.resolve(__dirname, 'src/javascript/vendor/monaco-worker-manager/index.js'),
+                'monaco-worker-manager/worker$': path.resolve(__dirname, 'src/javascript/vendor/monaco-worker-manager/worker.js')
+            }
         },
         module: {
             rules: [

@@ -26,7 +26,7 @@
         "css-loader": "^7.1.5",
         "diff": "^9.0.0",
         "i18next": "^20.6.1",
-        "monaco-editor": "0.52.2",
+        "monaco-editor": "0.57.0",
         "monaco-yaml": "^5.5.1",
         "prop-types": "^15.7.2",
         "react": "^18.3.1",
