@@ -13,11 +13,14 @@ describe('ConfigStateBadge', () => {
         expect(screen.getByText('configState.badge.module')).toBeInTheDocument();
     });
 
-    it('renders the compact label when compact mode is enabled', () => {
+    // The compact chip is an icon only: its state stays available as text to screen readers.
+    it('renders an icon-only chip with the state as visually hidden text when compact', () => {
         const {container} = render(<ConfigStateBadge state="MODULE_DEFAULT" compact/>);
 
-        expect(screen.queryByText('configState.badge.moduleDefault')).not.toBeInTheDocument();
-        expect(container.querySelector('[data-cy="config-state-badge-module_default"]')).toBeInTheDocument();
+        const chip = container.querySelector('[data-cy="config-state-badge-module_default"]');
+        expect(chip).toBeInTheDocument();
+        expect(chip.closest('[aria-hidden="true"]')).not.toBeNull();
+        expect(screen.getByText(/configState\.badge\.moduleDefault/).style.position).toBe('absolute');
     });
 
     it('falls back to the user state for unknown values', () => {
