@@ -244,11 +244,11 @@ describe('CfgEditor', () => {
         it('shows the value with the eye, and masks it again', () => {
             const {container} = render(<CfgEditor {...baseProps} entries={entries} metatypeDefinition={metatype}/>);
             const cell = container.querySelector('[data-cy="cfg-value-cell-1"]');
-            const eye = cell.querySelector('button[aria-label="tooltip.showSecret"]');
+            const eye = cell.querySelector('button[aria-label="editor.aria.showSecret"]');
 
             fireEvent.click(eye);
             expect(cell.querySelector('input').getAttribute('type')).toBe('text');
-            fireEvent.click(cell.querySelector('button[aria-label="tooltip.hideSecret"]'));
+            fireEvent.click(cell.querySelector('button[aria-label="editor.aria.hideSecret"]'));
             expect(cell.querySelector('input').getAttribute('type')).toBe('password');
         });
 

@@ -140,6 +140,12 @@ export const ModalDialog = ({config, onClose}) => {
     const [factoryIdentifier, setFactoryIdentifier] = React.useState('');
     const [activeCreateTab, setActiveCreateTab] = React.useState('manual');
     const metatypeGroupLabelId = React.useId();
+    const titleId = React.useId();
+    const messageId = React.useId();
+    const manualInputId = React.useId();
+    const filterInputId = React.useId();
+    const factoryIdentifierId = React.useId();
+    const factoryIdentifierErrorId = React.useId();
     const factoryGroupLabelId = React.useId();
 
     React.useEffect(() => {
@@ -289,6 +295,11 @@ export const ModalDialog = ({config, onClose}) => {
     return (
         <Modal
             data-cy="modal-dialog"
+            // Moonstone points aria-labelledby at the dialog itself, which named it with its whole
+            // content (every option of the Create list included): name it by its title, and
+            // describe it by its message (WCAG 4.1.2).
+            aria-labelledby={titleId}
+            aria-describedby={showModalMessage ? messageId : undefined}
             isOpen
             size={isCreateConfig ? 'large' : 'medium'}
             onOpenChange={isOpen => {
@@ -308,8 +319,8 @@ export const ModalDialog = ({config, onClose}) => {
                             onClick={onClose}
                         />
                     </div>
-                    <ModalHeader title={config.title}>
-                        {showModalMessage ? config.message : null}
+                    <ModalHeader title={<span id={titleId}>{config.title}</span>}>
+                        {showModalMessage ? <span id={messageId}>{config.message}</span> : null}
                     </ModalHeader>
                 </div>
 
@@ -318,6 +329,9 @@ export const ModalDialog = ({config, onClose}) => {
                         {hasPromptInput && (
                             <Input
                                 data-cy="modal-prompt-input"
+                                // The question is the dialog's message (or title): the placeholder
+                                // "Type here..." was the field's only name (WCAG 4.1.2).
+                                aria-labelledby={showModalMessage ? messageId : titleId}
                                 autoFocus
                                 value={promptValue}
                                 variant="outlined"
@@ -349,11 +363,12 @@ export const ModalDialog = ({config, onClose}) => {
 
                                 {activeCreateTab === 'manual' && (
                                     <div style={SECTION_STYLE}>
-                                        <Typography variant="subheading" weight="bold">
+                                        <Typography component="label" htmlFor={manualInputId} variant="subheading" weight="bold">
                                             {t('modal.create.manualLabel')}
                                         </Typography>
                                         <Input
                                             data-cy="modal-create-manual-input"
+                                            id={manualInputId}
                                             autoFocus
                                             value={manualFilename}
                                             variant="outlined"
@@ -365,11 +380,12 @@ export const ModalDialog = ({config, onClose}) => {
 
                                 {(activeCreateTab === 'configuration' || activeCreateTab === 'factory') && (
                                     <div style={SECTION_STYLE}>
-                                        <Typography variant="subheading" weight="bold">
+                                        <Typography component="label" htmlFor={filterInputId} variant="subheading" weight="bold">
                                             {t('modal.create.filterLabel')}
                                         </Typography>
                                         <Input
                                             data-cy="modal-create-filter-input"
+                                            id={filterInputId}
                                             value={filterValue}
                                             variant="outlined"
                                             onChange={event => setFilterValue(event.target.value)}
@@ -463,11 +479,14 @@ export const ModalDialog = ({config, onClose}) => {
                                                 </Typography>
 
                                                 <div style={SECTION_STYLE}>
-                                                    <Typography variant="body" weight="bold">
+                                                    <Typography component="label" htmlFor={factoryIdentifierId} variant="body" weight="bold">
                                                         {t('modal.create.factoryIdentifierLabel')}
                                                     </Typography>
                                                     <Input
                                                         data-cy="modal-create-factory-identifier-input"
+                                                        id={factoryIdentifierId}
+                                                        aria-invalid={isFactoryIdentifierTaken || undefined}
+                                                        aria-describedby={isFactoryIdentifierTaken ? factoryIdentifierErrorId : undefined}
                                                         autoFocus
                                                         value={factoryIdentifier}
                                                         variant="outlined"
@@ -479,11 +498,15 @@ export const ModalDialog = ({config, onClose}) => {
                                                             {t('modal.create.suggestedFilename')}: {factorySuggestedFilename}
                                                         </Typography>
                                                     )}
-                                                    {isFactoryIdentifierTaken && (
-                                                        <Typography variant="caption" style={{color: 'var(--color-danger)'}}>
-                                                            {t('modal.create.factoryIdentifierExists')}
-                                                        </Typography>
-                                                    )}
+                                                    {/* Announced and tied to the field; danger_dark, as danger was
+                                                        3.68:1 (WCAG 1.4.3, 3.3.1, 4.1.3). */}
+                                                    <div role="alert">
+                                                        {isFactoryIdentifierTaken && (
+                                                            <Typography id={factoryIdentifierErrorId} variant="caption" style={{color: 'var(--color-danger_dark)'}}>
+                                                                {t('modal.create.factoryIdentifierExists')}
+                                                            </Typography>
+                                                        )}
+                                                    </div>
                                                 </div>
 
                                                 <div style={SECTION_STYLE}>

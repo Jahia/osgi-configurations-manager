@@ -31,9 +31,9 @@ describe('ConfigStateBadge — i18n key usage', () => {
         expect(mockT).toHaveBeenCalledWith('configState.tooltip.user');
     });
 
-    it('compact mode skips the label key but still resolves the tooltip key', () => {
+    it('compact mode resolves the label key (as hidden text) and the tooltip key', () => {
         render(<ConfigStateBadge state="MODULE" compact />);
-        expect(mockT).not.toHaveBeenCalledWith('configState.badge.module');
+        expect(mockT).toHaveBeenCalledWith('configState.badge.module');
         expect(mockT).toHaveBeenCalledWith('configState.tooltip.module');
     });
 });

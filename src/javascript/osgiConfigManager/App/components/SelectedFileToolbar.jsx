@@ -1,8 +1,8 @@
 import React from 'react';
 import {
+    Button,
     CloudDownload,
     Delete,
-    Dropdown,
     Module,
     Code,
     ViewList,
@@ -33,7 +33,8 @@ const TOOLBAR_GROUP_STYLE = {
 };
 
 const MODE_SELECTOR_STYLE = {
-    minWidth: '160px'
+    display: 'flex',
+    gap: '4px'
 };
 
 export const SelectedFileToolbar = ({
@@ -51,17 +52,10 @@ export const SelectedFileToolbar = ({
     const isCfgFile = selectedFile.name.endsWith('.cfg') || selectedFile.name.endsWith('.cfg.disabled');
     const isEnabled = selectedFile.enabled !== false && !selectedFile.name.endsWith('.disabled');
     const modeOptions = [
-        {
-            label: t('editor.button.modeVisual'),
-            value: 'visual',
-            iconStart: <ViewList style={BUTTON_ICON_STYLE} />
-        },
-        {
-            label: t('editor.button.modeRaw'),
-            value: 'raw',
-            iconStart: <Code style={BUTTON_ICON_STYLE} />
-        }
+        {label: t('editor.button.modeVisual'), value: 'visual', icon: <ViewList style={BUTTON_ICON_STYLE} />},
+        {label: t('editor.button.modeRaw'), value: 'raw', icon: <Code style={BUTTON_ICON_STYLE} />}
     ];
+    const currentMode = isRawMode ? 'raw' : 'visual';
 
     return (
         <div data-cy="selected-file-toolbar" style={TOOLBAR_STYLE}>
@@ -100,22 +94,35 @@ export const SelectedFileToolbar = ({
             </div>
 
             {isCfgFile && (
-                <div data-cy="editor-mode-toggle" data-mode={isRawMode ? 'raw' : 'visual'} data-loading={isLoadingFile ? 'true' : 'false'} style={MODE_SELECTOR_STYLE}>
-                    <Dropdown
-                        data-cy="editor-mode-dropdown"
-                        variant="ghost"
-                        size="small"
-                        isDisabled={isLoadingFile}
-                        value={isRawMode ? 'raw' : 'visual'}
-                        icon={isRawMode ? <Code style={BUTTON_ICON_STYLE} /> : <ViewList style={BUTTON_ICON_STYLE} />}
-                        data={modeOptions}
-                        onChange={(event, item) => {
-                            if (item?.value) {
-                                onSetEditorMode(item.value);
-                            }
-                            return true;
-                        }}
-                    />
+                // Two pressed/unpressed buttons rather than Moonstone's Dropdown: its menu opened on
+                // Enter but kept the focus on the trigger, so the mode could not be changed from the
+                // keyboard (WCAG 2.1.1), and the trigger was announced as a listbox (4.1.2).
+                <div
+                    data-cy="editor-mode-toggle"
+                    data-mode={currentMode}
+                    data-loading={isLoadingFile ? 'true' : 'false'}
+                    role="group"
+                    aria-label={t('editor.modeLabel')}
+                    style={MODE_SELECTOR_STYLE}
+                >
+                    {modeOptions.map(option => (
+                        <Button
+                            key={option.value}
+                            data-cy={`editor-mode-${option.value}`}
+                            label={option.label}
+                            icon={option.icon}
+                            size="small"
+                            // The current mode is filled, the other one ghost; aria-pressed says which.
+                            variant={currentMode === option.value ? 'default' : 'ghost'}
+                            aria-pressed={currentMode === option.value}
+                            isDisabled={isLoadingFile}
+                            onClick={() => {
+                                if (currentMode !== option.value) {
+                                    onSetEditorMode(option.value);
+                                }
+                            }}
+                        />
+                    ))}
                 </div>
             )}
         </div>

@@ -25,9 +25,41 @@ describe('DiffModal accessibility', () => {
 
         const dialog = screen.getByRole('dialog');
         expect(dialog.getAttribute('aria-modal')).toBe('true');
-        expect(dialog.getAttribute('aria-label')).toBe('modal.diff.title');
+        // Named by its visible title.
+        expect(screen.getByRole('dialog', { name: 'modal.diff.title' })).toBe(dialog);
         // getByRole throws if the accessible confirm button is missing
         screen.getByRole('button', { name: 'app.save' });
+        // The close icon was a div: a named button now.
+        screen.getByRole('button', { name: 'modal.close' });
+    });
+
+    // Added and removed lines differed only by colour.
+    it('marks added and removed lines in text, not only in colour', () => {
+        render(<DiffModal isOpen={true} {...baseProps} />);
+
+        const changes = screen.getByRole('region', { name: 'modal.diff.changes' });
+        expect(changes.getAttribute('tabindex')).toBe('0');
+        const removed = changes.querySelector('del') as HTMLElement;
+        const added = changes.querySelector('ins') as HTMLElement;
+        expect(removed.textContent).toBe('−modal.diff.removed a = 1');
+        expect(added.textContent).toBe('+modal.diff.added a = 2');
+    });
+
+    it('makes the page behind it inert while open, and gives the focus back on close', () => {
+        const opener = document.createElement('button');
+        const behind = document.createElement('div');
+        document.body.append(opener, behind);
+        opener.focus();
+
+        const { rerender } = render(<DiffModal isOpen={true} {...baseProps} />);
+        expect(behind.hasAttribute('inert')).toBe(true);
+        expect(opener.hasAttribute('inert')).toBe(true);
+
+        rerender(<DiffModal isOpen={false} {...baseProps} />);
+        expect(behind.hasAttribute('inert')).toBe(false);
+        expect(document.activeElement).toBe(opener);
+        opener.remove();
+        behind.remove();
     });
 
     it('moves focus inside the dialog when it opens', () => {

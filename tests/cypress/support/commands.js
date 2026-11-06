@@ -326,8 +326,7 @@ Cypress.Commands.add('ensureVisualCfgMode', () => {
     // The switch is refused while the file loads, so wait for the load to end before clicking.
     cy.get('[data-cy="editor-mode-toggle"][data-loading="false"]', {timeout: 30000}).then($toggle => {
         if ($toggle.attr('data-mode') !== 'visual') {
-            cy.wrap($toggle).find('[role="listbox"]').click();
-            cy.contains('.moonstone-menuItem', 'Visual Edit', {timeout: 30000}).click({force: true});
+            cy.wrap($toggle).find('[data-cy="editor-mode-visual"]').click();
         }
     });
 
@@ -341,8 +340,7 @@ Cypress.Commands.add('ensureRawCfgMode', () => {
     // The switch is refused while the file loads, so wait for the load to end before clicking.
     cy.get('[data-cy="editor-mode-toggle"][data-loading="false"]', {timeout: 30000}).then($toggle => {
         if ($toggle.attr('data-mode') !== 'raw') {
-            cy.wrap($toggle).find('[role="listbox"]').click();
-            cy.contains('.moonstone-menuItem', 'Raw Edit', {timeout: 30000}).click({force: true});
+            cy.wrap($toggle).find('[data-cy="editor-mode-raw"]').click();
         }
     });
 

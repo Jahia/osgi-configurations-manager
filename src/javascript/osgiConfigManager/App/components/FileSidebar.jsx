@@ -18,8 +18,11 @@ import {
     OverflowPreviewText,
     PANEL_STYLE,
     SEARCH_SECTION_STYLE,
-    SIDEBAR_PANE_FLEX
+    SIDEBAR_PANE_FLEX,
+    VISUALLY_HIDDEN_STYLE
 } from './AppChrome';
+
+const fileRowId = name => 'file-row-' + encodeURIComponent(name);
 
 export const FileSidebar = ({
     files,
@@ -67,8 +70,7 @@ export const FileSidebar = ({
         if (selectedFile) {
             // sanitize name for ID? usually Names are filenames, safe-ish but good to be careful.
             // encodeURIComponent might be safer if filenames have weird chars
-            const safeId = 'file-row-' + encodeURIComponent(selectedFile.name);
-            const el = document.getElementById(safeId);
+            const el = document.getElementById(fileRowId(selectedFile.name));
             if (el) {
                 el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
             }
@@ -91,8 +93,16 @@ export const FileSidebar = ({
             e.preventDefault();
             const prevIndex = currentIndex > 0 ? currentIndex - 1 : processedFiles.length - 1;
             handleFileClick(processedFiles[prevIndex]);
+        } else if (e.key === 'Home') {
+            e.preventDefault();
+            handleFileClick(processedFiles[0]);
+        } else if (e.key === 'End') {
+            e.preventDefault();
+            handleFileClick(processedFiles[processedFiles.length - 1]);
         }
     };
+
+    const isSelectedListed = Boolean(selectedFile) && processedFiles.some(f => f.name === selectedFile.name);
 
     return (
         <Paper style={{ ...PANEL_STYLE, ...SIDEBAR_PANE_FLEX, height: '100%' }}>
@@ -101,6 +111,7 @@ export const FileSidebar = ({
                 <div data-cy="file-search-input">
                     <SearchInput
                         value={searchTerm}
+                        aria-label={t('app.searchLabel')}
                         placeholder={t('app.searchPlaceholder')}
                         onChange={e => setSearchTerm(e.target.value)}
                         onClear={() => setSearchTerm('')}
@@ -117,28 +128,38 @@ export const FileSidebar = ({
                         <div data-cy="deep-search-toggle" style={{ display: 'flex', alignItems: 'center' }}>
                             <Switch
                                 data-cy="deep-search-toggle-control"
+                                id="osgi-deep-search"
                                 checked={searchInContent}
                                 onChange={() => setSearchInContent(!searchInContent)}
                             />
                         </div>
                     </Tooltip>
-                    <Typography variant="body">{t('app.searchDeep')}</Typography>
+                    <Typography variant="body" component="label" htmlFor="osgi-deep-search">{t('app.searchDeep')}</Typography>
                 </div>
             </div>
 
-            {/* File List */}
+            {/* File List: one Tab stop (the listbox), the arrow keys move the selection. Moonstone
+                gives every row tabIndex 0, which made each file a Tab stop that Enter did not open. */}
             <div
-                style={{ flex: 1, overflowY: 'auto', outline: 'none' }}
+                className="osgi-file-list"
+                data-cy="file-list"
+                role="listbox"
+                aria-label={t('app.fileList')}
+                aria-activedescendant={isSelectedListed ? fileRowId(selectedFile.name) : undefined}
+                style={{ flex: 1, overflowY: 'auto' }}
                 tabIndex={0}
                 onKeyDown={handleKeyDown}
             >
-                <Table style={{ width: '100%', tableLayout: 'fixed', overflow: 'hidden' }}>
-                    <TableBody>
+                <Table role="presentation" style={{ width: '100%', tableLayout: 'fixed', overflow: 'hidden' }}>
+                    <TableBody role="presentation">
                         {processedFiles.map(f => (
                             <TableRow
                                 key={f.path}
-                                id={'file-row-' + encodeURIComponent(f.name)}
+                                id={fileRowId(f.name)}
                                 data-cy={`file-row-${encodeURIComponent(f.name)}`}
+                                role="option"
+                                aria-selected={selectedFile?.name === f.name}
+                                tabIndex={undefined}
                                 isHighlighted={selectedFile?.name === f.name}
                                 onClick={() => handleFileClick(f)}
                                 style={{ cursor: 'pointer' }}
@@ -156,7 +177,7 @@ export const FileSidebar = ({
                                             height: '48px'
                                         }}
                                     >
-                                        <div data-cy={`sidebar-file-status-${encodeURIComponent(f.name)}`} style={getFileStatusIndicatorStyle(f.enabled)} />
+                                        <div data-cy={`sidebar-file-status-${encodeURIComponent(f.name)}`} aria-hidden="true" style={getFileStatusIndicatorStyle(f.enabled)} />
                                     </div>
                                 </TableBodyCell>
                                 <TableBodyCell>
@@ -174,6 +195,7 @@ export const FileSidebar = ({
                                                 textDecoration: f.enabled ? 'none' : 'line-through'
                                             }}
                                         />
+                                        {!f.enabled && <span style={VISUALLY_HIDDEN_STYLE}>, {t('app.fileDisabled')}</span>}
                                         <ConfigStateBadge state={f.configState} compact />
                                     </div>
                                 </TableBodyCell>
