@@ -41,6 +41,12 @@ updates:
         versions: [">=13"]
       - dependency-name: "@jahia/ui-extender"
         versions: [">=2"]
+      # Other Module Federation shared libs / Jahia packages: majors follow the platform.
+      - dependency-name: "@jahia/*"
+        update-types: ["version-update:semver-major"]
+      # Babel 9 is not validated yet (Babel 8 itself needed the classic JSX runtime, see below).
+      - dependency-name: "@babel/*"
+        update-types: ["version-update:semver-major"]
 
       # react-test-renderer must match React and @testing-library/react needs React 18+, so both
       # were held while the module was on React 16. React is on 18.3.1 now, matching jcontent, so
@@ -131,6 +137,19 @@ updates:
         versions: [">=16"]
       - dependency-name: "typescript"
         versions: [">=7"]
+      # Majors here can only be validated by the Docker/Cypress e2e harness, not by ci.yml.
+      - dependency-name: "@jahia/cypress"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@apollo/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "graphql"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "graphql-tag"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "mocha"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@babel/*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "maven"
     directory: "/"
@@ -144,6 +163,13 @@ updates:
       maven-major:
         patterns: ["*"]
         update-types: ["major"]
+    ignore:
+      # The jahia-modules parent and org.jahia.* artifacts define the target Jahia version
+      # (8.2.3.2): raise them deliberately, never through a routine bump.
+      - dependency-name: "org.jahia.*"
+      # OSGi spec artifacts are provided by the platform (Felix SCR 2.1.30 = DS 1.4 on 8.2):
+      # newer ones raise Require-Capability / Import-Package floors and the bundle stops resolving.
+      - dependency-name: "org.osgi:*"
 
   - package-ecosystem: "github-actions"
     directory: "/"
