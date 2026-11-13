@@ -116,6 +116,23 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   banners appeared with the file and screen readers said nothing. Their text also says
   "Error" or "Warning", which only their colour told apart.
 - **The Metatype property filter of the raw editor has a visible label** (WCAG 1.3.1, 4.1.2).
+- **The focus can be seen everywhere, whole (WCAG 1.4.11, 2.4.7, 2.5.8).** Found by walking every
+  screen with the keyboard and looking at screenshots.
+  - Moonstone draws its focus ring in a light blue, 1.74:1 on white. The module's buttons, tabs,
+    checkboxes, switch and fields now use the dark blue, 5.2:1.
+  - In the visual editor, the table cells cut every ring, as did the edges of the editor at the
+    filter and the footer buttons. The rings are whole now.
+  - The raw editor showed only its caret when it had the focus. It is now framed.
+  - A password value was a field drawn inside another field, with no ring of its own. It is one
+    field now, and its eye button is centred on it.
+  - Move up, Move down, Delete and the eye were 16px targets overlapping each other. They are 24px.
+  - At 1440px, the Security column and the row buttons were scrolled out of view. The table fits.
+  - The overlay that shows a revealed secret no longer covers the next row once the focus moves,
+    and Escape closes it.
+- **Every action control has a tooltip.** The drag handle, Move up/down, Delete, the encryption
+  checkbox, the eye, Visual / Raw Edit, Search in content and the raw editor's toolbar show
+  Moonstone's tooltip, on hover and on keyboard focus, where they had a slow grey browser one or
+  none. A tooltip no longer replaces a control's own description, such as why Save is refused.
 
 ### Changed
 

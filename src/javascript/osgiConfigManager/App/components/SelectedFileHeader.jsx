@@ -98,11 +98,10 @@ export const SelectedFileHeader = ({
                     />
 
                     {/* Blocked by errors, Save stays focusable (aria-disabled, not disabled) so that its
-                        description, the reason below, can be reached. Moonstone's Tooltip would replace
-                        that description with its own, hence no tooltip then. */}
+                        description, the reason below, can be reached. */}
                     <ActionButton
                         dataCy="save-config-button"
-                        tooltip={isBlockedByErrors ? undefined : t('tooltip.save')}
+                        tooltip={t('tooltip.save')}
                         label={t('app.save')}
                         color="accent"
                         icon={<Save size="big" />}

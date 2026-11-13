@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { WithTooltip } from './WithTooltip';
 import {
     Table,
     TableBody,
     TableRow,
     TableBodyCell,
-    Input,
     Checkbox,
     Button,
     Tooltip,
@@ -51,13 +51,15 @@ export const matchesCfgFilter = (entry, filter, isSecretKey = () => false) => {
     return key.includes(needle) || value.includes(needle);
 };
 
+// The minimums fit the editor beside the file list at 1440px (about 560px): at 768px, Security and
+// the row actions were scrolled out of view at 100% zoom.
 const CFG_COLUMN_WIDTHS = {
-    drag: {flex: '0 0 48px', minWidth: '48px'},
-    type: {flex: '0 0 40px', minWidth: '40px'},
-    property: {flex: '1 1 0%', minWidth: '240px'},
-    value: {flex: '1 1 0%', minWidth: '240px'},
+    drag: {flex: '0 0 40px', minWidth: '40px'},
+    type: {flex: '0 0 32px', minWidth: '32px'},
+    property: {flex: '1 1 0%', minWidth: '120px'},
+    value: {flex: '1 1 0%', minWidth: '140px'},
     security: {flex: '0 0 88px', minWidth: '88px'},
-    actions: {flex: '0 0 112px', minWidth: '112px'}
+    actions: {flex: '0 0 96px', minWidth: '96px'}
 };
 
 // In a narrow editor the table scrolls sideways inside its own container (a data table may,
@@ -99,9 +101,9 @@ const cfgCommentColor = 'var(--color-success_dark)';
 
 const EditorToolbarButton = ({dataCy, tooltip, ...buttonProps}) => (
     <div data-cy={dataCy}>
-        <Tooltip label={tooltip}>
+        <WithTooltip label={tooltip}>
             <Button {...buttonProps}/>
-        </Tooltip>
+        </WithTooltip>
     </div>
 );
 
@@ -318,6 +320,19 @@ export const CfgEditor = ({
     const [filter, setFilter] = useState('');
     const filtering = filter.trim() !== '';
     const [overlay, setOverlay] = useState(null);
+    // Escape dismisses the revealed-secret overlay (WCAG 1.4.13).
+    useEffect(() => {
+        if (!overlay) {
+            return undefined;
+        }
+        const onKeyDown = event => {
+            if (event.key === 'Escape') {
+                setOverlay(null);
+            }
+        };
+        document.addEventListener('keydown', onKeyDown);
+        return () => document.removeEventListener('keydown', onKeyDown);
+    }, [overlay]);
     const [visibleSecrets, setVisibleSecrets] = useState({});
     const [isMetatypeDialogOpen, setIsMetatypeDialogOpen] = useState(false);
     // What the last move did, for screen readers: a move changes no field they are on.
@@ -579,7 +594,9 @@ export const CfgEditor = ({
         : null;
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', height: '100%', overflow: 'hidden' }}>
+        // minHeight 0, not overflow hidden: the table scrolls in its own box, and a hidden overflow
+        // here cut the focus rings of the filter and of the footer buttons at the edges.
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', height: '100%', minHeight: 0 }}>
             {overlay && createPortal(
                 <div style={{
                     ...FLOATING_TOOLTIP_STYLE,
@@ -620,8 +637,11 @@ export const CfgEditor = ({
             </div>
             <div role="status" data-cy="cfg-reorder-status" style={VISUALLY_HIDDEN_STYLE}>{reorderAnnouncement}</div>
 
-            <div style={{ flex: 1, overflow: 'auto' }} onScroll={() => setOverlay(null)}>
-                <Table aria-label={t('editor.aria.table')} style={{ width: '100%', minWidth: CFG_TABLE_MIN_WIDTH }}>
+            {/* The revealed-secret overlay closes when the focus moves: it could cover the next row's
+                field (WCAG 2.4.11). */}
+            <div style={{ flex: 1, overflow: 'auto' }} onScroll={() => setOverlay(null)} onFocusCapture={() => setOverlay(null)}>
+                {/* osgi-cfg-table: index.jsx lets its cells overflow, so that focus rings are not cut. */}
+                <Table className="osgi-cfg-table" aria-label={t('editor.aria.table')} style={{ width: '100%', minWidth: CFG_TABLE_MIN_WIDTH }}>
                     <CfgEditorHeader t={t} />
                     <TableBody>
                         {Array.isArray(entries) && entries.map((entry, index) => {
@@ -684,11 +704,12 @@ export const CfgEditor = ({
                                             assistive-technology users. Arrow Up/Down call the same handleReorder
                                             the drop handler uses. stopPropagation keeps a click on the handle from
                                             selecting the row. */}
+                                        <WithTooltip label={t('editor.reorderHandle')}>
                                         <button
                                             type="button"
                                             data-cy={`cfg-reorder-${index}`}
+                                            className="osgi-cfg-icon-button"
                                             aria-label={t('editor.aria.reorder', {name})}
-                                            title={t('editor.reorderHandle')}
                                             onClick={(e) => e.stopPropagation()}
                                             onKeyDown={(e) => {
                                                 if (e.key === 'ArrowUp') {
@@ -703,6 +724,7 @@ export const CfgEditor = ({
                                         >
                                             <HandleDrag />
                                         </button>
+                                        </WithTooltip>
                                     </TableBodyCell>
 
                                     <TableBodyCell style={{ ...cfgRowIconCellStyle, ...CFG_COLUMN_WIDTHS.type }}>
@@ -779,6 +801,7 @@ export const CfgEditor = ({
                                                             <button
                                                                 type="button"
                                                                 data-cy={`cfg-metatype-info-${index}`}
+                                                                className="osgi-cfg-icon-button"
                                                                 aria-label={t('editor.aria.metatypeInfo', {name})}
                                                                 onClick={e => e.stopPropagation()}
                                                                 style={{
@@ -815,16 +838,16 @@ export const CfgEditor = ({
                                                 >
                                                     {isMasked ? (
                                                         <div
-                                                            style={{ flex: 1, display: 'flex' }}
+                                                            style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '4px' }}
                                                             onMouseDown={(e) => e.stopPropagation()}
                                                             draggable={false}
                                                             onDragStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
                                                         >
-                                                            <Input
-                                                                // @ts-ignore
-                                                                inputRef={el => setInputRef(index, 'value', el)}
-                                                                // Actually Input forwards ref. We can use ref={el => ...}
+                                                            {/* A native input like the other fields: Moonstone's Input drew its own
+                                                                bordered box around this bordered field, a field inside a field. */}
+                                                            <input
                                                                 ref={el => setInputRef(index, 'value', el)}
+                                                                className="osgi-cfg-field"
                                                                 data-cy={`cfg-value-${index}`}
                                                                 value={value}
                                                                 onChange={e => onUpdate(index, 'value', e.target.value)}
@@ -833,9 +856,20 @@ export const CfgEditor = ({
                                                                 aria-label={t('editor.aria.value', {name})}
                                                                 // Keeps the browser from filling in the admin's saved password.
                                                                 autoComplete="new-password"
+                                                                spellCheck={false}
                                                                 type={!isSecretVisible ? 'password' : 'text'}
-                                                                style={{ ...cfgTextInputStyle, width: '100%' }}
+                                                                style={{ ...cfgTextInputStyle, font: 'inherit', lineHeight: '1.5', boxSizing: 'border-box', flex: '1 1 auto', minWidth: 0, width: 'auto' }}
                                                             />
+                                                            {/* 24px, centred on the field: at 16px it sat high and overlapped
+                                                                the field's target (WCAG 2.5.8). */}
+                                                            <WithTooltip label={isSecretVisible ? t('tooltip.hideSecret') : t('tooltip.showSecret')}>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    icon={isSecretVisible ? <Hidden /> : <Visibility />}
+                                                                    onClick={(e) => { e.stopPropagation(); toggleSecret(index); }}
+                                                                    aria-label={isSecretVisible ? t('editor.aria.hideSecret', {name}) : t('editor.aria.showSecret', {name})}
+                                                                />
+                                                            </WithTooltip>
                                                         </div>
                                                     ) : (
                                                         <AutoResizeTextArea
@@ -851,33 +885,23 @@ export const CfgEditor = ({
                                                         />
                                                     )}
 
-                                                    {isMasked && (
-                                                        <Tooltip label={isSecretVisible ? t('tooltip.hideSecret') : t('tooltip.showSecret')}>
-                                                            <Button
-                                                                variant="ghost"
-                                                                icon={isSecretVisible ? <Hidden /> : <Visibility />}
-                                                                onClick={(e) => { e.stopPropagation(); toggleSecret(index); }}
-                                                                size="small"
-                                                                aria-label={isSecretVisible ? t('editor.aria.hideSecret', {name}) : t('editor.aria.showSecret', {name})}
-                                                                style={{ marginLeft: '4px', marginTop: '-4px' }}
-                                                            />
-                                                        </Tooltip>
-                                                    )}
                                                 </div>
                                             </TableBodyCell>
 
-                                            <TableBodyCell style={{ ...cfgRowIconCellStyle, ...CFG_COLUMN_WIDTHS.security }} title={t('editor.header.security')}>
-                                                <Checkbox
-                                                    data-cy={`cfg-encrypted-${index}`}
-                                                    // The title on the cell does not name the input (WCAG 4.1.2).
-                                                    aria-label={t('editor.encryptValueOf', {key: key || `#${index + 1}`})}
-                                                    checked={isEncrypted || false}
-                                                    onChange={() => {
-                                                        // Sync toggle: Just flip the flag
-                                                        // handleToggleEncryption passed from parent handles the flag logic
-                                                        handleToggleEncryption([index, 'value'], isEncrypted, value);
-                                                    }}
-                                                />
+                                            <TableBodyCell style={{ ...cfgRowIconCellStyle, ...CFG_COLUMN_WIDTHS.security }}>
+                                                <WithTooltip label={t('editor.encryptValueOf', {key: key || `#${index + 1}`})}>
+                                                    <Checkbox
+                                                        data-cy={`cfg-encrypted-${index}`}
+                                                        // A title on the cell did not name the input (WCAG 4.1.2).
+                                                        aria-label={t('editor.encryptValueOf', {key: key || `#${index + 1}`})}
+                                                        checked={isEncrypted || false}
+                                                        onChange={() => {
+                                                            // Sync toggle: Just flip the flag
+                                                            // handleToggleEncryption passed from parent handles the flag logic
+                                                            handleToggleEncryption([index, 'value'], isEncrypted, value);
+                                                        }}
+                                                    />
+                                                </WithTooltip>
                                             </TableBodyCell>
                                         </>
                                     )}
@@ -885,48 +909,52 @@ export const CfgEditor = ({
                                     <TableBodyCell style={{ ...cfgRowIconCellStyle, ...CFG_COLUMN_WIDTHS.actions, gap: '2px' }}>
                                         {/* Move up / down in one click: dragging was the only way with a pointer
                                             (WCAG 2.5.7). Out of the Tab order, where the handle's arrow keys
-                                            already do it, so a row does not cost two more Tab stops. */}
-                                        <Button
-                                            data-cy={`cfg-move-up-${index}`}
-                                            icon={<ChevronUp />}
-                                            variant="ghost"
-                                            size="small"
-                                            tabIndex={-1}
-                                            isDisabled={!canMoveUp}
-                                            aria-label={t('editor.aria.moveUp', {name})}
-                                            title={t('editor.aria.moveUp', {name})}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                moveEntry(index, -1, 'cfg-reorder');
-                                            }}
-                                        />
-                                        <Button
-                                            data-cy={`cfg-move-down-${index}`}
-                                            icon={<ChevronDown />}
-                                            variant="ghost"
-                                            size="small"
-                                            tabIndex={-1}
-                                            isDisabled={!canMoveDown}
-                                            aria-label={t('editor.aria.moveDown', {name})}
-                                            title={t('editor.aria.moveDown', {name})}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                moveEntry(index, 1, 'cfg-reorder');
-                                            }}
-                                        />
-                                        <Button
-                                            data-cy={`cfg-delete-${index}`}
-                                            icon={<Close />}
-                                            variant="ghost"
-                                            color="danger"
-                                            size="small"
-                                            aria-label={t('editor.aria.delete', {name})}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDeleteProperty([index]);
-                                            }}
-                                            title={t('tooltip.deleteProperty')}
-                                        />
+                                            already do it, so a row does not cost two more Tab stops. Default size,
+                                            24px: at 16px the three targets overlapped (WCAG 2.5.8). A flex row, as each
+                                            tooltip wraps its button in a block. */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                        <WithTooltip label={t('editor.aria.moveUp', {name})}>
+                                            <Button
+                                                data-cy={`cfg-move-up-${index}`}
+                                                icon={<ChevronUp />}
+                                                variant="ghost"
+                                                tabIndex={-1}
+                                                isDisabled={!canMoveUp}
+                                                aria-label={t('editor.aria.moveUp', {name})}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    moveEntry(index, -1, 'cfg-reorder');
+                                                }}
+                                            />
+                                        </WithTooltip>
+                                        <WithTooltip label={t('editor.aria.moveDown', {name})}>
+                                            <Button
+                                                data-cy={`cfg-move-down-${index}`}
+                                                icon={<ChevronDown />}
+                                                variant="ghost"
+                                                tabIndex={-1}
+                                                isDisabled={!canMoveDown}
+                                                aria-label={t('editor.aria.moveDown', {name})}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    moveEntry(index, 1, 'cfg-reorder');
+                                                }}
+                                            />
+                                        </WithTooltip>
+                                        <WithTooltip label={t('editor.aria.delete', {name})}>
+                                            <Button
+                                                data-cy={`cfg-delete-${index}`}
+                                                icon={<Close />}
+                                                variant="ghost"
+                                                color="danger"
+                                                aria-label={t('editor.aria.delete', {name})}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDeleteProperty([index]);
+                                                }}
+                                            />
+                                        </WithTooltip>
+                                        </div>
                                     </TableBodyCell>
                                 </TableRow>
                             );

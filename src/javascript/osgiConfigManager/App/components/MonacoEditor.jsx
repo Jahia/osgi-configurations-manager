@@ -7,6 +7,7 @@ import { configureMonacoYaml } from 'monaco-yaml';
 // here, through the subpath the package exports for its ESM sources.
 import { TabFocus } from 'monaco-editor/editor/browser/config/tabFocus.js';
 import { Button, Input, Typography } from '@jahia/moonstone';
+import { WithTooltip } from './WithTooltip';
 import { Add, Undo, RotateRight, Code, Lock, Unlock, Visibility, Hidden, Check } from '@jahia/moonstone';
 import { useTranslation } from 'react-i18next';
 import { osgiService } from '../api/osgiService';
@@ -116,9 +117,13 @@ const MASKED_SECRET_STYLE = `
     background-position: left center;
 }`;
 
-const RawToolbarButton = ({ dataCy, dataState, ...props }) => (
+// The black Moonstone tooltip, where a native title showed late and grey. describeTooltip keeps
+// the text as the button's description too, when it says more than the label (a shortcut, a reason).
+const RawToolbarButton = ({ dataCy, dataState, tooltip, describeTooltip = false, ...props }) => (
     <div data-cy={dataCy} data-state={dataState}>
-        <Button variant="ghost" {...props} />
+        <WithTooltip label={tooltip} describe={describeTooltip}>
+            <Button variant="ghost" {...props} />
+        </WithTooltip>
     </div>
 );
 
@@ -1389,14 +1394,14 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                                 label={t('editor.button.undo')}
                                 icon={<Undo style={TOOLBAR_BUTTON_ICON_STYLE} />}
                                 onClick={handleUndo}
-                                title={t('tooltip.undo')}
+                                tooltip={t('tooltip.undo')}
                             />
                             <RawToolbarButton
                                 dataCy="raw-editor-redo"
                                 label={t('editor.button.redo')}
                                 icon={<RotateRight style={TOOLBAR_BUTTON_ICON_STYLE} />}
                                 onClick={handleRedo}
-                                title={t('tooltip.redo')}
+                                tooltip={t('tooltip.redo')}
                             />
                             <RawToolbarDivider />
                             <RawToolbarButton
@@ -1404,7 +1409,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                                 label={t('editor.button.format')}
                                 icon={<Code style={TOOLBAR_BUTTON_ICON_STYLE} />}
                                 onClick={handleFormat}
-                                title={t('tooltip.format')}
+                                tooltip={t('tooltip.format')}
                             />
                             <RawToolbarDivider />
                             <RawToolbarButton
@@ -1412,14 +1417,16 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                                 label={t('editor.button.encrypt')}
                                 icon={<Lock style={TOOLBAR_BUTTON_ICON_STYLE} />}
                                 onClick={handleEncryptSelection}
-                                title={t('tooltip.encryptSelection')}
+                                tooltip={t('tooltip.encryptSelection')}
+                                describeTooltip
                             />
                             <RawToolbarButton
                                 dataCy="raw-editor-decrypt"
                                 label={t('editor.button.decrypt')}
                                 icon={<Unlock style={TOOLBAR_BUTTON_ICON_STYLE} />}
                                 onClick={handleDecryptSelection}
-                                title={t('tooltip.decryptSelection')}
+                                tooltip={t('tooltip.decryptSelection')}
+                                describeTooltip
                             />
                             <RawToolbarDivider />
                             <RawToolbarButton
@@ -1429,7 +1436,8 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                                 icon={secretsVisible ? <Hidden style={TOOLBAR_BUTTON_ICON_STYLE} /> : <Visibility style={TOOLBAR_BUTTON_ICON_STYLE} />}
                                 onClick={() => setSecretsVisible(visible => !visible)}
                                 disabled={secretCount === 0 && !secretsVisible}
-                                title={secretsVisible ? t('tooltip.hideSecrets') : t('tooltip.showSecrets')}
+                                tooltip={secretsVisible ? t('tooltip.hideSecrets') : t('tooltip.showSecrets')}
+                                describeTooltip
                             />
                             <RawToolbarDivider />
                             <RawToolbarButton
@@ -1442,7 +1450,8 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                                 variant={tabMovesFocus ? 'default' : 'ghost'}
                                 icon={tabMovesFocus ? <Check style={TOOLBAR_BUTTON_ICON_STYLE} /> : undefined}
                                 onClick={() => TabFocus.setTabFocusMode(!TabFocus.getTabFocusMode())}
-                                title={t('tooltip.tabMovesFocus')}
+                                tooltip={t('tooltip.tabMovesFocus')}
+                                describeTooltip
                             />
                             {showRawPropertyPanel && (
                                 <>
@@ -1453,7 +1462,8 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                                         icon={<Add style={TOOLBAR_BUTTON_ICON_STYLE} />}
                                         onClick={() => supportsMetatypeAssistance && setShowPropertyPanel(true)}
                                         disabled={!supportsMetatypeAssistance}
-                                        title={supportsMetatypeAssistance ? t('tooltip.addMetatypeProperty') : t('tooltip.addMetatypePropertyDisabled')}
+                                        tooltip={supportsMetatypeAssistance ? t('tooltip.addMetatypeProperty') : t('tooltip.addMetatypePropertyDisabled')}
+                                        describeTooltip
                                     />
                                 </>
                             )}
@@ -1461,15 +1471,17 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
 
                     </div>
 
-                    <div style={RAW_EDITOR_CANVAS_STYLE}>
+                    {/* The editor sits 2px inside its canvas, whose focus ring (index.jsx) draws in that band:
+                        on Monaco itself, its own layers painted over any outline. */}
+                    <div className="osgi-raw-editor-canvas" style={RAW_EDITOR_CANVAS_STYLE}>
                         <div
                             ref={containerRef}
                             style={{
                                 position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                bottom: 0,
+                                top: '2px',
+                                left: '2px',
+                                right: '2px',
+                                bottom: '2px',
                                 overflow: 'hidden'
                             }}
                         />

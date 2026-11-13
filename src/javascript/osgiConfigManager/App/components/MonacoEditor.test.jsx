@@ -23,8 +23,9 @@ jest.mock('../hooks/useToast', () => ({
 }));
 
 // Keep moonstone + AppChrome out of the way: this test is about the editor value contract.
+// Tooltip renders only its child, so a button stays the wrapper's direct child.
 jest.mock('@jahia/moonstone', () => new Proxy({}, {
-    get: () => (props) => <div {...props} />
+    get: (target, name) => (name === 'Tooltip' ? ({children}) => children : (props) => <div {...props} />)
 }));
 jest.mock('./AppChrome', () => ({
     CHROME_TOKENS: {},

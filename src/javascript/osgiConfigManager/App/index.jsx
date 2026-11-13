@@ -288,7 +288,9 @@ const AppContent = () => {
                                         />
                                     )}
 
-                                    <div style={{ flex: '1 1 0%', display: 'flex', flexDirection: 'column', overflow: 'hidden', marginTop: '8px', minWidth: 0 }}>
+                                    {/* 4px of padding, given back by the margin: the hidden overflow cut the outer 4px
+                                        of focus rings (2px ring, 2px offset) at its edges. */}
+                                    <div style={{ flex: '1 1 0%', display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '4px', margin: '4px -4px -4px', minWidth: 0 }}>
                                         {loadingFile ? (
                                             <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
                                                 <InlineLoader label={t('app.loadingFile')} />
@@ -396,16 +398,69 @@ const App = () => (
                     outline-offset: -2px;
                 }
                 /* Moonstone's tabs (the Create dialog's Manual / Configuration / Factory) are gray,
-                   3.95:1, and accent when selected, 2.89:1; their focus ring is accent_light,
-                   1.6:1 (WCAG 1.4.3, 1.4.11). */
+                   3.95:1, and accent when selected, 2.89:1 (WCAG 1.4.3). */
                 .moonstone-tabItem:not(.moonstone-reverse) {
                     color: var(--color-gray_dark);
                 }
                 .moonstone-tabItem.moonstone-tabItem_selected:not(.moonstone-reverse) {
                     color: var(--color-accent_dark);
                 }
-                .moonstone-tabItem:focus-visible {
+                /* Moonstone draws focus in accent_light, 1.74:1 on white (WCAG 1.4.11): the module's
+                   own parts and dialogs use accent_dark, 5.2:1. Only the colour changes, so the states
+                   where Moonstone hides the ring keep it hidden. Doubled classes outweigh Moonstone's
+                   variant rules, (0,4,0) in 2.19 and 2.21. */
+                :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"])
+                    :is(.moonstone-button.moonstone-button, .moonstone-tabItem.moonstone-tabItem, .moonstone-checkbox_input.moonstone-checkbox_input,
+                        .moonstone-checkboxItem.moonstone-checkboxItem, .moonstone-dropdown.moonstone-dropdown, .moonstone-textarea.moonstone-textarea):focus-visible:not(:disabled) {
                     outline-color: var(--color-accent_dark);
+                }
+                /* Inputs ring their bordered wrapper. */
+                :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"])
+                    .moonstone-baseInput.moonstone-baseInput:has(input:focus-visible) {
+                    outline-color: var(--color-accent_dark);
+                }
+                /* The switch drew a 2px border inside its track, 1.24:1 and half under the knob: ring the
+                   whole switch instead. */
+                :is([data-cy="osgi-config-manager"], [data-cy="app-header"]) .moonstone-switch_input.moonstone-switch_input:focus-visible {
+                    border: 0;
+                }
+                :is([data-cy="osgi-config-manager"], [data-cy="app-header"]) .moonstone-switch:has(> .moonstone-switch_input:focus-visible) {
+                    outline: 2px solid var(--color-accent_dark);
+                    outline-offset: 2px;
+                    border-radius: 12px;
+                }
+                /* The visual editor's own icon buttons (drag handle, Metatype info) had the browser's ring. */
+                .osgi-cfg-icon-button:focus {
+                    outline: none;
+                }
+                .osgi-cfg-icon-button:focus-visible {
+                    outline: 2px solid var(--color-accent_dark);
+                    outline-offset: 2px;
+                    border-radius: 4px;
+                }
+                /* Moonstone's body cells clip their content (an overflow:auto cell around an
+                   overflow:hidden text span), which cut every focus ring in the table. The fields wrap
+                   and grow, so no body cell needs it. */
+                .osgi-cfg-table .moonstone-TableBody .moonstone-tableBodyCell {
+                    overflow: visible;
+                }
+                .osgi-cfg-table .moonstone-TableBody .moonstone-typography.moonstone-nowrap {
+                    overflow: visible;
+                    white-space: normal;
+                    text-overflow: clip;
+                }
+                .osgi-cfg-table .moonstone-TableCell {
+                    padding-left: 8px;
+                    padding-right: 8px;
+                }
+                .osgi-cfg-table thead .moonstone-typography.moonstone-nowrap {
+                    white-space: normal;
+                }
+                /* Monaco shows only its caret when it has the focus: ring the 2px band left around it,
+                   where none of its own layers paints over the ring. */
+                .osgi-raw-editor-canvas:has(.monaco-editor.focused) {
+                    outline: 2px solid var(--color-accent_dark);
+                    outline-offset: -2px;
                 }
                 /* The radio of a Create option is small and its card scrolls: ring the whole card,
                    inside, as the list would clip an outer ring. */
