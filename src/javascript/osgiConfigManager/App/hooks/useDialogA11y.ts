@@ -10,8 +10,8 @@ const FOCUSABLE_SELECTOR = [
 ].join(',');
 
 // Live regions stay out of inert: a message announced while a dialog is open (an error toast)
-// would otherwise be silent.
-const LIVE_REGION_SELECTOR = '[role="status"], [role="alert"], [aria-live]';
+// would otherwise be silent. The toast host holds both toast regions and the toast's close button.
+const LIVE_REGION_SELECTOR = '[role="status"], [role="alert"], [aria-live], [data-live-host]';
 
 /**
  * Makes everything outside the dialog inert, so neither Tab nor a screen reader's own navigation

@@ -85,6 +85,37 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
     without a word.
   - The picker announces how many properties match, and its options read their type and default.
   - The delete confirmation's button reads **Delete**, not **OK**.
+- **Save says why it is refused (WCAG 3.3.1, 4.1.2, 4.1.3).** With errors in the raw editor,
+  Save was silently disabled, and a disabled button cannot be reached to hear why. It now stays
+  focusable and is described by a reason shown under it, "Save is unavailable until these errors
+  are fixed", with the first five errors and their line. The reason is announced once the content
+  has stayed invalid for a moment, not at every keystroke.
+- **Importing no longer overwrites a configuration without asking (WCAG 3.3.4).**
+  - The check read the file list as shown, which holds only the matches while **Search in
+    content** is on, so an existing configuration was replaced without a question. It now asks
+    the server.
+  - It compared one spelling of the file name. Importing `foo.yml` over `foo.cfg`, or `Foo.cfg`,
+    now asks too, and the question names every file that will be overwritten or deleted.
+  - **Rename** was never drawn in that question, and a name typed after it was not checked again.
+    Both are fixed.
+- **New keeps what was typed when the file cannot be created (WCAG 3.3.1, 3.3.2, 3.3.7).**
+  - The dialog closed before the name was checked. A wrong extension or a server error replaced it
+    with another dialog, and the name had to be typed again. The dialog now stays open, shows the
+    error under the field and moves the focus there.
+  - The allowed extensions are stated under the field before Create, and Enter in it creates.
+  - The selected template or factory is marked by a bar, where a colour Moonstone does not define
+    left it unmarked, and the focused one by a ring (WCAG 1.4.11, 2.4.7). The tabs are readable:
+    3.95:1 and 2.89:1 before.
+- **Closing a dialog gives the focus back to the button that opened it (WCAG 2.4.3).** It went to
+  the top of the page, Escape included.
+- **Error and warning notifications stay until they are closed (WCAG 2.2.1).** They vanished after
+  6 seconds, though they are often the only report of a failed save, delete or import. Every
+  notification has a close button, and its timer stops while the pointer or the focus is on it.
+  The same message twice in a row is announced twice.
+- **A file that fails to load, or is managed by a module, is announced (WCAG 4.1.3).** These
+  banners appeared with the file and screen readers said nothing. Their text also says
+  "Error" or "Warning", which only their colour told apart.
+- **The Metatype property filter of the raw editor has a visible label** (WCAG 1.3.1, 4.1.2).
 
 ### Changed
 

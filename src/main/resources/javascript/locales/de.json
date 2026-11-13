@@ -29,7 +29,8 @@
         "decryptNoValue": "Setzen Sie den Cursor auf eine Zeile mit einem ENC(...)-Wert",
         "decryptRefused": "Dieser Wert kann hier nicht entschlüsselt werden: er ist nicht in der gespeicherten Datei oder wurde mit einem anderen Geheimnis verschlüsselt",
         "encryptFailed": "Der Wert konnte nicht verschlüsselt werden",
-        "undecryptableValues": "{{count}} verschlüsselte(r) Wert(e) konnte(n) nicht entschlüsselt werden und werden wie gespeichert angezeigt: nicht in der gespeicherten Datei oder mit einem anderen Geheimnis verschlüsselt"
+        "undecryptableValues": "{{count}} verschlüsselte(r) Wert(e) konnte(n) nicht entschlüsselt werden und werden wie gespeichert angezeigt: nicht in der gespeicherten Datei oder mit einem anderen Geheimnis verschlüsselt",
+        "dismiss": "Benachrichtigung schließen"
     },
     "modal": {
         "cancel": "Abbrechen",
@@ -62,7 +63,8 @@
             "factoryIdentifierPlaceholder": "Z.B. cache-admin",
             "factoryIdentifierExists": "Eine Instanz mit diesem Namen existiert bereits.",
             "existingInstances": "Vorhandene Instanzen",
-            "emptyInstances": "Für diese Factory existiert noch keine Instanz."
+            "emptyInstances": "Für diese Factory existiert noch keine Instanz.",
+            "manualHint": "Der Name muss auf .cfg oder .yml enden, z.B. org.test.config.cfg. Hängen Sie .disabled an, um sie deaktiviert anzulegen."
         },
         "unsaved": {
             "title": "Ungespeicherte Änderungen",
@@ -108,13 +110,13 @@
         },
         "conflict": {
             "title": "Datei existiert",
-            "message": "Die Datei '{{name}}' existiert bereits. Was möchten Sie tun?",
+            "message": "Der Import von '{{name}}' ersetzt diese Konfiguration. Diese Dateien werden überschrieben oder gelöscht: {{files}}. Was möchten Sie tun?",
             "overwrite": "Überschreiben",
             "rename": "Umbenennen"
         },
         "rename": {
             "title": "Datei umbenennen",
-            "message": "Neuen Dateinamen eingeben:"
+            "message": "Neuen Dateinamen eingeben, endend auf .cfg oder .yml:"
         },
         "prompt": {
             "placeholder": "Hier eingeben..."
@@ -170,7 +172,10 @@
         "validation": {
             "missingKey": "Eigenschaft muss vor dem Trennzeichen einen Schlüssel haben",
             "duplicateKey": "Doppelter Schlüssel '{{key}}'",
-            "unknownMetatypeProperty": "Eigenschaft '{{key}}' ist nicht im Metatype dieser PID deklariert"
+            "unknownMetatypeProperty": "Eigenschaft '{{key}}' ist nicht im Metatype dieser PID deklariert",
+            "saveBlocked": "Speichern ist erst möglich, wenn diese Fehler behoben sind ({{count}}):",
+            "errorAt": "Zeile {{line}}: {{message}}",
+            "moreErrors": "{{count}} weitere im Editor."
         },
         "metatype": {
             "availableProperties": "Verfügbare Eigenschaften",
@@ -211,7 +216,8 @@
                     "short": "Kurze Ganzzahl",
                     "string": "Zeichenkette"
                 }
-            }
+            },
+            "searchLabel": "Eigenschaften filtern"
         },
         "empty": "leer",
         "emptyLine": "Leerzeile",
@@ -294,6 +300,13 @@
         "banner": {
             "module": "Diese vom Modul verwaltete Konfiguration kann beim Neustart oder erneuten Deployment überschrieben werden. Das Fortbestehen lokaler Änderungen ist nicht garantiert.",
             "moduleDefault": "Diese Modul-Standardkonfiguration ist bearbeitbar. Jahia bewahrt lokale Änderungen."
+        }
+    },
+    "banner": {
+        "prefix": {
+            "error": "Fehler:",
+            "warning": "Warnung:",
+            "info": "Information:"
         }
     }
 }

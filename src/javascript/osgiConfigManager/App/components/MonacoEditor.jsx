@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import * as monaco from 'monaco-editor';
 import { configureMonacoYaml } from 'monaco-yaml';
 // What Tab does is a page-wide Monaco state that its Ctrl+M command toggles. The editor's
@@ -679,6 +679,15 @@ const getYamlValueSuggestions = (property, t) => (
     }))
 );
 
+// Save is refused while the content has errors, and the header says which ones: pass the error
+// markers along with the verdict. Warnings (duplicate or unknown key) do not block Save.
+const reportValidation = (onValidate, markers) => {
+    const errors = markers
+        .filter(marker => marker.severity === monaco.MarkerSeverity.Error)
+        .map(marker => ({ line: marker.startLineNumber, message: marker.message }));
+    onValidate(errors.length === 0, errors);
+};
+
 export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', metatypeDefinition, filename }) => {
     const { error: toastError, warning: toastWarning } = useToast();
     const { t } = useTranslation('osgi-configurations-manager');
@@ -687,6 +696,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
     const validatePropertiesRef = useRef(() => {});
     const [showPropertyPanel, setShowPropertyPanel] = useState(false);
     const [propertySearch, setPropertySearch] = useState('');
+    const propertySearchId = useId();
     // Secret values are masked until the user asks to see them; the choice is not kept per file.
     const [secretsVisible, setSecretsVisible] = useState(false);
     // Monaco takes Tab to indent, so a keyboard user could not leave the editor without knowing
@@ -845,9 +855,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                     monaco.editor.setModelMarkers(model, 'yaml-metatype', markers);
 
                     if (onValidate) {
-                        const allMarkers = monaco.editor.getModelMarkers({ resource: model.uri });
-                        const hasErrors = allMarkers.some(marker => marker.severity === monaco.MarkerSeverity.Error);
-                        onValidate(!hasErrors);
+                        reportValidation(onValidate, monaco.editor.getModelMarkers({ resource: model.uri }));
                     }
                 };
 
@@ -874,9 +882,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                         return;
                     }
 
-                    const markers = monaco.editor.getModelMarkers({ resource: model.uri });
-                    const hasErrors = markers.some(marker => marker.severity === monaco.MarkerSeverity.Error);
-                    onValidate(!hasErrors);
+                    reportValidation(onValidate, monaco.editor.getModelMarkers({ resource: model.uri }));
                 });
 
                 markerSubscription = {
@@ -996,8 +1002,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                     monaco.editor.setModelMarkers(model, 'properties', markers);
 
                     if (onValidate) {
-                        const hasErrors = markers.some(marker => marker.severity === monaco.MarkerSeverity.Error);
-                        onValidate(!hasErrors);
+                        reportValidation(onValidate, markers);
                     }
                 };
 
@@ -1506,8 +1511,13 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                                 </Typography>
                             )}
 
+                            {/* Its placeholder was the field's only name (WCAG 1.3.1, 4.1.2). */}
+                            <Typography component="label" htmlFor={propertySearchId} variant="caption" weight="bold" style={{ display: 'block', marginBottom: '4px' }}>
+                                {t('editor.metatype.searchLabel')}
+                            </Typography>
                             <Input
                                 data-cy="raw-editor-property-search"
+                                id={propertySearchId}
                                 value={propertySearch}
                                 onChange={event => setPropertySearch(event.target.value)}
                                 onKeyDown={event => {

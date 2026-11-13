@@ -61,7 +61,8 @@ const AppContent = () => {
         diffConfig,
         setDiffConfig,
         isYamlValid,
-        setIsYamlValid,
+        validationErrors,
+        handleEditorValidate,
         handleAddCfgEntry,
         handleReorder,
         handleUploadFile,
@@ -243,21 +244,29 @@ const AppContent = () => {
                                         hasUnsaved={hasUnsaved}
                                         isRawMode={isRawMode}
                                         isYamlValid={isYamlValid}
+                                        validationErrors={validationErrors}
                                         onSave={() => handleSave()}
                                         onCancel={handleCancelClick}
                                     />
 
-                                    {error && <StatusBanner tone="error" message={error} />}
+                                    {/* Live regions mounted before their text, and empty while the file loads, so
+                                        that a failed load and the Module warning are announced when they appear.
+                                        The Module-default note only reassures, and stays out of them. */}
+                                    <div data-cy="file-alert-region" role="alert">
+                                        {!loadingFile && error && <StatusBanner tone="error" message={error} />}
+                                    </div>
 
-                                    {!error && selectedConfigState === 'MODULE' && (
-                                        <StatusBanner
-                                            tone="warning"
-                                            dataCy="config-state-module-warning"
-                                            message={t('configState.banner.module')}
-                                        />
-                                    )}
+                                    <div data-cy="file-status-region" role="status">
+                                        {!loadingFile && !error && selectedConfigState === 'MODULE' && (
+                                            <StatusBanner
+                                                tone="warning"
+                                                dataCy="config-state-module-warning"
+                                                message={t('configState.banner.module')}
+                                            />
+                                        )}
+                                    </div>
 
-                                    {!error && selectedConfigState === 'MODULE_DEFAULT' && (
+                                    {!loadingFile && !error && selectedConfigState === 'MODULE_DEFAULT' && (
                                         <StatusBanner
                                             tone="info"
                                             dataCy="config-state-module-default-info"
@@ -290,7 +299,7 @@ const AppContent = () => {
                                                     <MonacoEditor
                                                         value={rawContent}
                                                         onChange={handleRawUpdate}
-                                                        onValidate={setIsYamlValid}
+                                                        onValidate={handleEditorValidate}
                                                         metatypeDefinition={metatypeInfo}
                                                         filename={selectedFile.name}
                                                     />
@@ -299,7 +308,7 @@ const AppContent = () => {
                                                         <MonacoEditor
                                                             value={rawContent}
                                                             onChange={handleRawUpdate}
-                                                            onValidate={setIsYamlValid}
+                                                            onValidate={handleEditorValidate}
                                                             language="properties"
                                                             metatypeDefinition={metatypeInfo}
                                                             filename={selectedFile.name}
@@ -385,6 +394,33 @@ const App = () => (
                 .osgi-file-list:focus-visible {
                     outline: 2px solid var(--color-accent_dark);
                     outline-offset: -2px;
+                }
+                /* Moonstone's tabs (the Create dialog's Manual / Configuration / Factory) are gray,
+                   3.95:1, and accent when selected, 2.89:1; their focus ring is accent_light,
+                   1.6:1 (WCAG 1.4.3, 1.4.11). */
+                .moonstone-tabItem:not(.moonstone-reverse) {
+                    color: var(--color-gray_dark);
+                }
+                .moonstone-tabItem.moonstone-tabItem_selected:not(.moonstone-reverse) {
+                    color: var(--color-accent_dark);
+                }
+                .moonstone-tabItem:focus-visible {
+                    outline-color: var(--color-accent_dark);
+                }
+                /* The radio of a Create option is small and its card scrolls: ring the whole card,
+                   inside, as the list would clip an outer ring. */
+                .osgi-create-option:has(input:focus-visible) {
+                    outline: 2px solid var(--color-accent_dark);
+                    outline-offset: -2px;
+                }
+                /* Save blocked by errors stays focusable (aria-disabled), so it gets Moonstone's
+                   :disabled look by hand; !important, as its accent colours come from rules with more
+                   attribute selectors and :hover:not(:disabled). */
+                .moonstone-button.osgi-save-blocked {
+                    color: var(--color-gray_dark) !important;
+                    border-color: var(--color-gray_light) !important;
+                    background-color: var(--color-gray_light) !important;
+                    cursor: not-allowed;
                 }
                 .osgi-sidebar-status-cell .moonstone-TableCell {
                     padding-left: 0;

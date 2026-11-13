@@ -207,6 +207,14 @@ describe('OSGi Configurations Manager - Config lifecycle', () => {
         cy.get('[data-cy="modal-create-manual-input"]').type(invalidFile);
         cy.confirmModal();
 
+        // The dialog stays open with the typed name, the error tied to the field, which has the
+        // focus; it used to close and replace itself with an error dialog.
+        cy.get('[data-cy="modal-dialog"]').should('be.visible');
+        cy.get('[data-cy="modal-create-manual-input"]')
+            .should('have.value', invalidFile)
+            .and('have.attr', 'aria-invalid', 'true')
+            .and('have.focus');
+        cy.get('[data-cy="modal-create-manual-error"]').should('be.visible');
         cy.listOsgiFiles().then(files => {
             expect(files.map(file => file.name)).not.to.include(invalidFile);
         });

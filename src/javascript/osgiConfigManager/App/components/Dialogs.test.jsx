@@ -1,5 +1,5 @@
 import React from 'react';
-import {render, screen, fireEvent, within} from '@testing-library/react';
+import {render, screen, fireEvent, within, waitFor} from '@testing-library/react';
 import {ModalDialog} from './Dialogs';
 
 jest.mock('react-i18next', () => ({
@@ -51,5 +51,93 @@ describe('ModalDialog create configuration options', () => {
         fireEvent.click(screen.getByRole('tab', {name: 'modal.create.tabs.configuration'}));
 
         expect(screen.getByText('First template').style.color).toBe('var(--color-gray_dark)');
+    });
+});
+
+// The create dialog closed before the name was checked: an invalid extension or a server error
+// replaced it, and the name had to be typed again (WCAG 3.3.1, 3.3.7).
+describe('ModalDialog create with awaitConfirm', () => {
+    const createConfig = onConfirm => ({
+        type: 'createConfig',
+        title: 'modal.create.title',
+        confirmLabel: 'modal.create.confirm',
+        awaitConfirm: true,
+        availableMetatypes: [],
+        onConfirm
+    });
+
+    it('stays open with the typed name and shows the error on the field', async () => {
+        const onClose = jest.fn();
+        const onConfirm = jest.fn().mockResolvedValue({ok: false, field: 'filename', message: 'modal.error.invalidExtension'});
+        render(<ModalDialog config={createConfig(onConfirm)} onClose={onClose}/>);
+
+        const input = screen.getByRole('textbox', {name: 'modal.create.manualLabel'});
+        fireEvent.change(input, {target: {value: 'org.example.txt'}});
+        fireEvent.click(screen.getByRole('button', {name: 'modal.create.confirm'}));
+
+        await waitFor(() => expect(input.getAttribute('aria-invalid')).toBe('true'));
+        expect(onConfirm).toHaveBeenCalledWith({mode: 'manual', filename: 'org.example.txt'});
+        expect(onClose).not.toHaveBeenCalled();
+        expect(input.value).toBe('org.example.txt');
+        expect(input.getAttribute('aria-describedby').split(' ').map(id => document.getElementById(id).textContent))
+            .toEqual(['modal.create.manualHint', 'modal.error.invalidExtension']);
+        expect(document.activeElement).toBe(input);
+
+        fireEvent.change(input, {target: {value: 'org.example.cfg'}});
+        expect(input.getAttribute('aria-invalid')).toBeNull();
+    });
+
+    it('closes once the action succeeded', async () => {
+        const onClose = jest.fn();
+        render(<ModalDialog config={createConfig(jest.fn().mockResolvedValue({ok: true}))} onClose={onClose}/>);
+
+        fireEvent.change(screen.getByRole('textbox', {name: 'modal.create.manualLabel'}), {target: {value: 'org.example.cfg'}});
+        fireEvent.click(screen.getByRole('button', {name: 'modal.create.confirm'}));
+
+        await waitFor(() => expect(onClose).toHaveBeenCalled());
+    });
+
+    it('states the allowed extensions before submission', () => {
+        render(<ModalDialog config={createConfig(jest.fn())} onClose={jest.fn()}/>);
+
+        const input = screen.getByRole('textbox', {name: 'modal.create.manualLabel'});
+        expect(document.getElementById(input.getAttribute('aria-describedby')).textContent).toBe('modal.create.manualHint');
+    });
+});
+
+describe('ModalDialog import conflict and focus return', () => {
+    const conflict = onOther => ({
+        type: 'confirm',
+        title: 'modal.conflict.title',
+        message: 'modal.conflict.message',
+        confirmLabel: 'modal.conflict.overwrite',
+        otherLabel: 'modal.conflict.rename',
+        onConfirm: jest.fn(),
+        onOther
+    });
+
+    // The dialog had stopped drawing its third choice: Rename was unreachable.
+    it('offers Rename, which closes the dialog and hands over', () => {
+        const onClose = jest.fn();
+        const onOther = jest.fn();
+        render(<ModalDialog config={conflict(onOther)} onClose={onClose}/>);
+
+        fireEvent.click(screen.getByRole('button', {name: 'modal.conflict.rename'}));
+        expect(onClose).toHaveBeenCalled();
+        expect(onOther).toHaveBeenCalled();
+    });
+
+    // Moonstone's Modal gave the focus to <body> on close.
+    it('gives the focus back to the element that opened it', async () => {
+        const opener = document.createElement('button');
+        document.body.appendChild(opener);
+        opener.focus();
+
+        const {rerender} = render(<ModalDialog config={conflict(jest.fn())} onClose={jest.fn()}/>);
+        screen.getByRole('button', {name: 'modal.conflict.overwrite'}).focus();
+        rerender(<ModalDialog config={null} onClose={jest.fn()}/>);
+
+        await waitFor(() => expect(document.activeElement).toBe(opener));
+        opener.remove();
     });
 });

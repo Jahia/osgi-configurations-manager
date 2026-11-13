@@ -29,7 +29,8 @@
         "decryptNoValue": "Coloque el cursor en una línea que contenga un valor ENC(...)",
         "decryptRefused": "Este valor no se puede descifrar aquí: no está en el archivo guardado o se cifró con otro secreto",
         "encryptFailed": "No se pudo cifrar el valor",
-        "undecryptableValues": "{{count}} valor(es) cifrado(s) no se pudieron descifrar y se muestran tal como están almacenados: no están en el archivo guardado o se cifraron con otro secreto"
+        "undecryptableValues": "{{count}} valor(es) cifrado(s) no se pudieron descifrar y se muestran tal como están almacenados: no están en el archivo guardado o se cifraron con otro secreto",
+        "dismiss": "Cerrar la notificación"
     },
     "modal": {
         "cancel": "Cancelar",
@@ -62,7 +63,8 @@
             "factoryIdentifierPlaceholder": "Ej.: cache-admin",
             "factoryIdentifierExists": "Ya existe una instancia con ese nombre.",
             "existingInstances": "Instancias existentes",
-            "emptyInstances": "No existe ninguna instancia para esta factory."
+            "emptyInstances": "No existe ninguna instancia para esta factory.",
+            "manualHint": "Termina el nombre en .cfg o .yml, por ejemplo org.test.config.cfg. Añade .disabled para crearla desactivada."
         },
         "unsaved": {
             "title": "Cambios no guardados",
@@ -108,13 +110,13 @@
         },
         "conflict": {
             "title": "Archivo existente",
-            "message": "El archivo '{{name}}' ya existe. ¿Qué quieres hacer?",
+            "message": "Importar '{{name}}' reemplaza esta configuración. Estos archivos se sobrescribirán o eliminarán: {{files}}. ¿Qué quieres hacer?",
             "overwrite": "Sobrescribir",
             "rename": "Renombrar"
         },
         "rename": {
             "title": "Renombrar archivo",
-            "message": "Introduce nuevo nombre:"
+            "message": "Introduce un nuevo nombre de archivo, terminado en .cfg o .yml:"
         },
         "prompt": {
             "placeholder": "Escribe aquí..."
@@ -170,7 +172,10 @@
         "validation": {
             "missingKey": "La propiedad debe tener una clave antes del separador",
             "duplicateKey": "Clave duplicada '{{key}}'",
-            "unknownMetatypeProperty": "La propiedad '{{key}}' no está declarada en el metatype de este PID"
+            "unknownMetatypeProperty": "La propiedad '{{key}}' no está declarada en el metatype de este PID",
+            "saveBlocked": "No se puede guardar hasta corregir estos errores ({{count}}):",
+            "errorAt": "Línea {{line}}: {{message}}",
+            "moreErrors": "{{count}} más en el editor."
         },
         "metatype": {
             "availableProperties": "Propiedades disponibles",
@@ -211,7 +216,8 @@
                     "short": "Entero corto",
                     "string": "Cadena"
                 }
-            }
+            },
+            "searchLabel": "Filtrar propiedades"
         },
         "empty": "vacío",
         "emptyLine": "Línea vacía",
@@ -294,6 +300,13 @@
         "banner": {
             "module": "Esta configuración gestionada por el módulo puede sobrescribirse al reiniciar o volver a desplegar. No se garantiza que los cambios locales persistan.",
             "moduleDefault": "Esta configuración predeterminada del módulo es editable. Jahia conserva los cambios locales."
+        }
+    },
+    "banner": {
+        "prefix": {
+            "error": "Error:",
+            "warning": "Advertencia:",
+            "info": "Información:"
         }
     }
 }

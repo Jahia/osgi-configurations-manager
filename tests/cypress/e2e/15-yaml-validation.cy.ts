@@ -29,15 +29,25 @@ describe('OSGi Configurations Manager - YAML validation gate', () => {
         cy.get('.monaco-editor textarea').type(`${selectAll}{del}`, {force: true});
         cy.get('.monaco-editor textarea').type('foo: bar\nbaz', {force: true});
 
-        // Assert: the editor reports invalid YAML, so Save stays disabled despite pending changes.
-        cy.get('[data-cy="save-config-button"] button', {timeout: 30000}).should('be.disabled');
+        // Assert: the editor reports invalid YAML, so Save is refused despite pending changes. It
+        // stays focusable (aria-disabled) and is described by the reason, which lists the error.
+        cy.get('[data-cy="save-config-button"] button', {timeout: 30000})
+            .should('have.attr', 'aria-disabled', 'true')
+            .invoke('attr', 'aria-describedby')
+            .then(reasonId => {
+                cy.get(`[id="${reasonId}"]`, {timeout: 10000}).should('have.attr', 'role', 'status').and('not.be.empty');
+            });
+        cy.get('[data-cy="save-blocked-errors"] li').should('have.length.at.least', 1);
 
         // Act: fix the syntax.
         cy.get('.monaco-editor textarea').type(`${selectAll}{del}`, {force: true});
         cy.get('.monaco-editor textarea').type('foo: bar', {force: true});
 
-        // Assert: valid YAML with pending changes re-enables Save.
-        cy.get('[data-cy="save-config-button"] button', {timeout: 30000}).should('not.be.disabled');
+        // Assert: valid YAML with pending changes re-enables Save, and the reason goes away.
+        cy.get('[data-cy="save-config-button"] button', {timeout: 30000})
+            .should('not.be.disabled')
+            .and('not.have.attr', 'aria-disabled');
+        cy.get('[data-cy="save-blocked-errors"]').should('not.exist');
     });
 
     it('underlines invalid YAML even when another module set MonacoEnvironment first', () => {
@@ -64,7 +74,7 @@ describe('OSGi Configurations Manager - YAML validation gate', () => {
 
         // Assert: the YAML service ran: the error is underlined in the editor and Save is gated.
         cy.get('.monaco-editor .squiggly-error', {timeout: 30000}).should('exist');
-        cy.get('[data-cy="save-config-button"] button').should('be.disabled');
+        cy.get('[data-cy="save-config-button"] button').should('have.attr', 'aria-disabled', 'true');
         // jsErrorsLogger (support/e2e.js) spies the console as @errors and @warnings, but checks them
         // only at page load, before anything was typed.
         cy.get('@errors').should('not.have.been.calledWithMatch', /Missing requestHandler/);

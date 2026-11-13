@@ -30,7 +30,7 @@ const LIST_STYLE = {
     overflow: 'auto',
     border: '1px solid var(--color-gray_light40)',
     borderRadius: 'var(--border-radius-default)',
-    background: 'var(--color-gray_light98)',
+    background: 'var(--color-gray_light_plain20)',
     display: 'flex',
     flexDirection: 'column'
 };
@@ -45,7 +45,7 @@ const INSTANCES_LIST_STYLE = {
     overflow: 'auto',
     border: '1px solid var(--color-gray_light40)',
     borderRadius: 'var(--border-radius-default)',
-    background: 'var(--color-gray_light98)'
+    background: 'var(--color-gray_light_plain20)'
 };
 
 const FACTORY_DETAILS_STYLE = {
@@ -65,14 +65,23 @@ const CLOSE_BUTTON_STYLE = {
     zIndex: 1
 };
 
+// danger_dark, as danger was 3.68:1 (WCAG 1.4.3).
+const FIELD_ERROR_STYLE = {
+    color: 'var(--color-danger_dark)'
+};
+
 const EMPTY_LIST_ITEM_STYLE = {
     padding: 'var(--spacing-medium)'
 };
 
+// The selected card has a bar on its left edge, not only a tint (WCAG 1.4.11: 8.3:1); a border,
+// not a box-shadow, so that it survives forced colours.
 const getSelectableCardStyle = isSelected => ({
     padding: 'var(--spacing-medium)',
+    paddingLeft: 'calc(var(--spacing-medium) - 4px)',
     borderBottom: '1px solid var(--color-gray_light40)',
-    background: isSelected ? 'var(--color-accent_light80)' : 'transparent',
+    borderLeft: `4px solid ${isSelected ? 'var(--color-accent_dark_contrast)' : 'transparent'}`,
+    background: isSelected ? 'var(--color-accent_light_plain20)' : 'transparent',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'flex-start',
@@ -98,13 +107,14 @@ const EXISTING_INSTANCE_STYLE = {
 // selection was conveyed by a background colour only (WCAG 2.1.1, 4.1.2). The label keeps
 // the whole card clickable; the texts are spans because a label only holds phrasing content.
 const CreateOptionCard = ({dataCy, name, value, isSelected, onSelect, title, subtitle, meta, description}) => (
-    <label data-cy={dataCy} style={getSelectableCardStyle(isSelected)}>
+    <label data-cy={dataCy} className="osgi-create-option" style={getSelectableCardStyle(isSelected)}>
         <input
             type="radio"
             name={name}
             value={value}
             checked={isSelected}
             onChange={onSelect}
+            style={{accentColor: 'var(--color-accent_dark)'}}
         />
         <span style={OPTION_TEXT_STYLE}>
             <Typography component="span" variant="body" weight="bold" style={{wordBreak: 'break-word'}}>
@@ -139,10 +149,46 @@ export const ModalDialog = ({config, onClose}) => {
     const [selectedFactoryPid, setSelectedFactoryPid] = React.useState('');
     const [factoryIdentifier, setFactoryIdentifier] = React.useState('');
     const [activeCreateTab, setActiveCreateTab] = React.useState('manual');
+    // A failed create keeps the dialog open with what was typed: {message, field}, field being
+    // 'filename' or 'identifier' when the error is about one field.
+    const [submitError, setSubmitError] = React.useState(null);
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const submittingRef = React.useRef(false);
+    const configRef = React.useRef(config);
+    configRef.current = config;
+
+    // Moonstone's Modal gave the focus to <body> on close, Escape included (WCAG 2.4.3). The opener is
+    // read while rendering, before the Modal's own effects move the focus into it, and kept across a
+    // dialog that replaces another one (Overwrite -> Rename).
+    const returnFocusRef = React.useRef(null);
+    if (config && !returnFocusRef.current && typeof document !== 'undefined') {
+        returnFocusRef.current = document.activeElement;
+    }
+    const isOpen = Boolean(config);
+    React.useEffect(() => {
+        if (isOpen) {
+            return;
+        }
+        const opener = returnFocusRef.current;
+        returnFocusRef.current = null;
+        // On the next frame: closed by Enter in a field, the same key press would otherwise
+        // activate the opener once it has the focus, and open the dialog again. Only if nothing
+        // else took the focus meanwhile (the file list, after a deletion).
+        window.requestAnimationFrame(() => {
+            if (opener && opener !== document.body && opener.isConnected && typeof opener.focus === 'function'
+                && (!document.activeElement || document.activeElement === document.body)) {
+                opener.focus();
+            }
+        });
+    }, [isOpen]);
     const metatypeGroupLabelId = React.useId();
     const titleId = React.useId();
     const messageId = React.useId();
     const manualInputId = React.useId();
+    const manualHintId = React.useId();
+    const manualErrorId = React.useId();
+    const promptInputId = React.useId();
+    const promptErrorId = React.useId();
     const filterInputId = React.useId();
     const factoryIdentifierId = React.useId();
     const factoryIdentifierErrorId = React.useId();
@@ -156,7 +202,21 @@ export const ModalDialog = ({config, onClose}) => {
         setSelectedFactoryPid('');
         setFactoryIdentifier('');
         setActiveCreateTab('manual');
+        setSubmitError(null);
+        setIsSubmitting(false);
+        submittingRef.current = false;
     }, [config]);
+
+    // A field error moves the focus to the field, which reads it through aria-describedby.
+    React.useEffect(() => {
+        const fieldId = {
+            filename: config?.type === 'prompt' ? promptInputId : manualInputId,
+            identifier: factoryIdentifierId
+        }[submitError?.field];
+        if (fieldId) {
+            document.getElementById(fieldId)?.focus();
+        }
+    }, [submitError]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const filteredMetatypes = React.useMemo(() => {
         if (!Array.isArray(config?.availableMetatypes)) {
@@ -245,13 +305,25 @@ export const ModalDialog = ({config, onClose}) => {
     const hasPromptInput = config.type === 'prompt';
     const showModalMessage = Boolean(config.message);
 
+    // Which field shows the error: the filename field exists in a prompt and in the Manual tab, the
+    // identifier field in the Factory tab once a factory is chosen. Any other error is shown below.
+    const hasFieldError = field => submitError?.field === field && (
+        field === 'filename' ? (hasPromptInput || (isCreateConfig && activeCreateTab === 'manual'))
+            : (isCreateConfig && activeCreateTab === 'factory' && Boolean(selectedFactoryMetatype))
+    );
+    const isFieldErrorShown = hasFieldError('filename') || hasFieldError('identifier');
+
     const isConfirmDisabled = isCreateConfig ? (
         (activeCreateTab === 'manual' && !manualFilename.trim()) ||
         (activeCreateTab === 'configuration' && !selectedMetatype) ||
         (activeCreateTab === 'factory' && (!selectedFactoryMetatype || !factoryIdentifier.trim() || isFactoryIdentifierTaken))
     ) : false;
 
-    const handleConfirm = () => {
+    const handleConfirm = async () => {
+        if (submittingRef.current || isConfirmDisabled) {
+            return;
+        }
+
         let confirmPayload;
 
         if (config.type === 'prompt') {
@@ -274,6 +346,35 @@ export const ModalDialog = ({config, onClose}) => {
                     filename: manualFilename.trim()
                 };
             }
+        }
+
+        if (config.awaitConfirm && config.onConfirm) {
+            // Close only once the action succeeded: an error is shown here, next to what was typed,
+            // rather than after the dialog and its content are gone (WCAG 3.3.1, 3.3.7).
+            submittingRef.current = true;
+            setIsSubmitting(true);
+            setSubmitError(null);
+            let result;
+            try {
+                result = await config.onConfirm(confirmPayload);
+            } catch (error) {
+                result = {ok: false, message: error?.message || String(error)};
+            }
+            if (configRef.current !== config) {
+                // Closed meanwhile: the error can only be reported elsewhere.
+                if (result && !result.ok) {
+                    config.onUnshownError?.(result.message);
+                }
+                return;
+            }
+            submittingRef.current = false;
+            setIsSubmitting(false);
+            if (result && !result.ok) {
+                setSubmitError({message: result.message, field: result.field});
+                return;
+            }
+            onClose();
+            return;
         }
 
         onClose();
@@ -327,22 +428,36 @@ export const ModalDialog = ({config, onClose}) => {
                 <ModalBody>
                     <div style={BODY_STACK_STYLE}>
                         {hasPromptInput && (
-                            <Input
-                                data-cy="modal-prompt-input"
-                                // The question is the dialog's message (or title): the placeholder
-                                // "Type here..." was the field's only name (WCAG 4.1.2).
-                                aria-labelledby={showModalMessage ? messageId : titleId}
-                                autoFocus
-                                value={promptValue}
-                                variant="outlined"
-                                onChange={event => setPromptValue(event.target.value)}
-                                onKeyDown={event => {
-                                    if (event.key === 'Enter') {
-                                        handleConfirm();
-                                    }
-                                }}
-                                placeholder={t('modal.prompt.placeholder')}
-                            />
+                            <div style={SECTION_STYLE}>
+                                <Input
+                                    data-cy="modal-prompt-input"
+                                    id={promptInputId}
+                                    // The question is the dialog's message (or title): the placeholder
+                                    // "Type here..." was the field's only name (WCAG 4.1.2).
+                                    aria-labelledby={showModalMessage ? messageId : titleId}
+                                    aria-invalid={hasFieldError('filename') || undefined}
+                                    aria-describedby={hasFieldError('filename') ? promptErrorId : undefined}
+                                    autoFocus
+                                    value={promptValue}
+                                    variant="outlined"
+                                    onChange={event => {
+                                        setPromptValue(event.target.value);
+                                        setSubmitError(null);
+                                    }}
+                                    onKeyDown={event => {
+                                        if (event.key === 'Enter') {
+                                            event.preventDefault();
+                                            handleConfirm();
+                                        }
+                                    }}
+                                    placeholder={t('modal.prompt.placeholder')}
+                                />
+                                {hasFieldError('filename') && (
+                                    <Typography id={promptErrorId} data-cy="modal-prompt-error" variant="caption" style={FIELD_ERROR_STYLE}>
+                                        {submitError.message}
+                                    </Typography>
+                                )}
+                            </div>
                         )}
 
                         {isCreateConfig && (
@@ -355,7 +470,10 @@ export const ModalDialog = ({config, onClose}) => {
                                                 data-cy={`modal-create-tab-${tab.id}`}
                                                 isSelected={activeCreateTab === tab.id}
                                                 label={tab.label}
-                                                onClick={() => setActiveCreateTab(tab.id)}
+                                                onClick={() => {
+                                                    setActiveCreateTab(tab.id);
+                                                    setSubmitError(null);
+                                                }}
                                             />
                                         ))}
                                     </Tab>
@@ -366,15 +484,35 @@ export const ModalDialog = ({config, onClose}) => {
                                         <Typography component="label" htmlFor={manualInputId} variant="subheading" weight="bold">
                                             {t('modal.create.manualLabel')}
                                         </Typography>
+                                        {/* The allowed extensions were stated only in the error after Create. */}
+                                        <Typography id={manualHintId} variant="caption" style={{color: 'var(--color-gray_dark)'}}>
+                                            {t('modal.create.manualHint')}
+                                        </Typography>
                                         <Input
                                             data-cy="modal-create-manual-input"
                                             id={manualInputId}
+                                            aria-invalid={hasFieldError('filename') || undefined}
+                                            aria-describedby={hasFieldError('filename') ? `${manualHintId} ${manualErrorId}` : manualHintId}
                                             autoFocus
                                             value={manualFilename}
                                             variant="outlined"
-                                            onChange={event => setManualFilename(event.target.value)}
+                                            onChange={event => {
+                                                setManualFilename(event.target.value);
+                                                setSubmitError(null);
+                                            }}
+                                            onKeyDown={event => {
+                                                if (event.key === 'Enter') {
+                                                    event.preventDefault();
+                                                    handleConfirm();
+                                                }
+                                            }}
                                             placeholder={t('modal.create.manualPlaceholder')}
                                         />
+                                        {hasFieldError('filename') && (
+                                            <Typography id={manualErrorId} data-cy="modal-create-manual-error" variant="caption" style={FIELD_ERROR_STYLE}>
+                                                {submitError.message}
+                                            </Typography>
+                                        )}
                                     </div>
                                 )}
 
@@ -485,12 +623,15 @@ export const ModalDialog = ({config, onClose}) => {
                                                     <Input
                                                         data-cy="modal-create-factory-identifier-input"
                                                         id={factoryIdentifierId}
-                                                        aria-invalid={isFactoryIdentifierTaken || undefined}
-                                                        aria-describedby={isFactoryIdentifierTaken ? factoryIdentifierErrorId : undefined}
+                                                        aria-invalid={isFactoryIdentifierTaken || hasFieldError('identifier') || undefined}
+                                                        aria-describedby={isFactoryIdentifierTaken || hasFieldError('identifier') ? factoryIdentifierErrorId : undefined}
                                                         autoFocus
                                                         value={factoryIdentifier}
                                                         variant="outlined"
-                                                        onChange={event => setFactoryIdentifier(event.target.value)}
+                                                        onChange={event => {
+                                                            setFactoryIdentifier(event.target.value);
+                                                            setSubmitError(null);
+                                                        }}
                                                         placeholder={t('modal.create.factoryIdentifierPlaceholder')}
                                                     />
                                                     {factorySuggestedFilename && (
@@ -501,9 +642,9 @@ export const ModalDialog = ({config, onClose}) => {
                                                     {/* Announced and tied to the field; danger_dark, as danger was
                                                         3.68:1 (WCAG 1.4.3, 3.3.1, 4.1.3). */}
                                                     <div role="alert">
-                                                        {isFactoryIdentifierTaken && (
-                                                            <Typography id={factoryIdentifierErrorId} variant="caption" style={{color: 'var(--color-danger_dark)'}}>
-                                                                {t('modal.create.factoryIdentifierExists')}
+                                                        {(isFactoryIdentifierTaken || hasFieldError('identifier')) && (
+                                                            <Typography id={factoryIdentifierErrorId} variant="caption" style={FIELD_ERROR_STYLE}>
+                                                                {isFactoryIdentifierTaken ? t('modal.create.factoryIdentifierExists') : submitError.message}
                                                             </Typography>
                                                         )}
                                                     </div>
@@ -544,6 +685,17 @@ export const ModalDialog = ({config, onClose}) => {
                             </>
                         )}
                     </div>
+
+                    {/* An error that is not about one field (e.g. the server refused the template).
+                        Mounted empty, so that it is announced when it fills; outside the stack, whose
+                        gap would otherwise leave room for it in every dialog. */}
+                    <div role="alert" data-cy="modal-submit-error">
+                        {submitError && !isFieldErrorShown && (
+                            <Typography variant="caption" style={{...FIELD_ERROR_STYLE, marginTop: 'var(--spacing-medium)'}}>
+                                {submitError.message}
+                            </Typography>
+                        )}
+                    </div>
                 </ModalBody>
 
                 <ModalFooter>
@@ -558,11 +710,28 @@ export const ModalDialog = ({config, onClose}) => {
                             />
                         </div>
                     )}
+                    {/* The import conflict's Rename: the dialog had stopped drawing this third choice. */}
+                    {config.otherLabel && config.onOther && (
+                        <div data-cy="modal-other-button">
+                            <Button
+                                label={config.otherLabel}
+                                size="big"
+                                variant="outlined"
+                                onClick={() => {
+                                    onClose();
+                                    config.onOther();
+                                }}
+                            />
+                        </div>
+                    )}
                     {config.confirmLabel !== null && (
                         <div data-cy="modal-confirm-button">
+                            {/* While the action runs, aria-disabled rather than disabled: a disabled button
+                                would drop the focus to <body>. */}
                             <Button
                                 color={isWarning ? 'danger' : 'accent'}
                                 isDisabled={isConfirmDisabled}
+                                aria-disabled={isSubmitting || undefined}
                                 label={config.confirmLabel || t('modal.ok')}
                                 size="big"
                                 onClick={handleConfirm}
