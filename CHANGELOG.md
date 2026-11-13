@@ -85,6 +85,54 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
     without a word.
   - The picker announces how many properties match, and its options read their type and default.
   - The delete confirmation's button reads **Delete**, not **OK**.
+- **Save says why it is refused (WCAG 3.3.1, 4.1.2, 4.1.3).** With errors in the raw editor,
+  Save was silently disabled, and a disabled button cannot be reached to hear why. It now stays
+  focusable and is described by a reason shown under it, "Save is unavailable until these errors
+  are fixed", with the first five errors and their line. The reason is announced once the content
+  has stayed invalid for a moment, not at every keystroke.
+- **Importing no longer overwrites a configuration without asking (WCAG 3.3.4).**
+  - The check read the file list as shown, which holds only the matches while **Search in
+    content** is on, so an existing configuration was replaced without a question. It now asks
+    the server.
+  - It compared one spelling of the file name. Importing `foo.yml` over `foo.cfg`, or `Foo.cfg`,
+    now asks too, and the question names every file that will be overwritten or deleted.
+  - **Rename** was never drawn in that question, and a name typed after it was not checked again.
+    Both are fixed.
+- **New keeps what was typed when the file cannot be created (WCAG 3.3.1, 3.3.2, 3.3.7).**
+  - The dialog closed before the name was checked. A wrong extension or a server error replaced it
+    with another dialog, and the name had to be typed again. The dialog now stays open, shows the
+    error under the field and moves the focus there.
+  - The allowed extensions are stated under the field before Create, and Enter in it creates.
+  - The selected template or factory is marked by a bar, where a colour Moonstone does not define
+    left it unmarked, and the focused one by a ring (WCAG 1.4.11, 2.4.7). The tabs are readable:
+    3.95:1 and 2.89:1 before.
+- **Closing a dialog gives the focus back to the button that opened it (WCAG 2.4.3).** It went to
+  the top of the page, Escape included.
+- **Error and warning notifications stay until they are closed (WCAG 2.2.1).** They vanished after
+  6 seconds, though they are often the only report of a failed save, delete or import. Every
+  notification has a close button, and its timer stops while the pointer or the focus is on it.
+  The same message twice in a row is announced twice.
+- **A file that fails to load, or is managed by a module, is announced (WCAG 4.1.3).** These
+  banners appeared with the file and screen readers said nothing. Their text also says
+  "Error" or "Warning", which only their colour told apart.
+- **The Metatype property filter of the raw editor has a visible label** (WCAG 1.3.1, 4.1.2).
+- **The focus can be seen everywhere, whole (WCAG 1.4.11, 2.4.7, 2.5.8).** Found by walking every
+  screen with the keyboard and looking at screenshots.
+  - Moonstone draws its focus ring in a light blue, 1.74:1 on white. The module's buttons, tabs,
+    checkboxes, switch and fields now use the dark blue, 5.2:1.
+  - In the visual editor, the table cells cut every ring, as did the edges of the editor at the
+    filter and the footer buttons. The rings are whole now.
+  - The raw editor showed only its caret when it had the focus. It is now framed.
+  - A password value was a field drawn inside another field, with no ring of its own. It is one
+    field now, and its eye button is centred on it.
+  - Move up, Move down, Delete and the eye were 16px targets overlapping each other. They are 24px.
+  - At 1440px, the Security column and the row buttons were scrolled out of view. The table fits.
+  - The overlay that shows a revealed secret no longer covers the next row once the focus moves,
+    and Escape closes it.
+- **Every action control has a tooltip.** The drag handle, Move up/down, Delete, the encryption
+  checkbox, the eye, Visual / Raw Edit, Search in content and the raw editor's toolbar show
+  Moonstone's tooltip, on hover and on keyboard focus, where they had a slow grey browser one or
+  none. A tooltip no longer replaces a control's own description, such as why Save is refused.
 
 ### Changed
 

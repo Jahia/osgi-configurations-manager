@@ -18,8 +18,22 @@ export interface ModalConfig {
     cancelLabel?: string;
     otherLabel?: string;
     deferConfirm?: boolean;
-    onConfirm?: (value?: any) => void;
+    /**
+     * Keep the dialog open until onConfirm resolves, close it only on success, and show a failure
+     * in the dialog, next to its field. onUnshownError reports a failure that arrives after the
+     * dialog was closed anyway.
+     */
+    awaitConfirm?: boolean;
+    onUnshownError?: (message?: string) => void;
+    onConfirm?: (value?: any) => void | Promise<ConfirmResult | void>;
     onOther?: () => void;
+}
+
+/** What an awaitConfirm action reports back to its dialog. */
+export interface ConfirmResult {
+    ok: boolean;
+    message?: string;
+    field?: 'filename' | 'identifier';
 }
 
 export interface DiffConfig {

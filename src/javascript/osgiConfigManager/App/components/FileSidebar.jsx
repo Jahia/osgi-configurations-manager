@@ -2,7 +2,6 @@ import React from 'react';
 import {
     Paper,
     Typography,
-    Tooltip,
     SearchInput,
     Table,
     TableBody,
@@ -11,6 +10,7 @@ import {
     Switch
 } from '@jahia/moonstone';
 import { useTranslation } from 'react-i18next';
+import { WithTooltip } from './WithTooltip';
 import { ConfigStateBadge } from './ConfigStateBadge';
 import {
     CHROME_TOKENS,
@@ -124,7 +124,8 @@ export const FileSidebar = ({
                     gap: '8px',
                     marginLeft: '2px'
                 }}>
-                    <Tooltip label={t('app.searchDeepTooltip')}>
+                    {/* Visual only: the switch's description stays its own, its name the label below. */}
+                    <WithTooltip label={t('app.searchDeepTooltip')}>
                         <div data-cy="deep-search-toggle" style={{ display: 'flex', alignItems: 'center' }}>
                             <Switch
                                 data-cy="deep-search-toggle-control"
@@ -133,7 +134,7 @@ export const FileSidebar = ({
                                 onChange={() => setSearchInContent(!searchInContent)}
                             />
                         </div>
-                    </Tooltip>
+                    </WithTooltip>
                     <Typography variant="body" component="label" htmlFor="osgi-deep-search">{t('app.searchDeep')}</Typography>
                 </div>
             </div>

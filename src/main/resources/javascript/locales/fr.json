@@ -29,7 +29,8 @@
         "decryptNoValue": "Placez le curseur sur une ligne contenant une valeur ENC(...)",
         "decryptRefused": "Cette valeur ne peut pas être déchiffrée ici : elle n'est pas dans le fichier enregistré, ou elle a été chiffrée avec un autre secret",
         "encryptFailed": "La valeur n'a pas pu être chiffrée",
-        "undecryptableValues": "{{count}} valeur(s) chiffrée(s) n'ont pas pu être déchiffrées et sont affichées telles que stockées : absentes du fichier enregistré, ou chiffrées avec un autre secret"
+        "undecryptableValues": "{{count}} valeur(s) chiffrée(s) n'ont pas pu être déchiffrées et sont affichées telles que stockées : absentes du fichier enregistré, ou chiffrées avec un autre secret",
+        "dismiss": "Fermer la notification"
     },
     "modal": {
         "cancel": "Annuler",
@@ -62,7 +63,8 @@
             "factoryIdentifierPlaceholder": "Ex: cache-admin",
             "factoryIdentifierExists": "Une instance avec ce nom existe déjà.",
             "existingInstances": "Instances existantes",
-            "emptyInstances": "Aucune instance existante pour cette factory."
+            "emptyInstances": "Aucune instance existante pour cette factory.",
+            "manualHint": "Terminez le nom par .cfg ou .yml, par exemple org.test.config.cfg. Ajoutez .disabled pour la créer désactivée."
         },
         "unsaved": {
             "title": "Modifications non enregistrées",
@@ -113,13 +115,13 @@
         },
         "conflict": {
             "title": "Fichier existant",
-            "message": "Le fichier '{{name}}' existe déjà. Que voulez-vous faire ?",
+            "message": "Importer '{{name}}' remplace cette configuration. Ces fichiers seront écrasés ou supprimés : {{files}}. Que voulez-vous faire ?",
             "overwrite": "Écraser",
             "rename": "Renommer"
         },
         "rename": {
             "title": "Renommer le fichier",
-            "message": "Entrez le nouveau nom :"
+            "message": "Entrez un nouveau nom de fichier, terminé par .cfg ou .yml :"
         },
         "prompt": {
             "placeholder": "Saisissez une valeur..."
@@ -170,7 +172,10 @@
         "validation": {
             "missingKey": "La propriété doit avoir une clé avant le séparateur",
             "duplicateKey": "Clé dupliquée '{{key}}'",
-            "unknownMetatypeProperty": "Propriété '{{key}}' non déclarée dans le Metatype du PID"
+            "unknownMetatypeProperty": "Propriété '{{key}}' non déclarée dans le Metatype du PID",
+            "saveBlocked": "Enregistrement impossible tant que ces erreurs ne sont pas corrigées ({{count}}) :",
+            "errorAt": "Ligne {{line}} : {{message}}",
+            "moreErrors": "{{count}} autre(s) dans l'éditeur."
         },
         "metatype": {
             "availableProperties": "Propriétés disponibles",
@@ -211,7 +216,8 @@
                     "short": "Entier court",
                     "string": "Chaîne"
                 }
-            }
+            },
+            "searchLabel": "Filtrer les propriétés"
         },
         "empty": "vide",
         "emptyLine": "Ligne vide",
@@ -295,5 +301,12 @@
     "sidebar": {
         "on": "On",
         "off": "Off"
+    },
+    "banner": {
+        "prefix": {
+            "error": "Erreur :",
+            "warning": "Avertissement :",
+            "info": "Information :"
+        }
     }
 }

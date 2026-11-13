@@ -2,10 +2,10 @@ import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { osgiService } from '../api/osgiService';
 import { useToast } from './useToast';
-import { OsgiFile, ModalConfig } from './osgiTypes';
+import { OsgiFile, ModalConfig, ConfirmResult } from './osgiTypes';
+import { filesOfSameConfiguration } from '../utils/configIdentity';
 
 interface FileActionsDeps {
-    files: OsgiFile[];
     selectedFile: OsgiFile | null;
     fetchFiles: (query?: string, deep?: boolean) => Promise<void>;
     fetchFileContent: (filename: string) => Promise<void>;
@@ -20,7 +20,6 @@ interface FileActionsDeps {
  * root. Each handler builds a confirmation/creation modal and talks to {@code osgiService}.
  */
 export const useFileActions = ({
-    files,
     selectedFile,
     fetchFiles,
     fetchFileContent,
@@ -122,20 +121,14 @@ export const useFileActions = ({
         });
     }, [fetchFileContent, fetchFiles, setModalConfig, setSelectedFile, success, t, toastError]);
 
-    const handleCreateFile = useCallback(async (filename: string) => {
+    // The create dialogs stay open until these succeed and show what they return next to the
+    // field (ModalConfig.awaitConfirm), so they report errors rather than toast them.
+    const handleCreateFile = useCallback(async (filename: string): Promise<ConfirmResult> => {
         const validExtensions = ['.cfg', '.yml', '.cfg.disabled', '.yml.disabled'];
         const isValid = validExtensions.some(ext => filename.toLowerCase().endsWith(ext));
 
         if (!isValid) {
-            setModalConfig({
-                type: 'confirm',
-                severity: 'warning',
-                title: t('modal.error.title'),
-                message: t('modal.error.invalidExtension'),
-                cancelLabel: t('modal.ok'),
-                confirmLabel: null
-            });
-            return;
+            return { ok: false, field: 'filename', message: t('modal.error.invalidExtension') };
         }
 
         try {
@@ -144,22 +137,25 @@ export const useFileActions = ({
             const isEnabled = !filename.endsWith('.disabled');
             selectFile({ name: filename, enabled: isEnabled, configState: 'USER' });
             success(t('notification.createSuccess', { name: filename }) || `Created ${filename}`);
+            return { ok: true };
         } catch (e: any) {
-            toastError(t('modal.error.create', { error: e.message }));
+            return { ok: false, field: 'filename', message: t('modal.error.create', { error: e.message }) };
         }
-    }, [fetchFiles, selectFile, setModalConfig, success, t, toastError]);
+    }, [fetchFiles, selectFile, success, t]);
 
-    const handleCreateFileFromMetatype = useCallback(async (pid: string, instanceIdentifier?: string) => {
+    const handleCreateFileFromMetatype = useCallback(async (pid: string, instanceIdentifier?: string): Promise<ConfirmResult> => {
         try {
             const response = await osgiService.createFromMetatype(pid, instanceIdentifier);
             const filename = response.filename || (instanceIdentifier ? `${pid}-${instanceIdentifier}.cfg` : `${pid}.cfg`);
             await fetchFiles();
             selectFile({ name: filename, enabled: true, configState: 'USER' });
             success(t('notification.createSuccess', { name: filename }) || `Created ${filename}`);
+            return { ok: true };
         } catch (e: any) {
-            toastError(t('modal.error.create', { error: e.message }));
+            const message = t('modal.error.create', { error: e.message });
+            return instanceIdentifier ? { ok: false, field: 'identifier', message } : { ok: false, message };
         }
-    }, [fetchFiles, selectFile, success, t, toastError]);
+    }, [fetchFiles, selectFile, success, t]);
 
     const handleOpenCreateDialog = useCallback(async () => {
         try {
@@ -173,24 +169,22 @@ export const useFileActions = ({
                 confirmLabel: t('modal.create.confirm'),
                 cancelLabel: t('modal.cancel'),
                 availableMetatypes,
-                onConfirm: async (payload?: { mode?: 'manual' | 'metatype' | 'factory'; filename?: string; pid?: string; instanceIdentifier?: string }) => {
-                    if (!payload) {
-                        return;
+                awaitConfirm: true,
+                onUnshownError: toastError,
+                onConfirm: async (payload?: { mode?: 'manual' | 'metatype' | 'factory'; filename?: string; pid?: string; instanceIdentifier?: string }): Promise<ConfirmResult> => {
+                    if (payload?.mode === 'metatype' && payload.pid) {
+                        return handleCreateFileFromMetatype(payload.pid);
                     }
 
-                    if (payload.mode === 'metatype' && payload.pid) {
-                        await handleCreateFileFromMetatype(payload.pid);
-                        return;
+                    if (payload?.mode === 'factory' && payload.pid && payload.instanceIdentifier) {
+                        return handleCreateFileFromMetatype(payload.pid, payload.instanceIdentifier);
                     }
 
-                    if (payload.mode === 'factory' && payload.pid && payload.instanceIdentifier) {
-                        await handleCreateFileFromMetatype(payload.pid, payload.instanceIdentifier);
-                        return;
+                    if (payload?.mode === 'manual' && payload.filename) {
+                        return handleCreateFile(payload.filename);
                     }
 
-                    if (payload.mode === 'manual' && payload.filename) {
-                        await handleCreateFile(payload.filename);
-                    }
+                    return { ok: true };
                 }
             });
         } catch (e: any) {
@@ -199,9 +193,11 @@ export const useFileActions = ({
                 type: 'prompt',
                 title: t('modal.create.title'),
                 message: t('modal.create.manualFallbackMessage'),
-                onConfirm: (name) => {
-                    if (name) handleCreateFile(name);
-                }
+                awaitConfirm: true,
+                onUnshownError: toastError,
+                onConfirm: async (name?: string): Promise<ConfirmResult> => (
+                    name?.trim() ? handleCreateFile(name.trim()) : { ok: false, field: 'filename', message: t('modal.error.invalidExtension') }
+                )
             });
         }
     }, [handleCreateFile, handleCreateFileFromMetatype, setModalConfig, t, toastError]);
@@ -209,43 +205,22 @@ export const useFileActions = ({
     const handleUploadFile = useCallback(async (file: File) => {
         if (!file) return;
 
-        const processUpload = async (fileObj: File, customName?: string) => {
+        // conflicts: the files the user agreed to replace. The save overwrites the one with the same
+        // name; the others (another extension, .disabled, another case) would configure the same PID
+        // alongside it, so they are deleted.
+        const processUpload = (filename: string, conflicts: OsgiFile[]) => {
             const reader = new FileReader();
             reader.onload = async (e) => {
                 const content = e.target?.result as string;
-                const filename = customName || fileObj.name;
-                const isCfg = filename.toLowerCase().endsWith('.cfg');
-                const isYml = filename.toLowerCase().endsWith('.yml');
-
-                if (!isCfg && !isYml) {
-                    setModalConfig({
-                        type: 'confirm',
-                        severity: 'warning',
-                        title: t('modal.error.title'),
-                        message: t('modal.error.invalidExtensionUpload'),
-                        cancelLabel: t('modal.ok'),
-                        confirmLabel: null
-                    });
-                    return;
-                }
 
                 try {
-                    const payload: any = {
-                        action: 'save',
-                        filename: filename
-                    };
+                    await osgiService.save({ action: 'save', filename, rawContent: content });
 
-                    if (isYml || isCfg) {
-                        payload.rawContent = content;
-                    }
-
-                    await osgiService.save(payload);
-
-                    const baseName = filename.replace(/\.disabled$/, '');
-                    const existingConflict = files.find(f => f.name !== filename && (f.name === baseName || f.name === baseName + '.disabled'));
-
-                    if (existingConflict) {
-                        await osgiService.delete(existingConflict.name);
+                    // Lower-cased: on a case-insensitive disk, Foo.cfg is the file just saved.
+                    for (const conflict of conflicts) {
+                        if (conflict.name.toLowerCase() !== filename.toLowerCase()) {
+                            await osgiService.delete(conflict.name);
+                        }
                     }
 
                     await fetchFiles();
@@ -257,24 +232,51 @@ export const useFileActions = ({
                     toastError(t('modal.error.save', { error: err.message }));
                 }
             };
-            reader.readAsText(fileObj);
+            reader.readAsText(file);
         };
 
-        const targetName = file.name;
-        const baseName = targetName.replace(/\.disabled$/, '');
-        const existing = files.find(f => f.name === baseName || f.name === baseName + '.disabled');
+        // Both the file's own name and a name typed after Rename come here. The overwrite check asks
+        // the server for the full list: the sidebar's holds only the matches of a content search, so
+        // an existing configuration was overwritten without a question (WCAG 3.3.4).
+        const startUpload = async (filename: string) => {
+            const lowerName = filename.toLowerCase();
+            if (!lowerName.endsWith('.cfg') && !lowerName.endsWith('.yml')) {
+                setModalConfig({
+                    type: 'confirm',
+                    severity: 'warning',
+                    title: t('modal.error.title'),
+                    message: t('modal.error.invalidExtensionUpload'),
+                    cancelLabel: t('modal.ok'),
+                    confirmLabel: null
+                });
+                return;
+            }
 
-        if (existing) {
+            let conflicts: OsgiFile[];
+            try {
+                const { files: allFiles = [] } = await osgiService.getAll();
+                conflicts = filesOfSameConfiguration(allFiles, filename);
+            } catch (err: any) {
+                // Fail closed: without the list, an overwrite could not be confirmed.
+                toastError(t('modal.error.save', { error: err.message }));
+                return;
+            }
+
+            if (conflicts.length === 0) {
+                processUpload(filename, []);
+                return;
+            }
+
             setModalConfig({
                 type: 'confirm',
                 severity: 'warning',
                 title: t('modal.conflict.title'),
-                message: t('modal.conflict.message', { name: existing.name }),
+                message: t('modal.conflict.message', { name: filename, files: conflicts.map(conflict => conflict.name).join(', ') }),
                 confirmLabel: t('modal.conflict.overwrite'),
                 otherLabel: t('modal.conflict.rename'),
                 cancelLabel: t('modal.cancel'),
                 onConfirm: () => {
-                    processUpload(file);
+                    processUpload(filename, conflicts);
                 },
                 onOther: () => {
                     setTimeout(() => {
@@ -282,18 +284,18 @@ export const useFileActions = ({
                             type: 'prompt',
                             title: t('modal.rename.title'),
                             message: t('modal.rename.message'),
-                            defaultValue: targetName,
+                            defaultValue: filename,
                             onConfirm: (newName) => {
-                                if (newName) processUpload(file, newName);
+                                if (newName?.trim()) void startUpload(newName.trim());
                             }
                         });
                     }, 100);
                 }
             });
-        } else {
-            processUpload(file);
-        }
-    }, [fetchFiles, files, selectFile, setModalConfig, success, t, toastError]);
+        };
+
+        await startUpload(file.name);
+    }, [fetchFiles, selectFile, setModalConfig, success, t, toastError]);
 
     return {
         toggleFileStatus,

@@ -1,4 +1,5 @@
 import React from 'react';
+import {WithTooltip} from './WithTooltip';
 import {
     Button,
     CloudDownload,
@@ -52,8 +53,8 @@ export const SelectedFileToolbar = ({
     const isCfgFile = selectedFile.name.endsWith('.cfg') || selectedFile.name.endsWith('.cfg.disabled');
     const isEnabled = selectedFile.enabled !== false && !selectedFile.name.endsWith('.disabled');
     const modeOptions = [
-        {label: t('editor.button.modeVisual'), value: 'visual', icon: <ViewList style={BUTTON_ICON_STYLE} />},
-        {label: t('editor.button.modeRaw'), value: 'raw', icon: <Code style={BUTTON_ICON_STYLE} />}
+        {label: t('editor.button.modeVisual'), value: 'visual', tooltip: t('tooltip.modeVisual'), icon: <ViewList style={BUTTON_ICON_STYLE} />},
+        {label: t('editor.button.modeRaw'), value: 'raw', tooltip: t('tooltip.modeRaw'), icon: <Code style={BUTTON_ICON_STYLE} />}
     ];
     const currentMode = isRawMode ? 'raw' : 'visual';
 
@@ -106,8 +107,8 @@ export const SelectedFileToolbar = ({
                     style={MODE_SELECTOR_STYLE}
                 >
                     {modeOptions.map(option => (
+                        <WithTooltip key={option.value} label={option.tooltip}>
                         <Button
-                            key={option.value}
                             data-cy={`editor-mode-${option.value}`}
                             label={option.label}
                             icon={option.icon}
@@ -122,6 +123,7 @@ export const SelectedFileToolbar = ({
                                 }
                             }}
                         />
+                        </WithTooltip>
                     ))}
                 </div>
             )}

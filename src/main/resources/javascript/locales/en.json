@@ -29,7 +29,8 @@
         "decryptNoValue": "Place the cursor on a line holding an ENC(...) value",
         "decryptRefused": "This value cannot be decrypted here: it is not in the saved file, or it was encrypted with another secret",
         "encryptFailed": "The value could not be encrypted",
-        "undecryptableValues": "{{count}} encrypted value(s) could not be decrypted and are shown as stored: not in the saved file, or encrypted with another secret"
+        "undecryptableValues": "{{count}} encrypted value(s) could not be decrypted and are shown as stored: not in the saved file, or encrypted with another secret",
+        "dismiss": "Close notification"
     },
     "modal": {
         "cancel": "Cancel",
@@ -62,7 +63,8 @@
             "factoryIdentifierPlaceholder": "e.g. cache-admin",
             "factoryIdentifierExists": "An instance with this name already exists.",
             "existingInstances": "Existing instances",
-            "emptyInstances": "No existing instance for this factory."
+            "emptyInstances": "No existing instance for this factory.",
+            "manualHint": "End the name with .cfg or .yml, for example org.test.config.cfg. Add .disabled to create it switched off."
         },
         "unsaved": {
             "title": "Unsaved Changes",
@@ -113,13 +115,13 @@
         },
         "conflict": {
             "title": "File exists",
-            "message": "The file '{{name}}' already exists. What do you want to do?",
+            "message": "Importing '{{name}}' replaces this configuration. These files will be overwritten or deleted: {{files}}. What do you want to do?",
             "overwrite": "Overwrite",
             "rename": "Rename"
         },
         "rename": {
             "title": "Rename uploaded file",
-            "message": "Enter new filename:"
+            "message": "Enter a new file name, ending in .cfg or .yml:"
         },
         "prompt": {
             "placeholder": "Type here..."
@@ -170,7 +172,10 @@
         "validation": {
             "missingKey": "Property must have a key before the separator",
             "duplicateKey": "Duplicate key '{{key}}'",
-            "unknownMetatypeProperty": "Property '{{key}}' is not declared in this PID metatype"
+            "unknownMetatypeProperty": "Property '{{key}}' is not declared in this PID metatype",
+            "saveBlocked": "Save is unavailable until these errors are fixed ({{count}}):",
+            "errorAt": "Line {{line}}: {{message}}",
+            "moreErrors": "{{count}} more in the editor."
         },
         "metatype": {
             "availableProperties": "Available Properties",
@@ -211,7 +216,8 @@
                     "short": "Short integer",
                     "string": "String"
                 }
-            }
+            },
+            "searchLabel": "Filter properties"
         },
         "empty": "empty",
         "emptyLine": "Empty Line",
@@ -295,5 +301,12 @@
     "sidebar": {
         "on": "On",
         "off": "Off"
+    },
+    "banner": {
+        "prefix": {
+            "error": "Error:",
+            "warning": "Warning:",
+            "info": "Information:"
+        }
     }
 }

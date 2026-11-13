@@ -1,5 +1,6 @@
 import React from 'react';
-import {Button, Tooltip} from '@jahia/moonstone';
+import {Button} from '@jahia/moonstone';
+import {WithTooltip} from './WithTooltip';
 
 export const ActionButton = ({
     dataCy,
@@ -18,11 +19,11 @@ export const ActionButton = ({
 
     return (
         <div data-cy={dataCy}>
-            {tooltip ? (
-                <Tooltip label={tooltip}>
-                    {button}
-                </Tooltip>
-            ) : button}
+            {/* WithTooltip, not Moonstone's Tooltip directly, which replaced the button's own
+                description (Save's blocked reason) with its label. */}
+            <WithTooltip label={tooltip}>
+                {button}
+            </WithTooltip>
         </div>
     );
 };

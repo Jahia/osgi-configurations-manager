@@ -1,6 +1,7 @@
 import React from 'react';
 import {createPortal} from 'react-dom';
 import {Information, Typography, Warning} from '@jahia/moonstone';
+import {useTranslation} from 'react-i18next';
 
 export const CHROME_TOKENS = {
     panelPadding: '16px',
@@ -147,9 +148,13 @@ export const InlineLoader = ({label}) => (
     </div>
 );
 
+// No role of its own: a banner mounted together with its text is not announced reliably, so the
+// caller puts it in a live region that is already there (index.jsx).
 export const StatusBanner = ({tone = 'info', message, dataCy}) => {
+    const {t} = useTranslation('osgi-configurations-manager');
     const variant = BANNER_VARIANTS[tone] || BANNER_VARIANTS.info;
-    const icon = tone === 'info' ? <Information size="small" style={{color: variant.iconColor, flexShrink: 0}}/> : <Warning size="small" style={{color: variant.iconColor, flexShrink: 0}}/>;
+    const iconProps = {size: 'small', 'aria-hidden': true, style: {color: variant.iconColor, flexShrink: 0}};
+    const icon = tone === 'info' ? <Information {...iconProps}/> : <Warning {...iconProps}/>;
 
     return (
         <div
@@ -166,7 +171,11 @@ export const StatusBanner = ({tone = 'info', message, dataCy}) => {
             }}
         >
             {icon}
-            <Typography>{message}</Typography>
+            {/* Error and warning share an icon and differ by colour only: say which it is. */}
+            <Typography>
+                <span style={VISUALLY_HIDDEN_STYLE}>{t(`banner.prefix.${tone}`)} </span>
+                {message}
+            </Typography>
         </div>
     );
 };

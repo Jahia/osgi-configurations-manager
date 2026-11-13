@@ -7,6 +7,12 @@ import { OsgiAvailableMetatypeDefinition, OsgiMetatypeDefinition, osgiService } 
 import { useToast } from './useToast';
 import { useProperties } from './useProperties';
 
+/** An error marker of the raw editor, which blocks Save. */
+export interface ValidationError {
+    line: number;
+    message: string;
+}
+
 interface OsgiFile {
     name: string;
     enabled?: boolean;
@@ -102,6 +108,7 @@ export const useOsgiConfigs = () => {
     const [modalConfig, setModalConfig] = useState<ModalConfig | null>(null);
     const [diffConfig, setDiffConfig] = useState<DiffConfig>({ isOpen: false, originalContent: '', newContent: '', filename: '', onConfirm: () => { } });
     const [isYamlValid, setIsYamlValid] = useState<boolean>(true);
+    const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
     const [metatypeInfo, setMetatypeInfo] = useState<OsgiMetatypeDefinition | null>(null);
 
     const hasUnsaved = JSON.stringify(properties) !== JSON.stringify(originalProperties) || rawContent !== originalRawContent;
@@ -237,8 +244,17 @@ export const useOsgiConfigs = () => {
         return () => clearTimeout(timer);
     }, [fetchFiles, searchInContent, searchTerm, files.length]);
 
+    // A stable callback: the raw editor captures its onValidate once, when it sets up its listeners.
+    const handleEditorValidate = useCallback((valid: boolean, errors: ValidationError[] = []) => {
+        setIsYamlValid(valid);
+        setValidationErrors(errors);
+    }, []);
+
     const selectFile = useCallback((file: OsgiFile | null) => {
         setSelectedFile(file);
+        // The next file's editor reports its own state; until then, the previous file's errors must
+        // not block Save or be listed under it.
+        handleEditorValidate(true, []);
         if (file?.name) {
             void fetchFileContent(file.name);
         } else {
@@ -252,7 +268,7 @@ export const useOsgiConfigs = () => {
             loadingFileRef.current = false;
             setLoadingFile(false);
         }
-    }, [fetchFileContent, resetProperties]);
+    }, [fetchFileContent, resetProperties, handleEditorValidate]);
 
 
 
@@ -604,7 +620,6 @@ export const useOsgiConfigs = () => {
         handleOpenCreateDialog,
         handleUploadFile
     } = useFileActions({
-        files,
         selectedFile,
         fetchFiles,
         fetchFileContent,
@@ -715,6 +730,8 @@ export const useOsgiConfigs = () => {
         setDiffConfig,
         isYamlValid,
         setIsYamlValid,
+        validationErrors,
+        handleEditorValidate,
         searchInContent,
         setSearchInContent,
         fetchFiles,
