@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { osgiService } from '../api/osgiService';
 import { useToast } from './useToast';
 import { OsgiFile, ModalConfig, ConfirmResult } from './osgiTypes';
-import { filesOfSameConfiguration } from '../utils/configIdentity';
+import { filesOfSameConfiguration, isDisabledFile } from '../utils/configIdentity';
 
 interface FileActionsDeps {
     selectedFile: OsgiFile | null;
@@ -36,7 +36,7 @@ export const useFileActions = ({
             await fetchFiles(); // Wait for files to refresh
 
             // Calculate new name to preserve selection
-            const isDisabled = f.name.endsWith('.disabled');
+            const isDisabled = isDisabledFile(f.name);
             const newName = isDisabled ? f.name.replace('.disabled', '') : f.name + '.disabled';
 
             // If the toggled file was selected, update selection to the new name
@@ -50,7 +50,7 @@ export const useFileActions = ({
     }, [fetchFiles, selectFile, selectedFile, success, t, toastError]);
 
     const handleToggleFile = useCallback(async (f: OsgiFile) => {
-        if (f.enabled === false || f.name.endsWith('.disabled')) {
+        if (f.enabled === false || isDisabledFile(f.name)) {
             await toggleFileStatus(f);
             return;
         }
@@ -134,7 +134,7 @@ export const useFileActions = ({
         try {
             await osgiService.create(filename);
             await fetchFiles();
-            const isEnabled = !filename.endsWith('.disabled');
+            const isEnabled = !isDisabledFile(filename);
             selectFile({ name: filename, enabled: isEnabled, configState: 'USER' });
             success(t('notification.createSuccess', { name: filename }) || `Created ${filename}`);
             return { ok: true };
@@ -224,7 +224,7 @@ export const useFileActions = ({
                     }
 
                     await fetchFiles();
-                    const isEnabled = !filename.endsWith('.disabled');
+                    const isEnabled = !isDisabledFile(filename);
                     selectFile({ name: filename, enabled: isEnabled, configState: 'USER' });
                     success(t('notification.uploadSuccess', { name: filename }) || `Uploaded ${filename}`);
 

@@ -20,6 +20,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -132,6 +133,39 @@ class OsgiConfigServiceFilesystemTest {
             writeConfig("state-user.cfg", "key = 1\n");
 
             assertEquals("USER", service.readFile("state-user.cfg", null, true).get("configState"));
+        }
+    }
+
+    // ---------------------------------------------------------------------
+    // Extensions in any case
+    // ---------------------------------------------------------------------
+
+    // The listing admits Foo.CFG and Foo.YML, but the read tested a lower-case extension only: a
+    // .YML file came back with no properties at all, and the editor showed it empty.
+    @Nested
+    @DisplayName("extensions in any case")
+    class ExtensionCase {
+
+        @Test
+        @DisplayName("an upper-case .YML is read as YAML")
+        void readFile_upperCaseYml_readsYamlProperties() throws IOException {
+            writeConfig("Upper-Case.YML", "host: example.org\nport: 8080\n");
+
+            Object properties = service.readFile("Upper-Case.YML", null, true).get("properties");
+
+            assertNotNull(properties);
+            assertTrue(properties.toString().contains("example.org"), String.valueOf(properties));
+        }
+
+        @Test
+        @DisplayName("an upper-case .CFG is read as properties")
+        void readFile_upperCaseCfg_readsCfgProperties() throws IOException {
+            writeConfig("Upper-Case.CFG", "host = example.org\n");
+
+            Object properties = service.readFile("Upper-Case.CFG", null, true).get("properties");
+
+            assertNotNull(properties);
+            assertTrue(properties.toString().contains("example.org"), String.valueOf(properties));
         }
     }
 
