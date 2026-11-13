@@ -1,5 +1,6 @@
 import React from 'react';
 import {WithTooltip} from './WithTooltip';
+import {configFileKind, isDisabledFile} from '../utils/configIdentity';
 import {
     Button,
     CloudDownload,
@@ -50,8 +51,8 @@ export const SelectedFileToolbar = ({
     isLoadingFile = false
 }) => {
     const {t} = useTranslation('osgi-configurations-manager');
-    const isCfgFile = selectedFile.name.endsWith('.cfg') || selectedFile.name.endsWith('.cfg.disabled');
-    const isEnabled = selectedFile.enabled !== false && !selectedFile.name.endsWith('.disabled');
+    const isCfgFile = configFileKind(selectedFile.name) === 'cfg';
+    const isEnabled = selectedFile.enabled !== false && !isDisabledFile(selectedFile.name);
     const modeOptions = [
         {label: t('editor.button.modeVisual'), value: 'visual', tooltip: t('tooltip.modeVisual'), icon: <ViewList style={BUTTON_ICON_STYLE} />},
         {label: t('editor.button.modeRaw'), value: 'raw', tooltip: t('tooltip.modeRaw'), icon: <Code style={BUTTON_ICON_STYLE} />}

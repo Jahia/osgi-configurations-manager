@@ -428,10 +428,13 @@ public class OsgiConfigService {
         return pids;
     }
 
+    // Any case: the listing admits Foo.CFG and Foo.YML (isSupportedConfigFilename), and a
+    // case-sensitive test read Foo.YML as no type at all, so the editor showed it empty.
     private String getFileType(String filename) {
-        if (filename.contains(".cfg"))
+        String lowercaseName = filename.toLowerCase(Locale.ROOT);
+        if (lowercaseName.endsWith(".cfg") || lowercaseName.endsWith(".cfg" + DISABLED_SUFFIX))
             return "cfg";
-        if (filename.contains(".yml"))
+        if (lowercaseName.endsWith(".yml") || lowercaseName.endsWith(".yml" + DISABLED_SUFFIX))
             return "yml";
         return "unknown";
     }
@@ -1420,18 +1423,22 @@ public class OsgiConfigService {
 
 
 
+    // The extensions in any case, as the listing admits them; the PID keeps its own case.
     private String normalizeConfigFilename(String filename) {
-        String normalizedName = filename;
-        if (normalizedName.endsWith(DISABLED_SUFFIX)) {
-            normalizedName = normalizedName.substring(0, normalizedName.length() - DISABLED_SUFFIX.length());
-        }
-        if (normalizedName.endsWith(".cfg")) {
-            return normalizedName.substring(0, normalizedName.length() - ".cfg".length());
-        }
-        if (normalizedName.endsWith(".yml")) {
-            return normalizedName.substring(0, normalizedName.length() - ".yml".length());
+        String normalizedName = stripSuffixIgnoreCase(filename, DISABLED_SUFFIX);
+        for (String extension : new String[] {".cfg", ".yml"}) {
+            String stripped = stripSuffixIgnoreCase(normalizedName, extension);
+            if (!stripped.equals(normalizedName)) {
+                return stripped;
+            }
         }
         return normalizedName;
+    }
+
+    private static String stripSuffixIgnoreCase(String value, String suffix) {
+        return value.regionMatches(true, value.length() - suffix.length(), suffix, 0, suffix.length())
+                ? value.substring(0, value.length() - suffix.length())
+                : value;
     }
 
     /**

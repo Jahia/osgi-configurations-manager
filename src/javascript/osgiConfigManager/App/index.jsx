@@ -14,7 +14,6 @@ import {
     StatusBanner
 } from './components/AppChrome';
 import { FileSidebar } from './components/FileSidebar';
-import { ConfigEditor } from './components/Editor';
 import { CfgEditor } from './components/CfgEditor';
 import { MonacoEditor } from './components/MonacoEditor';
 import { ModalDialog } from './components/Dialogs';
@@ -24,6 +23,7 @@ import { SelectedFileToolbar } from './components/SelectedFileToolbar';
 import { AppHeaderBar } from './components/AppHeaderBar';
 import { useTranslation } from 'react-i18next';
 import { ToastProvider } from './hooks/useToast';
+import { configFileKind } from './utils/configIdentity';
 
 const AppContent = () => {
     const { t } = useTranslation('osgi-configurations-manager');
@@ -42,7 +42,6 @@ const AppContent = () => {
         setIsCreatingFile,
         newFileName,
         setNewFileName,
-        collapsedPaths,
         handleSave,
         handleToggleFile,
         handleDeleteFile,
@@ -50,10 +49,7 @@ const AppContent = () => {
         handleOpenCreateDialog,
         handlePropUpdate,
         handleRawUpdate,
-        handleAddProperty,
-        handleAddItem,
         handleDeleteProperty,
-        toggleCollapse,
         searchTerm,
         setSearchTerm,
         modalConfig,
@@ -84,12 +80,8 @@ const AppContent = () => {
 
     const selectedConfigState = selectedFile?.configState || 'USER';
     const uploadInputRef = React.useRef(null);
-    const isConfigFile = selectedFile && (
-        selectedFile.name.endsWith('.cfg') ||
-        selectedFile.name.endsWith('.cfg.disabled') ||
-        selectedFile.name.endsWith('.yml') ||
-        selectedFile.name.endsWith('.yml.disabled')
-    );
+    const selectedKind = selectedFile ? configFileKind(selectedFile.name) : null;
+    const isConfigFile = Boolean(selectedKind);
     const canMarkAsDefault = Boolean(isConfigFile && selectedConfigState === 'USER');
 
     const handleDownloadSelectedFile = React.useCallback(file => {
@@ -297,7 +289,7 @@ const AppContent = () => {
                                             </div>
                                         ) : (
                                             <>
-                                                {(selectedFile.name.endsWith('.yml') || selectedFile.name.endsWith('.yml.disabled')) ? (
+                                                {selectedKind === 'yml' ? (
                                                     <MonacoEditor
                                                         value={rawContent}
                                                         onChange={handleRawUpdate}
@@ -305,7 +297,7 @@ const AppContent = () => {
                                                         metatypeDefinition={metatypeInfo}
                                                         filename={selectedFile.name}
                                                     />
-                                                ) : (selectedFile.name.endsWith('.cfg') || selectedFile.name.endsWith('.cfg.disabled')) ? (
+                                                ) : selectedKind === 'cfg' ? (
                                                     isRawMode ? (
                                                         <MonacoEditor
                                                             value={rawContent}
@@ -334,17 +326,7 @@ const AppContent = () => {
                                                             metatypeDefinition={metatypeInfo}
                                                         />
                                                     )
-                                                ) : (
-                                                    <ConfigEditor
-                                                        properties={properties}
-                                                        collapsedPaths={collapsedPaths}
-                                                        toggleCollapse={toggleCollapse}
-                                                        handlePropUpdate={handlePropUpdate}
-                                                        handleAddProperty={handleAddProperty}
-                                                        handleAddItem={handleAddItem}
-                                                        handleDeleteProperty={handleDeleteProperty}
-                                                    />
-                                                )}
+                                                ) : null}
                                             </>
                                         )}
                                     </div>

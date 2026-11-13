@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { OsgiAvailableMetatypeDefinition, OsgiMetatypeDefinition, osgiService } from '../api/osgiService';
 import { useToast } from './useToast';
 import { useProperties } from './useProperties';
+import { configFileKind } from '../utils/configIdentity';
 
 /** An error marker of the raw editor, which blocks Save. */
 export interface ValidationError {
@@ -182,7 +183,7 @@ export const useOsgiConfigs = () => {
                 // on the rawContent to ensure that the structure matches exactly what handleToggleRawMode produces.
                 // Using the server-side 'properties' often leads to structural differences (e.g. comments, type wrappers)
                 // causing false "Unsaved Changes" flags.
-                const isCfg = filename.toLowerCase().endsWith('.cfg');
+                const isCfg = configFileKind(filename) === 'cfg';
                 let parsed: any;
 
                 if (isCfg && data.data.rawContent) {
@@ -328,7 +329,7 @@ export const useOsgiConfigs = () => {
             if (isRawMode) {
                 finalContent = rawContent;
             } else {
-                if ((selectedFile?.name.endsWith('.yml') || selectedFile?.name.endsWith('.yml.disabled')) && !isYamlValid) {
+                if (selectedFile && configFileKind(selectedFile.name) === 'yml' && !isYamlValid) {
                     setModalConfig({
                         type: 'confirm',
                         severity: 'warning',
@@ -377,7 +378,7 @@ export const useOsgiConfigs = () => {
                     // For CFG Array
                     const { toCfgFormat } = await import('../utils/configUtils');
                     finalContent = toCfgFormat(propsToSave);
-                } else if (selectedFile?.name.endsWith('.yml') || selectedFile?.name.endsWith('.yml.disabled')) {
+                } else if (selectedFile && configFileKind(selectedFile.name) === 'yml') {
                     // For YAML, we don't have a specific tree-to-yaml converter yet that handles our internal structure perfectly 
                     // unless we rely on the rawContent text editor for YAML.
                     finalContent = rawContent;
@@ -428,7 +429,7 @@ export const useOsgiConfigs = () => {
                 setOriginalRawContent(finalContent);
 
                 const { parseCfgContent } = await import('../utils/configUtils');
-                if (selectedFile?.name.endsWith('.cfg') || selectedFile?.name.endsWith('.cfg.disabled')) {
+                if (selectedFile && configFileKind(selectedFile.name) === 'cfg') {
                     const parsed = parseCfgContent(finalContent);
                     // Same shared traversal as the load path; these copies previously swallowed decryption
                     // errors entirely, so a refusal left the value unchanged with no trace at all.

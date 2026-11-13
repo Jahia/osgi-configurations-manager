@@ -9,6 +9,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **A configuration whose extension is in upper case opens in the right editor.** The file list
+  shows `Foo.CFG` and `Foo.YML`, but the interface and the server read the extension in lower case
+  only. `Foo.CFG` opened in an old tree editor that showed the parser's internal structure, and
+  `Foo.YML` opened empty. They now open in the visual and raw editors like any other file. The
+  old tree editor, reached only that way and without keyboard access or field names, is removed.
 - **YAML errors are underlined again when another module also ships Monaco.** The manager took
   its YAML worker from `window.MonacoEnvironment`, which it sets only when no other module did.
   When another module bundling Monaco set it first, the raw editor used that module's worker, and

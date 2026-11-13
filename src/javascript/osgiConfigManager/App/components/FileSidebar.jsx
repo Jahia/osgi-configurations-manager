@@ -11,6 +11,7 @@ import {
 } from '@jahia/moonstone';
 import { useTranslation } from 'react-i18next';
 import { WithTooltip } from './WithTooltip';
+import { configFileKind } from '../utils/configIdentity';
 import { ConfigStateBadge } from './ConfigStateBadge';
 import {
     CHROME_TOKENS,
@@ -40,7 +41,7 @@ export const FileSidebar = ({
             return 'inherit';
         }
 
-        if (filename.endsWith('.yml') || filename.endsWith('.yml.disabled')) {
+        if (configFileKind(filename) === 'yml') {
             return 'var(--color-accent_dark)';
         }
 

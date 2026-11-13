@@ -6,6 +6,7 @@ import {
 import {useTranslation} from 'react-i18next';
 import {ConfigStateBadge} from './ConfigStateBadge';
 import {ActionButton} from './ActionButton';
+import {configFileKind} from '../utils/configIdentity';
 import {
     CHROME_TOKENS,
     OverflowPreviewText,
@@ -32,7 +33,7 @@ export const SelectedFileHeader = ({
     onCancel
 }) => {
     const {t} = useTranslation('osgi-configurations-manager');
-    const isYamlFile = selectedFile.name.endsWith('.yml') || selectedFile.name.endsWith('.yml.disabled');
+    const isYamlFile = configFileKind(selectedFile.name) === 'yml';
     const isBlockedByErrors = hasUnsaved && (isRawMode || isYamlFile) && !isYamlValid;
     const blockedReasonId = useId();
 

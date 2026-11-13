@@ -19,3 +19,22 @@ export const filesOfSameConfiguration = <T extends { name: string }>(files: T[],
     const stem = configurationStem(filename);
     return files.filter(file => configurationStem(file.name) === stem);
 };
+
+/**
+ * Which editor a file opens in: 'cfg' or 'yml', whatever the case of its extension, or null. The
+ * server lists Foo.CFG and Foo.YML, and a case-sensitive test sent them to an editor that showed
+ * the parser's internal structure or nothing.
+ */
+export const configFileKind = (filename: string): 'cfg' | 'yml' | null => {
+    const lower = filename.toLowerCase().replace(/\.disabled$/, '');
+    if (lower.endsWith('.cfg')) {
+        return 'cfg';
+    }
+    if (lower.endsWith('.yml')) {
+        return 'yml';
+    }
+    return null;
+};
+
+/** Whether the file is a disabled copy (<name>.disabled, any case). */
+export const isDisabledFile = (filename: string): boolean => filename.toLowerCase().endsWith('.disabled');
