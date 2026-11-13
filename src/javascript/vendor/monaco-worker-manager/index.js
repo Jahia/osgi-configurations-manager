@@ -15,24 +15,45 @@
 // the worker the way Monaco does for its own languages (vs/internal/common/workers.js): ask
 // MonacoEnvironment for it, then post a throwaway message and the create data, which worker.js
 // expects in that order.
+//
+// Unlike 2.0.1, the worker can come from a factory the host module registers with
+// setWorkerFactory instead of from MonacoEnvironment. window.MonacoEnvironment is one slot for the
+// whole page: every Jahia module that bundles Monaco reads it, and the first one to set it wins.
+// When another module got there first, its getWorker handed this module a yaml.worker.js built
+// against another Monaco, which answered without the YAML service ("Missing requestHandler or
+// method: doValidation") and live validation stopped. Workers this module starts for itself must
+// not depend on who claimed the global.
 
-const createWorker = (label, createData) => {
-    const environment = globalThis.MonacoEnvironment;
-    let worker;
-    if (typeof environment?.getWorker === 'function') {
-        worker = environment.getWorker('workerMain.js', label);
-    } else if (typeof environment?.getWorkerUrl === 'function') {
-        worker = new Worker(environment.getWorkerUrl('workerMain.js', label), {name: label, type: 'module'});
-    } else {
-        throw new Error('MonacoEnvironment.getWorker or MonacoEnvironment.getWorkerUrl must be defined');
+let workerFactory;
+
+/**
+ * Register the function that starts the worker for a label, used instead of MonacoEnvironment.
+ *
+ * @param factory - (label) => Worker | Promise<Worker>, or undefined to fall back to MonacoEnvironment.
+ */
+export function setWorkerFactory(factory) {
+    workerFactory = factory;
+}
+
+const startWorker = label => {
+    if (typeof workerFactory === 'function') {
+        return workerFactory(label);
     }
-
-    return Promise.resolve(worker).then(w => {
-        w.postMessage('ignore');
-        w.postMessage(createData);
-        return w;
-    });
+    const environment = globalThis.MonacoEnvironment;
+    if (typeof environment?.getWorker === 'function') {
+        return environment.getWorker('workerMain.js', label);
+    }
+    if (typeof environment?.getWorkerUrl === 'function') {
+        return new Worker(environment.getWorkerUrl('workerMain.js', label), {name: label, type: 'module'});
+    }
+    throw new Error('MonacoEnvironment.getWorker or MonacoEnvironment.getWorkerUrl must be defined');
 };
+
+const createWorker = (label, createData) => Promise.resolve(startWorker(label)).then(w => {
+    w.postMessage('ignore');
+    w.postMessage(createData);
+    return w;
+});
 
 /**
  * Create a worker manager: starts the worker on first use and stops it after an idle period.
