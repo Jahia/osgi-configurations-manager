@@ -429,7 +429,7 @@ export const useOsgiConfigs = () => {
                 setOriginalRawContent(finalContent);
 
                 const { parseCfgContent } = await import('../utils/configUtils');
-                if (selectedFile && configFileKind(selectedFile.name) === 'cfg') {
+                if (configFileKind(selectedFile.name) === 'cfg') {
                     const parsed = parseCfgContent(finalContent);
                     // Same shared traversal as the load path; these copies previously swallowed decryption
                     // errors entirely, so a refusal left the value unchanged with no trace at all.
