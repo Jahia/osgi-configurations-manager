@@ -75,14 +75,21 @@ export const useFileActions = ({
             severity: 'warning',
             title: t('modal.deleteFile.title'),
             message: t('modal.deleteFile.message', { name: f.name }),
+            // Named after the action: the danger button read "OK".
+            confirmLabel: t('modal.deleteFile.confirm'),
             onConfirm: async () => {
                 try {
                     await osgiService.delete(f.name);
                     if (selectedFile?.name === f.name) {
                         selectFile(null);
                     }
-                    fetchFiles();
+                    await fetchFiles();
                     success(t('notification.deleteSuccess', { name: f.name }) || `Deleted ${f.name}`);
+                    // The dialog gave the focus back to the Delete button, which is gone with the
+                    // file: the focus fell to <body>. Put it on the file list (WCAG 2.4.3).
+                    window.requestAnimationFrame(() => {
+                        document.querySelector<HTMLElement>('[data-cy="file-list"]')?.focus();
+                    });
                 } catch (e: any) {
                     toastError(t('modal.error.delete', { error: e.message }));
                 }

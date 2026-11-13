@@ -34,6 +34,9 @@ export const CfgMetatypePropertyDialog = ({
     onCreateCustomProperty
 }) => {
     const { t } = useTranslation('osgi-configurations-manager');
+    const titleId = React.useId();
+    const descriptionId = React.useId();
+    const existsId = React.useId();
 
     // Focus into the dialog, trap Tab, close on Escape, restore focus on unmount.
     const dialogRef = useDialogA11y(open, onClose);
@@ -71,9 +74,13 @@ export const CfgMetatypePropertyDialog = ({
     return createPortal(
         <div
             data-cy="cfg-metatype-property-dialog"
+            // On the dialog element itself: the Paper of the Moonstone version Jahia serves does not
+            // forward its ref, so the hook found no container, and Tab was blocked behind the dialog.
+            ref={dialogRef}
             role="dialog"
             aria-modal="true"
-            aria-label={t('editor.metatype.cfgPicker.title')}
+            aria-labelledby={titleId}
+            aria-describedby={descriptionId}
             onClick={onClose}
             style={{
                 position: 'fixed',
@@ -86,7 +93,6 @@ export const CfgMetatypePropertyDialog = ({
             }}
         >
             <Paper
-                ref={dialogRef}
                 onClick={event => event.stopPropagation()}
                 style={{
                     width: '760px',
@@ -94,7 +100,8 @@ export const CfgMetatypePropertyDialog = ({
                     maxHeight: 'calc(100vh - 60px)',
                     display: 'flex',
                     flexDirection: 'column',
-                    overflow: 'hidden',
+                    // auto, not hidden: at 400% zoom the custom-property section was cut off (1.4.10).
+                    overflow: 'auto',
                     padding: 0
                 }}
             >
@@ -106,25 +113,38 @@ export const CfgMetatypePropertyDialog = ({
                     justifyContent: 'space-between'
                 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <Typography variant="heading" weight="bold">{t('editor.metatype.cfgPicker.title')}</Typography>
-                        <Typography variant="body" style={{ color: '#666' }}>{t('editor.metatype.cfgPicker.description')}</Typography>
+                        <Typography id={titleId} component="h2" variant="heading" weight="bold" style={{ margin: 0 }}>{t('editor.metatype.cfgPicker.title')}</Typography>
+                        <Typography id={descriptionId} variant="body" style={{ color: '#595959' }}>{t('editor.metatype.cfgPicker.description')}</Typography>
                     </div>
-                    <div style={{ cursor: 'pointer' }} onClick={onClose}>
-                        <Close />
-                    </div>
+                    {/* A button: the clickable icon could not be reached by Tab nor named (WCAG 4.1.2). */}
+                    <Button
+                        data-cy="cfg-metatype-property-close"
+                        variant="ghost"
+                        icon={<Close />}
+                        aria-label={t('modal.close')}
+                        title={t('modal.close')}
+                        onClick={onClose}
+                    />
                 </div>
 
-                <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px', overflow: 'hidden' }}>
+                <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <Input
                         data-cy="cfg-metatype-property-search"
-                        autoFocus
+                        // data-autofocus, not autoFocus: see useDialogA11y (focus given back on close).
+                        data-autofocus
+                        aria-label={t('editor.metatype.cfgPicker.searchPlaceholder')}
+                        aria-describedby={customAlreadyExists ? `${descriptionId} ${existsId}` : descriptionId}
+                        aria-invalid={customAlreadyExists || undefined}
                         value={query}
                         onChange={event => setQuery(event.target.value)}
                         onKeyDown={event => {
                             if (event.key === 'Enter' && trimmedQuery) {
                                 if (exactMatch) {
                                     onSelectMetatypeProperty(exactMatch);
-                                } else if (!customAlreadyExists) {
+                                } else if (customAlreadyExists) {
+                                    // Stay open: closing added nothing and said nothing.
+                                    return;
+                                } else {
                                     onCreateCustomProperty(trimmedQuery);
                                 }
                                 onClose();
@@ -133,6 +153,11 @@ export const CfgMetatypePropertyDialog = ({
                         placeholder={t('editor.metatype.cfgPicker.searchPlaceholder')}
                         variant="outlined"
                     />
+
+                    {/* The number of matches, announced as the list filters (WCAG 4.1.3). */}
+                    <div role="status" data-cy="cfg-metatype-property-count" style={{ fontSize: '12px', color: 'var(--color-gray_dark)' }}>
+                        {t('editor.metatype.cfgPicker.count', { count: filteredProperties.length })}
+                    </div>
 
                     <div style={{
                         border: '1px solid #ececec',
@@ -150,7 +175,6 @@ export const CfgMetatypePropertyDialog = ({
                                     type="button"
                                     key={property.id}
                                     data-cy={`cfg-metatype-property-option-${encodeURIComponent(property.id)}`}
-                                    aria-label={property.id}
                                     onClick={() => {
                                         onSelectMetatypeProperty(property);
                                         onClose();
@@ -205,13 +229,16 @@ export const CfgMetatypePropertyDialog = ({
                         gap: '8px'
                     }}>
                         <Typography variant="subheading" weight="bold">{t('editor.metatype.cfgPicker.customTitle')}</Typography>
+                        {/* Mounted before the message, so it is announced; tied to the field above. */}
+                        <div role="status">
+                            {trimmedQuery && customAlreadyExists && (
+                                <Typography id={existsId} variant="caption" style={{ color: 'var(--color-danger_dark)' }}>
+                                    {t('editor.metatype.cfgPicker.customAlreadyExists')}
+                                </Typography>
+                            )}
+                        </div>
                         {trimmedQuery && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                {customAlreadyExists && (
-                                    <Typography variant="caption" style={{ color: '#db3d44' }}>
-                                        {t('editor.metatype.cfgPicker.customAlreadyExists')}
-                                    </Typography>
-                                )}
                                 {!customAlreadyExists && knownMetatypeProperty && (
                                     <Typography variant="caption" style={{ color: '#0077b6' }}>
                                         {t('editor.metatype.cfgPicker.knownProperty')}

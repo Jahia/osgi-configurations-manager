@@ -12,8 +12,11 @@
         "enable": "Aktivieren",
         "save": "Änderungen speichern",
         "searchPlaceholder": "Konfigurationen filtern...",
+        "searchLabel": "Konfigurationsdateien filtern",
         "searchDeep": "Im Inhalt suchen",
         "searchDeepTooltip": "Aktivieren, um innerhalb des Dateiinhalts zu suchen",
+        "fileList": "Konfigurationsdateien",
+        "fileDisabled": "deaktiviert",
         "unsaved": "Ungespeicherte Änderungen"
     },
     "notification": {
@@ -30,6 +33,7 @@
     },
     "modal": {
         "cancel": "Abbrechen",
+        "close": "Schließen",
         "ok": "OK",
         "create": {
             "title": "Neue Konfiguration erstellen",
@@ -68,7 +72,8 @@
         },
         "deleteFile": {
             "title": "Konfiguration löschen",
-            "message": "Sind Sie sicher, dass Sie {{name}} löschen möchten?"
+            "message": "Sind Sie sicher, dass Sie {{name}} löschen möchten?",
+            "confirm": "Löschen"
         },
         "disableFile": {
             "title": "Konfiguration deaktivieren",
@@ -115,7 +120,10 @@
             "placeholder": "Hier eingeben..."
         },
         "diff": {
-            "title": "Änderungen überprüfen: {{name}}"
+            "title": "Änderungen überprüfen: {{name}}",
+            "changes": "Änderungen",
+            "added": "Hinzugefügt:",
+            "removed": "Entfernt:"
         },
         "markAsDefault": {
             "title": "Als Standardkonfiguration markieren",
@@ -128,7 +136,9 @@
             "property": "Eigenschaft / Schlüssel",
             "value": "Wert",
             "security": "Sicherheit",
-            "actions": "Aktionen"
+            "actions": "Aktionen",
+            "reorder": "Neu anordnen",
+            "type": "Typ"
         },
         "button": {
             "addProperty": "Eigenschaft hinzufügen",
@@ -147,13 +157,16 @@
             "toggleComments": "Kommentare umschalten",
             "showSecrets": "Geheimnisse anzeigen ({{count}})",
             "hideSecrets": "Geheimnisse ausblenden",
-            "showSecretsInDiff": "Geheimnisse anzeigen"
+            "showSecretsInDiff": "Geheimnisse anzeigen",
+            "tabMovesFocus": "Tab verlässt den Editor"
         },
         "placeholder": {
             "key": "Schlüssel",
             "value": "Wert"
         },
         "encryptValueOf": "Wert von {{key}} verschlüsseln",
+        "modeLabel": "Editormodus",
+        "rawEditorLabel": "Konfigurationsquelle. Drücken Sie Strg+M (Ctrl+Umschalt+M unter macOS), damit Tab den Editor verlässt.",
         "validation": {
             "missingKey": "Eigenschaft muss vor dem Trennzeichen einen Schlüssel haben",
             "duplicateKey": "Doppelter Schlüssel '{{key}}'",
@@ -171,7 +184,8 @@
                 "customDescription": "Verwenden Sie dasselbe Feld, um eine nicht im Metatype deklarierte Eigenschaft hinzuzufügen.",
                 "customAction": "Benutzerdefinierte Eigenschaft \"{{name}}\" hinzufügen",
                 "customAlreadyExists": "Diese Eigenschaft existiert bereits in der aktuellen Datei.",
-                "knownProperty": "Dieser Name entspricht einer bekannten Metatype-Eigenschaft. Die Auswahl aus der Liste übernimmt auch den Standardwert."
+                "knownProperty": "Dieser Name entspricht einer bekannten Metatype-Eigenschaft. Die Auswahl aus der Liste übernimmt auch den Standardwert.",
+                "count": "{{count}} passende Eigenschaft(en)"
             },
             "type": "Typ",
             "optional": "Optional",
@@ -204,7 +218,27 @@
         "reorderHandle": "Eintrag neu anordnen – mit Pfeil-hoch oder Pfeil-runter verschieben",
         "filter": {
             "placeholder": "Nach Eigenschaftsname oder Wert filtern",
-            "count": "Passende Eigenschaften: {{count}}"
+            "count": "Passende Eigenschaften: {{count}}",
+            "label": "Eigenschaften filtern"
+        },
+        "entry": {
+            "comment": "Kommentar {{position}}",
+            "emptyLine": "Leerzeile {{position}}",
+            "property": "Eigenschaft {{position}}"
+        },
+        "aria": {
+            "table": "Eigenschaften",
+            "key": "Schlüssel von Eintrag {{position}}",
+            "value": "Wert von {{name}}",
+            "comment": "Text von {{name}}",
+            "reorder": "{{name}} verschieben: Pfeil nach oben oder unten",
+            "moveUp": "{{name}} nach oben",
+            "moveDown": "{{name}} nach unten",
+            "delete": "{{name}} löschen",
+            "showSecret": "Wert von {{name}} anzeigen",
+            "hideSecret": "Wert von {{name}} ausblenden",
+            "metatypeInfo": "Dokumentation von {{name}}",
+            "moved": "{{name}} an Position {{position}} von {{total}} verschoben"
         }
     },
     "tooltip": {
@@ -234,7 +268,8 @@
         "toggleEmptyLines": "Sichtbarkeit leerer Zeilen umschalten (außer Kopfzeile)",
         "markAsDefault": "Den Header '# default configuration' hinzufügen, damit Jahia lokale Änderungen für Modul-Standardwerte bewahrt",
         "showSecrets": "Die Werte der Geheimnisse dieser Datei anzeigen. Beim Öffnen einer anderen Datei werden sie wieder maskiert.",
-        "hideSecrets": "Die Werte der Geheimnisse maskieren"
+        "hideSecrets": "Die Werte der Geheimnisse maskieren",
+        "tabMovesFocus": "Wenn aktiviert, verschiebt Tab den Fokus aus dem Editor, statt einzurücken. Auch Strg+M schaltet um (Ctrl+Umschalt+M unter macOS)."
     },
     "sidebar": {
         "on": "Ein",

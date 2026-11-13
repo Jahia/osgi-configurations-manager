@@ -1,8 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as monaco from 'monaco-editor';
 import { configureMonacoYaml } from 'monaco-yaml';
+// What Tab does is a page-wide Monaco state that its Ctrl+M command toggles. The editor's
+// tabFocusMode option is only OR-ed with it: a toolbar driving the option could not be turned off by
+// Ctrl+M, nor show what Ctrl+M chose. The state has no public API, so the toolbar reads and sets it
+// here, through the subpath the package exports for its ESM sources.
+import { TabFocus } from 'monaco-editor/editor/browser/config/tabFocus.js';
 import { Button, Input, Typography } from '@jahia/moonstone';
-import { Add, Undo, RotateRight, Code, Lock, Unlock, Visibility, Hidden } from '@jahia/moonstone';
+import { Add, Undo, RotateRight, Code, Lock, Unlock, Visibility, Hidden, Check } from '@jahia/moonstone';
 import { useTranslation } from 'react-i18next';
 import { osgiService } from '../api/osgiService';
 import { lookupKnownPlaintext, rememberPlaintext } from '../utils/cryptoTree';
@@ -678,6 +683,9 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
     const [propertySearch, setPropertySearch] = useState('');
     // Secret values are masked until the user asks to see them; the choice is not kept per file.
     const [secretsVisible, setSecretsVisible] = useState(false);
+    // Monaco takes Tab to indent, so a keyboard user could not leave the editor without knowing
+    // its Ctrl+M (Ctrl+Shift+M on macOS) toggle (WCAG 2.1.2). The toolbar exposes the same mode.
+    const [tabMovesFocus, setTabMovesFocus] = useState(() => TabFocus.getTabFocusMode());
     const [secretCount, setSecretCount] = useState(0);
     const secretDecorationsRef = useRef(null);
     const applySecretMaskRef = useRef(() => {});
@@ -757,7 +765,8 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                 // textarea. Keep the textarea, the input path up to 0.52: with EditContext, focusing
                 // the textarea no longer focuses the editor, and the raw editor e2e specs could not
                 // type into it.
-                editContext: false
+                editContext: false,
+                ariaLabel: t('editor.rawEditorLabel')
             });
 
             // Explicitly handle resizing
@@ -1017,6 +1026,12 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
             };
         }
     }, [language]); // Re-create if language changes (rare)
+
+    // Ctrl+M changes the mode from inside the editor: keep the toolbar's toggle in step.
+    useEffect(() => {
+        const subscription = TabFocus.onDidChangeTabFocus(setTabMovesFocus);
+        return () => subscription.dispose();
+    }, []);
 
     // Masks the value of every secret (see secretMask) with an inline decoration, again at every
     // change of the content, of the Metatype or of the show/hide choice.
@@ -1404,6 +1419,19 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                                 onClick={() => setSecretsVisible(visible => !visible)}
                                 disabled={secretCount === 0 && !secretsVisible}
                                 title={secretsVisible ? t('tooltip.hideSecrets') : t('tooltip.showSecrets')}
+                            />
+                            <RawToolbarDivider />
+                            <RawToolbarButton
+                                dataCy="raw-editor-tab-focus"
+                                dataState={tabMovesFocus ? 'on' : 'off'}
+                                label={t('editor.button.tabMovesFocus')}
+                                aria-pressed={tabMovesFocus}
+                                // aria-pressed is not drawn: on, the button is outlined and ticked, like
+                                // the current editor mode, so the state shows without a screen reader.
+                                variant={tabMovesFocus ? 'default' : 'ghost'}
+                                icon={tabMovesFocus ? <Check style={TOOLBAR_BUTTON_ICON_STYLE} /> : undefined}
+                                onClick={() => TabFocus.setTabFocusMode(!TabFocus.getTabFocusMode())}
+                                title={t('tooltip.tabMovesFocus')}
                             />
                             {showRawPropertyPanel && (
                                 <>

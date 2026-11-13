@@ -1,6 +1,7 @@
 import React from 'react';
 import {Build, Chip, Edit, Module, Tooltip} from '@jahia/moonstone';
 import {useTranslation} from 'react-i18next';
+import {VISUALLY_HIDDEN_STYLE} from './AppChrome';
 
 const STATE_STYLES = {
     MODULE: {
@@ -38,7 +39,13 @@ export const ConfigStateBadge = ({state, compact = false, showTooltip = true}) =
     const effectiveState = STATE_STYLES[state] ? state : 'USER';
     const config = STATE_STYLES[effectiveState];
     const label = compact ? '' : t(config.labelKey);
-    const chip = renderChip(effectiveState, config, label);
+    // The compact chip is an icon only, and its tooltip opens on hover: keep the state in text.
+    const chip = compact ? (
+        <>
+            <span aria-hidden="true" style={{display: 'flex'}}>{renderChip(effectiveState, config, label)}</span>
+            <span style={VISUALLY_HIDDEN_STYLE}>, {t(config.labelKey)}</span>
+        </>
+    ) : renderChip(effectiveState, config, label);
 
     if (!showTooltip) {
         return chip;

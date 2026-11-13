@@ -17,13 +17,15 @@ import {
     Visibility,
     Hidden,
     AddCircleOutline,
-    SearchInput
+    SearchInput,
+    ChevronUp,
+    ChevronDown
 } from '@jahia/moonstone';
 import { useTranslation } from 'react-i18next';
 import { CfgMetatypeInfoTooltip, CfgMetatypePropertyDialog } from './CfgMetatypePropertyDialog';
 import { getSuggestedPropertyValue } from '../utils/metatypeUtils';
 import { secretKeyTester } from '../utils/secretMask';
-import {CHROME_TOKENS, FLOATING_TOOLTIP_STYLE, PANEL_ACTIONS_STYLE} from './AppChrome';
+import {CHROME_TOKENS, FLOATING_TOOLTIP_STYLE, PANEL_ACTIONS_STYLE, VISUALLY_HIDDEN_STYLE} from './AppChrome';
 
 const MANAGER_SELF_PID = 'org.jahia.modules.osgiconfigmanager';
 const MANAGER_PASSPHRASE_KEY = 'cryptoSecret';
@@ -55,7 +57,7 @@ const CFG_COLUMN_WIDTHS = {
     property: {flex: '1 1 0%', minWidth: '240px'},
     value: {flex: '1 1 0%', minWidth: '240px'},
     security: {flex: '0 0 88px', minWidth: '88px'},
-    actions: {flex: '0 0 48px', minWidth: '48px'}
+    actions: {flex: '0 0 112px', minWidth: '112px'}
 };
 
 // In a narrow editor the table scrolls sideways inside its own container (a data table may,
@@ -80,9 +82,11 @@ const cfgRowIconCellStyle = {
     paddingTop: '12px'
 };
 
+// The field border is the only cue that a cell is editable: gray (#7a7f88) is 4:1 on white, where
+// gray_light40 was 1.14:1 (WCAG 1.4.11).
 const cfgTextInputStyle = {
     color: CHROME_TOKENS.strongTextColor,
-    border: '1px solid var(--color-gray_light40)',
+    border: '1px solid var(--color-gray)',
     borderRadius: '4px',
     padding: '6px 8px',
     transition: 'border-color 0.2s',
@@ -90,7 +94,8 @@ const cfgTextInputStyle = {
     background: 'var(--color-white)'
 };
 
-const cfgCommentColor = 'var(--color-success)';
+// success (#6abb6d) was 2.35:1 on white; success_dark is 5.6:1 (WCAG 1.4.3).
+const cfgCommentColor = 'var(--color-success_dark)';
 
 const EditorToolbarButton = ({dataCy, tooltip, ...buttonProps}) => (
     <div data-cy={dataCy}>
@@ -142,7 +147,7 @@ const CfgEditorFooter = ({
                         label={t('editor.button.addComment')}
                         icon={<Comments/>}
                         variant="outlined"
-                        style={{color: 'var(--color-success)', borderColor: 'var(--color-success)'}}
+                        style={{color: cfgCommentColor, borderColor: cfgCommentColor}}
                         onClick={onAddComment}
                     />
                     <EditorToolbarButton
@@ -164,6 +169,7 @@ const CfgEditorFooter = ({
                     label={t('editor.button.toggleComments')}
                     icon={showComments ? <Visibility/> : <Hidden/>}
                     variant="ghost"
+                    aria-pressed={showComments}
                     onClick={onToggleComments}
                 />
                 <EditorToolbarButton
@@ -172,6 +178,7 @@ const CfgEditorFooter = ({
                     label={t('editor.button.toggleEmptyLines')}
                     icon={showEmptyLines ? <Visibility/> : <Hidden/>}
                     variant="ghost"
+                    aria-pressed={showEmptyLines}
                     onClick={onToggleEmptyLines}
                 />
             </div>
@@ -179,31 +186,39 @@ const CfgEditorFooter = ({
     </div>
 );
 
+// Column headers are <th scope="col">, and the icon-only columns get a hidden name, so each
+// field and button below is announced with its column (WCAG 1.3.1).
 const CfgEditorHeader = ({t}) => (
     <thead>
-        <TableRow>
-            <TableBodyCell style={{...cfgTableHeaderCellStyle, ...CFG_COLUMN_WIDTHS.drag}}></TableBodyCell>
-            <TableBodyCell style={{...cfgTableHeaderCellStyle, ...CFG_COLUMN_WIDTHS.type}}></TableBodyCell>
+        <TableRow tabIndex={undefined}>
+            <TableBodyCell component="th" scope="col" style={{...cfgTableHeaderCellStyle, ...CFG_COLUMN_WIDTHS.drag}}>
+                <span style={VISUALLY_HIDDEN_STYLE}>{t('editor.header.reorder')}</span>
+            </TableBodyCell>
+            <TableBodyCell component="th" scope="col" style={{...cfgTableHeaderCellStyle, ...CFG_COLUMN_WIDTHS.type}}>
+                <span style={VISUALLY_HIDDEN_STYLE}>{t('editor.header.type')}</span>
+            </TableBodyCell>
 
-            <TableBodyCell data-cy="cfg-header-property" style={{...cfgTableHeaderCellStyle, ...CFG_COLUMN_WIDTHS.property}}>
+            <TableBodyCell component="th" scope="col" data-cy="cfg-header-property" style={{...cfgTableHeaderCellStyle, ...CFG_COLUMN_WIDTHS.property}}>
                 <Typography variant="caption" weight="bold" style={{color: CHROME_TOKENS.strongTextColor}}>
                     {t('editor.header.property')}
                 </Typography>
             </TableBodyCell>
 
-            <TableBodyCell data-cy="cfg-header-value" style={{...cfgTableHeaderCellStyle, ...CFG_COLUMN_WIDTHS.value}}>
+            <TableBodyCell component="th" scope="col" data-cy="cfg-header-value" style={{...cfgTableHeaderCellStyle, ...CFG_COLUMN_WIDTHS.value}}>
                 <Typography variant="caption" weight="bold" style={{color: CHROME_TOKENS.strongTextColor}}>
                     {t('editor.header.value')}
                 </Typography>
             </TableBodyCell>
 
-            <TableBodyCell style={{...cfgTableHeaderCellStyle, ...CFG_COLUMN_WIDTHS.security, justifyContent: 'center'}}>
+            <TableBodyCell component="th" scope="col" style={{...cfgTableHeaderCellStyle, ...CFG_COLUMN_WIDTHS.security, justifyContent: 'center'}}>
                 <Typography variant="caption" weight="bold" style={{color: CHROME_TOKENS.strongTextColor}}>
                     {t('editor.header.security')}
                 </Typography>
             </TableBodyCell>
 
-            <TableBodyCell style={{...cfgTableHeaderCellStyle, ...CFG_COLUMN_WIDTHS.actions}}></TableBodyCell>
+            <TableBodyCell component="th" scope="col" style={{...cfgTableHeaderCellStyle, ...CFG_COLUMN_WIDTHS.actions}}>
+                <span style={VISUALLY_HIDDEN_STYLE}>{t('editor.header.actions')}</span>
+            </TableBodyCell>
         </TableRow>
     </thead>
 );
@@ -254,13 +269,15 @@ const AutoResizeTextArea = ({ value, onChange, placeholder, style, onFocus, onBl
             onFocus={onFocus}
             onBlur={onBlur}
             onMouseDown={(e) => e.stopPropagation()}
+            // osgi-cfg-field draws the focus outline (index.jsx): outline: none left only the row
+            // background, 1.14:1, to show which field had the keyboard (WCAG 2.4.7).
+            className="osgi-cfg-field"
             style={{
                 width: '100%',
                 resize: 'none',
                 overflow: 'hidden',
                 minHeight: '32px', // Standard input height
                 border: 'none',
-                outline: 'none',
                 background: 'transparent',
                 fontFamily: 'inherit',
                 fontSize: 'inherit',
@@ -303,6 +320,8 @@ export const CfgEditor = ({
     const [overlay, setOverlay] = useState(null);
     const [visibleSecrets, setVisibleSecrets] = useState({});
     const [isMetatypeDialogOpen, setIsMetatypeDialogOpen] = useState(false);
+    // What the last move did, for screen readers: a move changes no field they are on.
+    const [reorderAnnouncement, setReorderAnnouncement] = useState('');
 
     // Refs map to store input references: { [index]: { key: HTMLElement, value: HTMLElement } }
     const inputRefs = useRef({});
@@ -506,6 +525,59 @@ export const CfgEditor = ({
         setSelectedIndex(index);
     };
 
+    const isEntryShown = entry => {
+        const type = entry.type?.value ?? entry.type;
+        if (filtering && !matchesCfgFilter(entry, filter, isSecretKey)) {
+            return false;
+        }
+        if (!showComments && type === 'comment') {
+            return false;
+        }
+        return showEmptyLines || type !== 'empty';
+    };
+    const shownIndices = (Array.isArray(entries) ? entries : [])
+        .map((entry, index) => (isEntryShown(entry) ? index : -1))
+        .filter(index => index !== -1);
+
+    // How a row is named in its controls' labels: its key, or its kind and position.
+    const entryName = (entry, index) => {
+        const type = entry.type?.value ?? entry.type;
+        const position = index + 1;
+        if (type === 'comment') {
+            return t('editor.entry.comment', {position});
+        }
+        if (type === 'empty') {
+            return t('editor.entry.emptyLine', {position});
+        }
+        return (entry.key?.value ?? entry.key) || t('editor.entry.property', {position});
+    };
+
+    // Moves an entry past its shown neighbour (hidden comments and empty lines are skipped), then
+    // keeps the focus on the moved entry's own handle and says where it went. Rows are keyed by
+    // index, so without the focus move the next Arrow key moved the neighbour back (WCAG 2.4.3).
+    // Off while filtering, like the drag: only part of the rows is shown.
+    const moveEntry = (index, direction, focusTarget) => {
+        if (filtering) {
+            return;
+        }
+        const position = shownIndices.indexOf(index);
+        const target = shownIndices[position + direction];
+        if (position === -1 || target === undefined) {
+            return;
+        }
+        const name = entryName(entries[index], index);
+        handleReorder(index, target);
+        setSelectedIndex(target);
+        setReorderAnnouncement(t('editor.aria.moved', {name, position: position + direction + 1, total: shownIndices.length}));
+        window.requestAnimationFrame(() => {
+            document.querySelector(`[data-cy="${focusTarget}-${target}"]`)?.focus();
+        });
+    };
+
+    const filterCount = filtering
+        ? (Array.isArray(entries) ? entries : []).filter(entry => matchesCfgFilter(entry, filter, isSecretKey)).length
+        : null;
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', height: '100%', overflow: 'hidden' }}>
             {overlay && createPortal(
@@ -531,22 +603,25 @@ export const CfgEditor = ({
                 <div style={{flex: '1 1 auto', maxWidth: '480px'}}>
                     <SearchInput
                         value={filter}
+                        aria-label={t('editor.filter.label')}
                         placeholder={t('editor.filter.placeholder')}
                         onChange={e => setFilter(e.target.value)}
                         onClear={() => setFilter('')}
                     />
                 </div>
-                {filtering && (
-                    <Typography variant="caption" data-cy="cfg-filter-count" style={{color: 'var(--color-gray_dark60)'}}>
-                        {t('editor.filter.count', {
-                            count: (Array.isArray(entries) ? entries : []).filter(entry => matchesCfgFilter(entry, filter, isSecretKey)).length
-                        })}
-                    </Typography>
-                )}
+                {/* Mounted before the count appears, so screen readers announce it (WCAG 4.1.3). */}
+                <div role="status">
+                    {filtering && (
+                        <Typography variant="caption" data-cy="cfg-filter-count" style={{color: 'var(--color-gray_dark)'}}>
+                            {t('editor.filter.count', {count: filterCount})}
+                        </Typography>
+                    )}
+                </div>
             </div>
+            <div role="status" data-cy="cfg-reorder-status" style={VISUALLY_HIDDEN_STYLE}>{reorderAnnouncement}</div>
 
             <div style={{ flex: 1, overflow: 'auto' }} onScroll={() => setOverlay(null)}>
-                <Table style={{ width: '100%', minWidth: CFG_TABLE_MIN_WIDTH }}>
+                <Table aria-label={t('editor.aria.table')} style={{ width: '100%', minWidth: CFG_TABLE_MIN_WIDTH }}>
                     <CfgEditorHeader t={t} />
                     <TableBody>
                         {Array.isArray(entries) && entries.map((entry, index) => {
@@ -554,15 +629,13 @@ export const CfgEditor = ({
                             // use ?? to handle empty strings correctly
                             const type = entry.type?.value ?? entry.type;
 
-                            if (filtering && !matchesCfgFilter(entry, filter, isSecretKey)) {
+                            if (!isEntryShown(entry)) {
                                 return null;
                             }
-                            if (!showComments && type === 'comment') {
-                                return null;
-                            }
-                            if (!showEmptyLines && type === 'empty') {
-                                return null;
-                            }
+                            const name = entryName(entry, index);
+                            const shownPosition = shownIndices.indexOf(index);
+                            const canMoveUp = !filtering && shownPosition > 0;
+                            const canMoveDown = !filtering && shownPosition < shownIndices.length - 1;
                             const key = entry.key?.value ?? entry.key ?? '';
                             const value = entry.value?.value ?? entry.value ?? '';
 
@@ -586,6 +659,8 @@ export const CfgEditor = ({
                             return (
                                 <TableRow
                                     key={index}
+                                    // Moonstone makes every row a Tab stop with nothing to do on it.
+                                    tabIndex={undefined}
                                     data-cy={`cfg-row-${index}`}
                                     style={rowStyle}
                                     className={draggedIndex === index ? "moonstone-drag" : ""}
@@ -612,19 +687,19 @@ export const CfgEditor = ({
                                         <button
                                             type="button"
                                             data-cy={`cfg-reorder-${index}`}
-                                            aria-label={t('editor.reorderHandle')}
+                                            aria-label={t('editor.aria.reorder', {name})}
                                             title={t('editor.reorderHandle')}
                                             onClick={(e) => e.stopPropagation()}
                                             onKeyDown={(e) => {
-                                                if (e.key === 'ArrowUp' && index > 0) {
+                                                if (e.key === 'ArrowUp') {
                                                     e.preventDefault();
-                                                    handleReorder(index, index - 1);
-                                                } else if (e.key === 'ArrowDown' && index < entries.length - 1) {
+                                                    moveEntry(index, -1, 'cfg-reorder');
+                                                } else if (e.key === 'ArrowDown') {
                                                     e.preventDefault();
-                                                    handleReorder(index, index + 1);
+                                                    moveEntry(index, 1, 'cfg-reorder');
                                                 }
                                             }}
-                                            style={{ background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'grab', display: 'flex', alignItems: 'center', color: 'var(--color-gray_dark60)' }}
+                                            style={{ background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'grab', display: 'flex', alignItems: 'center', color: 'var(--color-gray_dark)' }}
                                         >
                                             <HandleDrag />
                                         </button>
@@ -655,6 +730,7 @@ export const CfgEditor = ({
                                                     }}>#</Typography>
                                                     <AutoResizeTextArea
                                                         inputRef={el => setInputRef(index, 'value', el)}
+                                                        aria-label={t('editor.aria.comment', {name})}
                                                         value={commentValue}
                                                         onChange={e => onUpdate(index, 'value', '# ' + e.target.value)}
                                                         onFocus={() => handleInputFocus(index)}
@@ -675,7 +751,7 @@ export const CfgEditor = ({
                                         <>
                                             <TableBodyCell style={{ ...cfgRowBaseCellStyle, ...CFG_COLUMN_WIDTHS.property }}></TableBodyCell>
                                             <TableBodyCell style={{ ...cfgRowBaseCellStyle, ...CFG_COLUMN_WIDTHS.value }}>
-                                                <Typography variant="caption" style={{ color: 'var(--color-gray_dark40)', fontStyle: 'italic', paddingLeft: '8px' }}>
+                                                <Typography variant="caption" style={{ color: 'var(--color-gray_dark)', fontStyle: 'italic', paddingLeft: '8px' }}>
                                                     {t('editor.emptyLine')}
                                                 </Typography>
                                             </TableBodyCell>
@@ -688,6 +764,7 @@ export const CfgEditor = ({
                                                     <AutoResizeTextArea
                                                         inputRef={el => setInputRef(index, 'key', el)}
                                                         data-cy={`cfg-key-${index}`}
+                                                        aria-label={t('editor.aria.key', {position: index + 1})}
                                                         value={key}
                                                         onChange={e => onUpdate(index, 'key', e.target.value)}
                                                         onFocus={() => handleInputFocus(index)}
@@ -697,9 +774,16 @@ export const CfgEditor = ({
                                                     />
                                                     {propertyMap.get(key) && (
                                                         <Tooltip label={<CfgMetatypeInfoTooltip property={propertyMap.get(key)} />}>
-                                                            <div
+                                                            {/* A button, so Tab reaches it and the tooltip opens on focus: the
+                                                                property's documentation was mouse-only (WCAG 2.1.1). */}
+                                                            <button
+                                                                type="button"
                                                                 data-cy={`cfg-metatype-info-${index}`}
+                                                                aria-label={t('editor.aria.metatypeInfo', {name})}
+                                                                onClick={e => e.stopPropagation()}
                                                                 style={{
+                                                                    padding: 0,
+                                                                    fontFamily: 'inherit',
                                                                     width: '20px',
                                                                     height: '20px',
                                                                     borderRadius: '50%',
@@ -716,8 +800,8 @@ export const CfgEditor = ({
                                                                     flexShrink: 0
                                                                 }}
                                                             >
-                                                                i
-                                                            </div>
+                                                                <span aria-hidden="true">i</span>
+                                                            </button>
                                                         </Tooltip>
                                                     )}
                                                 </div>
@@ -746,6 +830,9 @@ export const CfgEditor = ({
                                                                 onChange={e => onUpdate(index, 'value', e.target.value)}
                                                                 onFocus={() => handleInputFocus(index)}
                                                                 placeholder={t('editor.placeholder.value')}
+                                                                aria-label={t('editor.aria.value', {name})}
+                                                                // Keeps the browser from filling in the admin's saved password.
+                                                                autoComplete="new-password"
                                                                 type={!isSecretVisible ? 'password' : 'text'}
                                                                 style={{ ...cfgTextInputStyle, width: '100%' }}
                                                             />
@@ -759,6 +846,7 @@ export const CfgEditor = ({
                                                             onFocus={() => handleInputFocus(index)}
                                                             // preventNewlines={true} // Allow newlines for values!
                                                             placeholder={t('editor.placeholder.value')}
+                                                            aria-label={t('editor.aria.value', {name})}
                                                             style={cfgTextInputStyle}
                                                         />
                                                     )}
@@ -770,7 +858,7 @@ export const CfgEditor = ({
                                                                 icon={isSecretVisible ? <Hidden /> : <Visibility />}
                                                                 onClick={(e) => { e.stopPropagation(); toggleSecret(index); }}
                                                                 size="small"
-                                                                aria-label={isSecretVisible ? t('tooltip.hideSecret') : t('tooltip.showSecret')}
+                                                                aria-label={isSecretVisible ? t('editor.aria.hideSecret', {name}) : t('editor.aria.showSecret', {name})}
                                                                 style={{ marginLeft: '4px', marginTop: '-4px' }}
                                                             />
                                                         </Tooltip>
@@ -794,13 +882,45 @@ export const CfgEditor = ({
                                         </>
                                     )}
 
-                                    <TableBodyCell style={{ ...cfgRowIconCellStyle, ...CFG_COLUMN_WIDTHS.actions }}>
+                                    <TableBodyCell style={{ ...cfgRowIconCellStyle, ...CFG_COLUMN_WIDTHS.actions, gap: '2px' }}>
+                                        {/* Move up / down in one click: dragging was the only way with a pointer
+                                            (WCAG 2.5.7). Out of the Tab order, where the handle's arrow keys
+                                            already do it, so a row does not cost two more Tab stops. */}
+                                        <Button
+                                            data-cy={`cfg-move-up-${index}`}
+                                            icon={<ChevronUp />}
+                                            variant="ghost"
+                                            size="small"
+                                            tabIndex={-1}
+                                            isDisabled={!canMoveUp}
+                                            aria-label={t('editor.aria.moveUp', {name})}
+                                            title={t('editor.aria.moveUp', {name})}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                moveEntry(index, -1, 'cfg-reorder');
+                                            }}
+                                        />
+                                        <Button
+                                            data-cy={`cfg-move-down-${index}`}
+                                            icon={<ChevronDown />}
+                                            variant="ghost"
+                                            size="small"
+                                            tabIndex={-1}
+                                            isDisabled={!canMoveDown}
+                                            aria-label={t('editor.aria.moveDown', {name})}
+                                            title={t('editor.aria.moveDown', {name})}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                moveEntry(index, 1, 'cfg-reorder');
+                                            }}
+                                        />
                                         <Button
                                             data-cy={`cfg-delete-${index}`}
                                             icon={<Close />}
                                             variant="ghost"
                                             color="danger"
                                             size="small"
+                                            aria-label={t('editor.aria.delete', {name})}
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 handleDeleteProperty([index]);
