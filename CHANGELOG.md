@@ -9,6 +9,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **YAML errors are underlined again when another module also ships Monaco.** The manager took
+  its YAML worker from `window.MonacoEnvironment`, which it sets only when no other module did.
+  When another module bundling Monaco set it first, the raw editor used that module's worker, and
+  after the move to Monaco 0.57 the two no longer matched: invalid YAML was neither underlined nor
+  blocked Save, and the console logged `Missing requestHandler or method: doValidation`. The YAML
+  worker now always comes from this module.
 - **New labels no longer show as their keys behind a CDN.** Jahia fetches the translations from
   `javascript/locales/<lng>.json`, the same URL in every version, while the JavaScript file names
   carry a hash. After the 1.2.1 upgrade, a CDN kept serving the 1.2.0 file to the new interface,

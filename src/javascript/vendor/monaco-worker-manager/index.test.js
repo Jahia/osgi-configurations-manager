@@ -1,6 +1,6 @@
 import path from 'path';
 import webpackConfig from '../../../../webpack.config';
-import { createWorkerManager } from './index';
+import { createWorkerManager, setWorkerFactory } from './index';
 
 const fakeMonaco = () => {
     const webWorker = { dispose: jest.fn(), withSyncedResources: jest.fn(() => Promise.resolve('proxy')) };
@@ -17,6 +17,7 @@ describe('monaco-worker-manager replacement', () => {
 
     afterEach(() => {
         delete global.MonacoEnvironment;
+        setWorkerFactory(undefined);
     });
 
     it('hands Monaco the worker itself, as the 0.55+ createWebWorker expects', async () => {
@@ -32,6 +33,23 @@ describe('monaco-worker-manager replacement', () => {
         expect(Object.keys(options)).toEqual(['worker']);
         await expect(options.worker).resolves.toBe(worker);
         expect(worker.postMessage.mock.calls).toEqual([['ignore'], [{ a: 1 }]]);
+        manager.dispose();
+    });
+
+    it('starts the worker from the registered factory, whoever set MonacoEnvironment', async () => {
+        // Another module bundling Monaco may own the global: its workers speak its Monaco version.
+        const ownWorker = { postMessage: jest.fn() };
+        const factory = jest.fn(() => ownWorker);
+        setWorkerFactory(factory);
+        const { monaco } = fakeMonaco();
+        const manager = createWorkerManager(monaco, { label: 'yaml', createData: { a: 1 } });
+
+        await manager.getWorker();
+
+        expect(factory).toHaveBeenCalledWith('yaml');
+        expect(global.MonacoEnvironment.getWorker).not.toHaveBeenCalled();
+        await expect(monaco.editor.createWebWorker.mock.calls[0][0].worker).resolves.toBe(ownWorker);
+        expect(ownWorker.postMessage.mock.calls).toEqual([['ignore'], [{ a: 1 }]]);
         manager.dispose();
     });
 

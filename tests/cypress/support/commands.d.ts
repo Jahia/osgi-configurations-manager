@@ -29,7 +29,7 @@ declare namespace Cypress {
         upsertOsgiFile(filename: string, rawContent?: string): Chainable<OsgiGqlResult>;
         cleanupOsgiFile(filename: string): Chainable<void>;
         cleanupOsgiFiles(filenames: string[]): Chainable<void>;
-        openOsgiConfigManager(): Chainable<void>;
+        openOsgiConfigManager(visitOptions?: Partial<VisitOptions>): Chainable<void>;
         filterOsgiFiles(searchTerm: string): Chainable<void>;
         openOsgiFile(filename: string): Chainable<void>;
         ensureVisualCfgMode(): Chainable<void>;

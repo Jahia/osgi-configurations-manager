@@ -72,6 +72,11 @@ a change appears to require relaxing one, that comment is the thing to read firs
   view is masked in the others: before it, the raw editor and the diff showed in clear what the
   visual editor masked. A new view of file content uses the same module, and masking never changes
   the text that is saved.
+- **The YAML worker never comes from `window.MonacoEnvironment`.** That global is one slot for the
+  page, and another module bundling Monaco may set it first; its workers speak its Monaco version.
+  The vendored `monaco-worker-manager` starts the worker through the factory `MonacoEditor.jsx`
+  registers with `setWorkerFactory` (`utils/monacoWorkers`). When it read the global, a module set
+  before ours silently turned off live YAML validation after the move to Monaco 0.57.
 - **The translations come with the build.** `bundledTranslations.js` adds the locale of the user
   (and English) from hashed chunks over what Jahia fetched from `javascript/locales/<lng>.json`, a
   URL a CDN may keep across versions. A new label only needs its key in every locale file; do not

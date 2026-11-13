@@ -4,6 +4,7 @@ import * as monaco from 'monaco-editor'; // resolves to jest-mocks/monaco-editor
 import { MonacoEditor } from './MonacoEditor';
 import { osgiService } from '../api/osgiService';
 import { forgetKnownPlaintexts, lookupKnownPlaintext, rememberPlaintext } from '../utils/cryptoTree';
+import { createWorkerManager } from '../../../vendor/monaco-worker-manager';
 
 // S42 (G25): with the Monaco stub in place, the editor mounts in jsdom, receives the raw content,
 // and its change listener wires back to onChange. Deep Monaco behaviour (highlighting, markers,
@@ -169,5 +170,40 @@ describe('MonacoEditor', () => {
             render(<MonacoEditor value={'server:\n  password: s3cret'} language="yaml" filename="db.yml" onChange={jest.fn()} />);
             expect(masked()).toEqual([[2, 13, 19]]);
         });
+    });
+});
+
+describe('MonacoEditor YAML worker', () => {
+    let OriginalWorker;
+
+    beforeEach(() => {
+        OriginalWorker = global.Worker;
+        global.Worker = jest.fn(function (url) {
+            this.url = url;
+            this.postMessage = jest.fn();
+        });
+    });
+
+    afterEach(() => {
+        global.Worker = OriginalWorker;
+    });
+
+    it('starts its own yaml.worker.js even when another module set MonacoEnvironment first', async () => {
+        // Loading MonacoEditor registered the factory; a later MonacoEnvironment must not win.
+        const previous = window.MonacoEnvironment;
+        const foreignGetWorker = jest.fn();
+        window.MonacoEnvironment = { getWorker: foreignGetWorker };
+        const createWebWorker = jest.fn(() => ({ dispose: jest.fn(), withSyncedResources: jest.fn() }));
+        const manager = createWorkerManager({ editor: { createWebWorker } }, { label: 'yaml', createData: {} });
+        try {
+            manager.getWorker();
+            const worker = await createWebWorker.mock.calls[0][0].worker;
+
+            expect(worker.url).toBe('/modules/osgi-configurations-manager/javascript/apps/yaml.worker.js');
+            expect(foreignGetWorker).not.toHaveBeenCalled();
+        } finally {
+            manager.dispose();
+            window.MonacoEnvironment = previous;
+        }
     });
 });

@@ -294,9 +294,10 @@ Cypress.Commands.add('cleanupOsgiFiles', filenames => {
 /**
  * Open the administration application through its canonical route.
  * Purpose: keep the test independent from translated labels and menu visibility rules.
+ * visitOptions go to cy.visit, e.g. onBeforeLoad to stage what other modules put on the page.
  */
-Cypress.Commands.add('openOsgiConfigManager', () => {
-    cy.visit(OSGI_ADMIN_PATH, {failOnStatusCode: false});
+Cypress.Commands.add('openOsgiConfigManager', (visitOptions = {}) => {
+    cy.visit(OSGI_ADMIN_PATH, {failOnStatusCode: false, ...visitOptions});
 
     cy.get('[data-cy="osgi-config-manager"]', {timeout: 60000}).should('be.visible');
 });

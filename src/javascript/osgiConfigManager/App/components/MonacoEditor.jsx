@@ -10,6 +10,8 @@ import { useToast } from '../hooks/useToast';
 import { buildPropertyDocumentation, findExactMetatypePropertyMatch, formatDefaultValue, getLocalizedTypeLabel, getPropertyLabel, matchesMetatypePropertyQuery } from '../utils/metatypeUtils';
 import { CHROME_TOKENS, PANEL_ACTIONS_STYLE } from './AppChrome';
 import { findSecretValues, secretKeyTester } from '../utils/secretMask';
+import { createOwnMonacoWorker } from '../utils/monacoWorkers';
+import { setWorkerFactory } from '../../../vendor/monaco-worker-manager';
 
 const isExpectedCancellation = reason => {
     if (!reason) {
@@ -124,15 +126,19 @@ if (!window.__osgiConfigManagerIgnoreMonacoCancellation) {
     window.__osgiConfigManagerIgnoreMonacoCancellation = true;
 }
 
-// Define workers for Monaco
+// The YAML worker comes from this module, whoever set window.MonacoEnvironment. That global is one
+// slot for the whole page, and another module bundling Monaco may claim it first: its getWorker
+// then handed us a yaml.worker.js built against its own Monaco, and live YAML validation stopped
+// once the two versions diverged (see vendor/monaco-worker-manager/index.js).
+setWorkerFactory(createOwnMonacoWorker);
+
+// Monaco's own editor worker can only be found through the global. It is set only when absent so
+// that another module's editor keeps its workers; when that module set it first, Monaco either
+// talks to its editor worker or falls back to the main thread, and both keep the editor working.
 if (!window.MonacoEnvironment) {
     window.MonacoEnvironment = {
         getWorker(workerId, label) {
-            const basePath = (window.contextJsParameters?.contextPath || '') + '/modules/osgi-configurations-manager/javascript/apps/';
-            if (label === 'yaml') {
-                return new Worker(basePath + 'yaml.worker.js');
-            }
-            return new Worker(basePath + 'editor.worker.js');
+            return createOwnMonacoWorker(label);
         },
     };
 }
