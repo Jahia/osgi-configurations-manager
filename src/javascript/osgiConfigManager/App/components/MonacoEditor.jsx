@@ -111,7 +111,9 @@ const MASKED_SECRET_CLASS = 'ocm-masked-secret';
 const MASKED_SECRET_STYLE = `
 .${MASKED_SECRET_CLASS} {
     color: transparent !important;
-    background-image: radial-gradient(circle at center, #4a5561 0, #4a5561 2px, transparent 2.5px);
+    /* The dots take Monaco's own text colour, which follows its high-contrast themes; Monaco keeps
+       forced-color-adjust: none on the editor, so the system colours would not reach them. */
+    background-image: radial-gradient(circle at center, var(--vscode-editor-foreground, #4a5561) 0, var(--vscode-editor-foreground, #4a5561) 2px, transparent 2.5px);
     background-size: 1ch 100%;
     background-repeat: repeat-x;
     background-position: left center;
@@ -771,7 +773,8 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
             editorRef.current = monaco.editor.create(containerRef.current, {
                 value: value,
                 language: language,
-                theme: language === 'properties' ? 'properties-theme' : 'vs-light',
+                // 'vs', Monaco's light theme: 'vs-light' is not a theme name, and only fell back to it.
+                theme: language === 'properties' ? 'properties-theme' : 'vs',
                 wordBasedSuggestions: language === 'properties' ? 'off' : 'matchingDocuments',
                 minimap: { enabled: false },
                 scrollBeyondLastLine: false,

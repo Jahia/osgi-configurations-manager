@@ -9,6 +9,39 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Notifications no longer replace each other, and an error is heard while a dialog is open.**
+  A notification replaced the one before it, so a save's confirmation could vanish under the
+  warning that followed it. Up to three now stay on screen, each with its own Close button, and an
+  error or a warning is the last to go. Their announcements no longer cut each other short. While
+  a dialog was open, screen readers did not read an error notification at all; they now do, and
+  the error that opens the manual Create dialog also appears in that dialog. Errors have an icon of
+  their own instead of the warning icon in another colour (WCAG 1.4.1, 4.1.3). When the
+  notifications would cover the element that has the keyboard focus, they move to another corner
+  (WCAG 2.4.11).
+- **Save and Cancel keep the keyboard focus, and a save shows that it is running (WCAG 2.4.3,
+  4.1.3).** After a confirmed save or a cancel, the focused button became disabled and the focus
+  fell back to the top of the page. Save and Cancel now stay reachable when there is nothing to
+  save, and are announced as unavailable. While a save runs, the header shows "Saving…", and Save
+  and Cancel cannot start a second save or a reload. A load that lasts more than a second is
+  announced, and reloading the file list (Refresh, search in content) now shows a loading line.
+  The loading labels showed their keys (`app.loadingFiles`) and are now translated.
+- **Text and icons are easier to read (WCAG 1.4.3, 1.4.11).** Several elements were too pale:
+  - the selected file;
+  - Save, the Delete button and Add Property;
+  - the dialogs' confirm buttons;
+  - the file path under the file name;
+  - the banners' and notifications' icons;
+  - the enabled/disabled mark beside each file.
+
+  They now use darker shades of the same colours. The enabled/disabled mark becomes a filled
+  green dot for an enabled file and a hollow grey ring for a disabled one, so it no longer
+  depends on colour, and it stays visible in Windows high-contrast mode, as does the selected
+  file. Decorative icons are hidden
+  from screen readers.
+- **Animations stop when the system asks for reduced motion (WCAG 2.3.3).** The review dialog no
+  longer slides in, fields no longer fade, the loading spinner stands still and lists jump instead
+  of scrolling smoothly when the system setting "reduce motion" is on.
+
 - **A configuration whose extension is in upper case opens in the right editor.** The file list
   shows `Foo.CFG` and `Foo.YML`, but the interface and the server read the extension in lower case
   only. `Foo.CFG` opened in an old tree editor that showed the parser's internal structure, and

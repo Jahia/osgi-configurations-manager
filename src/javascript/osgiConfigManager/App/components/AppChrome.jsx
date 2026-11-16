@@ -1,13 +1,15 @@
 import React from 'react';
 import {createPortal} from 'react-dom';
-import {Information, Typography, Warning} from '@jahia/moonstone';
+import {Information, Report, Typography, Warning} from '@jahia/moonstone';
 import {useTranslation} from 'react-i18next';
 
 export const CHROME_TOKENS = {
     panelPadding: '16px',
     panelGap: '16px',
     sectionGap: '10px',
-    subtleTextColor: 'var(--color-gray_dark60)',
+    // gray_dark at 60% was 3.82:1 on white (WCAG 1.4.3); at 80%, 7:1. A browser without color-mix
+    // drops the declaration and the text inherits the dark colour.
+    subtleTextColor: 'color-mix(in srgb, var(--color-gray_dark) 80%, var(--color-white))',
     strongTextColor: 'var(--color-dark)',
     panelBorderColor: 'var(--color-gray_light40)',
     subtleSurfaceColor: 'var(--color-gray_light_plain20)',
@@ -106,41 +108,66 @@ export const VISUALLY_HIDDEN_STYLE = {
     border: 0
 };
 
-export const getFileStatusIndicatorStyle = enabled => ({
-    width: '3px',
-    height: '100%',
-    backgroundColor: enabled ? 'var(--color-success)' : 'var(--color-gray40)',
-    flexShrink: 0
-});
+// A filled dot for an enabled file, a hollow ring for a disabled one, so that the two differ by
+// shape and not by colour only (WCAG 1.4.1). Both are drawn with a border, not a background, so
+// that they stay in forced colours. The green halfway between success and success_dark is 3.5:1
+// on white, where the former light green bar was 2.35:1 (WCAG 1.4.11); on the selected row, whose
+// background is dark, the dot is white.
+export const getFileStatusIndicatorStyle = (enabled, onDark = false) => {
+    const color = onDark ? 'var(--color-white)' : (enabled ? 'color-mix(in srgb, var(--color-success) 50%, var(--color-success_dark))' : 'var(--color-gray)');
+    return {
+        boxSizing: 'border-box',
+        width: '10px',
+        height: '10px',
+        borderRadius: '50%',
+        border: enabled ? `5px solid ${color}` : `2px solid ${color}`,
+        flexShrink: 0
+    };
+};
+
+// One shape per severity, for the banners and the notifications alike: error and warning shared an
+// icon and differed by colour only (WCAG 1.4.1). The dark tones are at least 4.5:1 on white and on
+// the banners' tinted backgrounds (WCAG 1.4.11).
+export const SEVERITY_STYLES = {
+    success: {icon: null, color: 'var(--color-success_dark)'},
+    error: {icon: Report, color: 'var(--color-danger_dark)'},
+    warning: {icon: Warning, color: 'var(--color-warning_dark)'},
+    info: {icon: Information, color: 'var(--color-accent_dark)'}
+};
+
+// Prefers-reduced-motion, for what CSS cannot reach (scrollIntoView's behaviour).
+export const scrollBehavior = () => (
+    typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+);
 
 const BANNER_VARIANTS = {
     error: {
         background: 'var(--color-danger_plain20)',
-        border: 'var(--color-danger40)',
-        iconColor: 'var(--color-danger)'
+        border: 'var(--color-danger40)'
     },
     warning: {
         background: 'var(--color-warning_plain20)',
-        border: 'var(--color-warning40)',
-        iconColor: 'var(--color-warning)'
+        border: 'var(--color-warning40)'
     },
     info: {
         background: 'var(--color-accent_light_plain20)',
-        border: 'var(--color-accent_light_plain60)',
-        iconColor: 'var(--color-accent_dark)'
+        border: 'var(--color-accent_light_plain60)'
     }
 };
 
-export const InlineLoader = ({label}) => (
-    <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: CHROME_TOKENS.sectionGap, color: CHROME_TOKENS.subtleTextColor}}>
+// Not a live region: the editor pane's status region announces loads that last (index.jsx). The
+// spinner is decorative, the label says it; it stops turning under prefers-reduced-motion.
+export const InlineLoader = ({label, dataCy}) => (
+    <div data-cy={dataCy} style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: CHROME_TOKENS.sectionGap, color: CHROME_TOKENS.subtleTextColor}}>
         <div
+            aria-hidden="true"
+            className="osgi-spinner"
             style={{
                 width: '18px',
                 height: '18px',
                 borderRadius: '50%',
                 border: '2px solid var(--color-gray_light60)',
                 borderTopColor: 'var(--color-accent)',
-                animation: 'osgi-config-manager-spin 0.8s linear infinite',
                 flexShrink: 0
             }}
         />
@@ -153,8 +180,8 @@ export const InlineLoader = ({label}) => (
 export const StatusBanner = ({tone = 'info', message, dataCy}) => {
     const {t} = useTranslation('osgi-configurations-manager');
     const variant = BANNER_VARIANTS[tone] || BANNER_VARIANTS.info;
-    const iconProps = {size: 'small', 'aria-hidden': true, style: {color: variant.iconColor, flexShrink: 0}};
-    const icon = tone === 'info' ? <Information {...iconProps}/> : <Warning {...iconProps}/>;
+    const severity = SEVERITY_STYLES[tone] || SEVERITY_STYLES.info;
+    const Icon = severity.icon;
 
     return (
         <div
@@ -170,8 +197,8 @@ export const StatusBanner = ({tone = 'info', message, dataCy}) => {
                 gap: CHROME_TOKENS.sectionGap
             }}
         >
-            {icon}
-            {/* Error and warning share an icon and differ by colour only: say which it is. */}
+            <Icon size="small" aria-hidden="true" focusable="false" style={{color: severity.color, flexShrink: 0}}/>
+            {/* The icon's meaning, for screen readers. */}
             <Typography>
                 <span style={VISUALLY_HIDDEN_STYLE}>{t(`banner.prefix.${tone}`)} </span>
                 {message}

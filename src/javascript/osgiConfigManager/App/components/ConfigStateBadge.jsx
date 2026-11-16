@@ -28,7 +28,8 @@ const renderChip = (state, config, label) => (
     <Chip
         data-cy={`config-state-badge-${state.toLowerCase()}`}
         color={config.color}
-        icon={<config.icon/>}
+        // Decorative: the label, or the hidden text of the compact chip, names the state.
+        icon={<config.icon aria-hidden="true" focusable="false"/>}
         label={label}
         style={{flexShrink: 0}}
     />

@@ -17,7 +17,10 @@
         "searchDeepTooltip": "Habilitar para buscar dentro de los archivos",
         "fileList": "Archivos de configuración",
         "fileDisabled": "desactivado",
-        "unsaved": "Cambios no guardados"
+        "unsaved": "Cambios no guardados",
+        "loadingFiles": "Cargando archivos de configuración…",
+        "loadingFile": "Cargando archivo…",
+        "saving": "Guardando…"
     },
     "notification": {
         "saveSuccess": "Configuración guardada con éxito",
@@ -30,7 +33,8 @@
         "decryptRefused": "Este valor no se puede descifrar aquí: no está en el archivo guardado o se cifró con otro secreto",
         "encryptFailed": "No se pudo cifrar el valor",
         "undecryptableValues": "{{count}} valor(es) cifrado(s) no se pudieron descifrar y se muestran tal como están almacenados: no están en el archivo guardado o se cifraron con otro secreto",
-        "dismiss": "Cerrar la notificación"
+        "dismiss": "Cerrar la notificación",
+        "region": "Notificaciones"
     },
     "modal": {
         "cancel": "Cancelar",

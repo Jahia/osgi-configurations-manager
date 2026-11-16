@@ -25,7 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { CfgMetatypeInfoTooltip, CfgMetatypePropertyDialog } from './CfgMetatypePropertyDialog';
 import { getSuggestedPropertyValue } from '../utils/metatypeUtils';
 import { secretKeyTester } from '../utils/secretMask';
-import {CHROME_TOKENS, FLOATING_TOOLTIP_STYLE, PANEL_ACTIONS_STYLE, VISUALLY_HIDDEN_STYLE} from './AppChrome';
+import {CHROME_TOKENS, FLOATING_TOOLTIP_STYLE, PANEL_ACTIONS_STYLE, scrollBehavior, VISUALLY_HIDDEN_STYLE} from './AppChrome';
 
 const MANAGER_SELF_PID = 'org.jahia.modules.osgiconfigmanager';
 const MANAGER_PASSPHRASE_KEY = 'cryptoSecret';
@@ -410,7 +410,7 @@ export const CfgEditor = ({
             const el = inputRefs.current[index]?.value;
             if (el) {
                 el.focus();
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.scrollIntoView({ behavior: scrollBehavior(), block: 'center' });
             }
         }, 100);
     };
@@ -728,7 +728,8 @@ export const CfgEditor = ({
                                     </TableBodyCell>
 
                                     <TableBodyCell style={{ ...cfgRowIconCellStyle, ...CFG_COLUMN_WIDTHS.type }}>
-                                        {type === 'comment' && <Comments size="small" style={{ color: cfgCommentColor }} />}
+                                        {/* Decorative: the row's field is named as a comment. */}
+                                        {type === 'comment' && <Comments size="small" aria-hidden="true" focusable="false" style={{ color: cfgCommentColor }} />}
                                     </TableBodyCell>
 
                                     {type === 'comment' ? (

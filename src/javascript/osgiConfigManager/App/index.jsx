@@ -11,7 +11,8 @@ import {
     EMPTY_STATE_STYLE,
     InlineLoader,
     PANEL_STYLE,
-    StatusBanner
+    StatusBanner,
+    VISUALLY_HIDDEN_STYLE
 } from './components/AppChrome';
 import { FileSidebar } from './components/FileSidebar';
 import { CfgEditor } from './components/CfgEditor';
@@ -25,6 +26,27 @@ import { useTranslation } from 'react-i18next';
 import { ToastProvider } from './hooks/useToast';
 import { configFileKind } from './utils/configIdentity';
 
+// A load is announced only once it has lasted this long: every arrow key in the file list and every
+// deep-search keystroke loads, and would speak over the file name or the typing.
+const LOAD_ANNOUNCE_DELAY_MS = 1000;
+
+// What the editor pane's status region says: a save at once, as it follows an explicit action, a
+// load only once it lasts. Saving wins, and lasts through the reload that follows the save, so that
+// the save's own notification is the only new message when it ends.
+const usePaneStatus = (t, {isSaving, loadingFile, loadingFiles}) => {
+    const loadLabel = loadingFile ? t('app.loadingFile') : (loadingFiles ? t('app.loadingFiles') : '');
+    const [announcedLoad, setAnnouncedLoad] = React.useState('');
+    React.useEffect(() => {
+        if (!loadLabel) {
+            setAnnouncedLoad('');
+            return undefined;
+        }
+        const timer = window.setTimeout(() => setAnnouncedLoad(loadLabel), LOAD_ANNOUNCE_DELAY_MS);
+        return () => window.clearTimeout(timer);
+    }, [loadLabel]);
+    return isSaving ? t('app.saving') : announcedLoad;
+};
+
 const AppContent = () => {
     const { t } = useTranslation('osgi-configurations-manager');
     const {
@@ -37,6 +59,7 @@ const AppContent = () => {
         hasUnsaved,
         loadingFiles,
         loadingFile,
+        isSaving,
         error,
         isCreatingFile,
         setIsCreatingFile,
@@ -81,6 +104,7 @@ const AppContent = () => {
     const selectedConfigState = selectedFile?.configState || 'USER';
     const uploadInputRef = React.useRef(null);
     const selectedKind = selectedFile ? configFileKind(selectedFile.name) : null;
+    const paneStatus = usePaneStatus(t, {isSaving, loadingFile, loadingFiles});
     const isConfigFile = Boolean(selectedKind);
     const canMarkAsDefault = Boolean(isConfigFile && selectedConfigState === 'USER');
 
@@ -219,10 +243,15 @@ const AppContent = () => {
                             setSearchTerm={setSearchTerm}
                             searchInContent={searchInContent}
                             setSearchInContent={setSearchInContent}
+                            loadingFiles={loadingFiles}
                         />
 
                         {/* RIGHT PANE: Editor */}
                         <Paper style={{ ...PANEL_STYLE, ...EDITOR_PANE_FLEX, height: '100%', overflow: 'hidden', marginTop: 0 }}>
+                            {/* Outside both branches below, so that it exists before its first text: a
+                                region mounted together with its text is not announced (WCAG 4.1.3). No
+                                aria-busy around it, which makes screen readers hold back live updates. */}
+                            <div data-cy="editor-pane-status" role="status" style={VISUALLY_HIDDEN_STYLE}>{paneStatus}</div>
                             {!selectedFile ? (
                                 <div style={EMPTY_STATE_STYLE}>
                                     <Typography variant="heading">{t('app.selectConfig')}</Typography>
@@ -237,6 +266,7 @@ const AppContent = () => {
                                         isRawMode={isRawMode}
                                         isYamlValid={isYamlValid}
                                         validationErrors={validationErrors}
+                                        isSaving={isSaving}
                                         onSave={() => handleSave()}
                                         onCancel={handleCancelClick}
                                     />
@@ -358,6 +388,18 @@ const App = () => (
         <style>
             {`
                 @keyframes osgi-config-manager-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+                .osgi-spinner {
+                    animation: osgi-config-manager-spin 0.8s linear infinite;
+                }
+                /* Prefers-reduced-motion: no slide-in, no transition, a still spinner (its label says
+                   it is loading). !important, as most of these are inline styles. */
+                @media (prefers-reduced-motion: reduce) {
+                    :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"], [data-cy="toast-host"]),
+                    :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"], [data-cy="toast-host"]) * {
+                        animation: none !important;
+                        transition: none !important;
+                    }
+                }
                 .osgi-cfg-field:focus {
                     outline: none;
                 }
@@ -375,9 +417,64 @@ const App = () => (
                 .osgi-file-list:focus {
                     outline: none;
                 }
+                /* With a white inner ring: the selected row is accent_dark too, and the ring vanished
+                   where it crossed it. */
                 .osgi-file-list:focus-visible {
                     outline: 2px solid var(--color-accent_dark);
                     outline-offset: -2px;
+                    box-shadow: inset 0 0 0 4px var(--color-white);
+                }
+                /* The selected file was white on Moonstone's accent, 2.94:1 (WCAG 1.4.3): accent_dark,
+                   5.2:1, hovered or not. In forced colours, where backgrounds go, the system's own
+                   selection colours. */
+                .osgi-file-list .moonstone-TableRow.moonstone-TableRow-highlighted.moonstone-TableRow-highlighted,
+                .osgi-file-list .moonstone-TableRow.moonstone-TableRow-highlighted.moonstone-TableRow-highlighted:is(:hover, :focus-within) {
+                    background-color: var(--color-accent_dark);
+                }
+                @media (forced-colors: active) {
+                    .osgi-file-list .moonstone-TableRow.moonstone-TableRow-highlighted {
+                        forced-color-adjust: none;
+                        background-color: Highlight;
+                        color: HighlightText;
+                    }
+                    .osgi-file-list .moonstone-TableRow.moonstone-TableRow-highlighted * {
+                        color: HighlightText !important;
+                        border-color: HighlightText !important;
+                    }
+                }
+                /* Moonstone's accent and danger buttons were under 4.5:1: white on accent 2.94:1 (Save,
+                   the dialogs' confirm), white on danger 3.68:1 (Delete), accent on white 2.94:1 (Add
+                   Property). The dark tones give 5.2:1 and 10.3:1. Unavailable buttons keep their grey. */
+                :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"])
+                    .moonstone-button.moonstone-button[data-variant="default"][data-color="accent"]:not(:disabled):not([aria-disabled="true"]) {
+                    background-color: var(--color-accent_dark);
+                    border-color: var(--color-accent_dark);
+                    color: var(--color-white);
+                }
+                :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"])
+                    .moonstone-button.moonstone-button[data-variant="default"][data-color="accent"]:not(:disabled):not([aria-disabled="true"]):is(:hover, :active) {
+                    background-color: var(--color-accent_dark_contrast);
+                    border-color: var(--color-accent_dark_contrast);
+                }
+                :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"])
+                    .moonstone-button.moonstone-button[data-variant="default"][data-color="danger"]:not(:disabled):not([aria-disabled="true"]) {
+                    background-color: var(--color-danger_dark);
+                    border-color: var(--color-danger_dark);
+                    color: var(--color-white);
+                }
+                :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"])
+                    .moonstone-button.moonstone-button[data-variant="default"][data-color="danger"]:not(:disabled):not([aria-disabled="true"]):is(:hover, :active) {
+                    background-color: color-mix(in srgb, var(--color-danger_dark) 80%, black);
+                    border-color: color-mix(in srgb, var(--color-danger_dark) 80%, black);
+                }
+                :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"])
+                    .moonstone-button.moonstone-button[data-variant="outlined"][data-color="accent"]:not(:disabled):not([aria-disabled="true"]) {
+                    color: var(--color-accent_dark);
+                    border-color: var(--color-accent_dark);
+                }
+                :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"])
+                    .moonstone-button.moonstone-button[data-variant="outlined"][data-color="accent"]:not(:disabled):not([aria-disabled="true"]):is(:hover, :active) {
+                    background-color: var(--color-accent_light_plain20);
                 }
                 /* Moonstone's tabs (the Create dialog's Manual / Configuration / Factory) are gray,
                    3.95:1, and accent when selected, 2.89:1 (WCAG 1.4.3). */
@@ -450,14 +547,20 @@ const App = () => (
                     outline: 2px solid var(--color-accent_dark);
                     outline-offset: -2px;
                 }
-                /* Save blocked by errors stays focusable (aria-disabled), so it gets Moonstone's
-                   :disabled look by hand; !important, as its accent colours come from rules with more
+                /* Save and Cancel stay focusable when unavailable (aria-disabled, not disabled), so that
+                   the focus is not dropped when a save or a cancel ends, and so they get Moonstone's
+                   :disabled look by hand; !important, as their colours come from rules with more
                    attribute selectors and :hover:not(:disabled). */
-                .moonstone-button.osgi-save-blocked {
+                .moonstone-button.moonstone-button[aria-disabled="true"] {
                     color: var(--color-gray_dark) !important;
+                    cursor: not-allowed;
+                }
+                .moonstone-button.moonstone-button[data-variant="default"][aria-disabled="true"] {
                     border-color: var(--color-gray_light) !important;
                     background-color: var(--color-gray_light) !important;
-                    cursor: not-allowed;
+                }
+                .moonstone-button.moonstone-button[data-variant="ghost"][aria-disabled="true"] {
+                    background-color: transparent !important;
                 }
                 .osgi-sidebar-status-cell .moonstone-TableCell {
                     padding-left: 0;

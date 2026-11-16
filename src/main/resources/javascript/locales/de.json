@@ -17,7 +17,10 @@
         "searchDeepTooltip": "Aktivieren, um innerhalb des Dateiinhalts zu suchen",
         "fileList": "Konfigurationsdateien",
         "fileDisabled": "deaktiviert",
-        "unsaved": "Ungespeicherte Änderungen"
+        "unsaved": "Ungespeicherte Änderungen",
+        "loadingFiles": "Konfigurationsdateien werden geladen…",
+        "loadingFile": "Datei wird geladen…",
+        "saving": "Wird gespeichert…"
     },
     "notification": {
         "saveSuccess": "Konfiguration erfolgreich gespeichert",
@@ -30,7 +33,8 @@
         "decryptRefused": "Dieser Wert kann hier nicht entschlüsselt werden: er ist nicht in der gespeicherten Datei oder wurde mit einem anderen Geheimnis verschlüsselt",
         "encryptFailed": "Der Wert konnte nicht verschlüsselt werden",
         "undecryptableValues": "{{count}} verschlüsselte(r) Wert(e) konnte(n) nicht entschlüsselt werden und werden wie gespeichert angezeigt: nicht in der gespeicherten Datei oder mit einem anderen Geheimnis verschlüsselt",
-        "dismiss": "Benachrichtigung schließen"
+        "dismiss": "Benachrichtigung schließen",
+        "region": "Benachrichtigungen"
     },
     "modal": {
         "cancel": "Abbrechen",

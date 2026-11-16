@@ -188,11 +188,14 @@ export const useFileActions = ({
                 }
             });
         } catch (e: any) {
-            toastError(t('modal.error.create', { error: e.message }));
+            const failure = t('modal.error.create', { error: e.message });
+            // Also in the dialog, which opens in the same moment and takes the focus: a screen reader
+            // cuts the notification short to read the dialog. The notification stays as the record.
+            toastError(failure);
             setModalConfig({
                 type: 'prompt',
                 title: t('modal.create.title'),
-                message: t('modal.create.manualFallbackMessage'),
+                message: `${failure} ${t('modal.create.manualFallbackMessage')}`,
                 awaitConfirm: true,
                 onUnshownError: toastError,
                 onConfirm: async (name?: string): Promise<ConfirmResult> => (

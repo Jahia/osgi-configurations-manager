@@ -59,6 +59,38 @@ describe('useOsgiConfigs - review-before-save diff', () => {
         jest.useRealTimers();
     });
 
+    // Nothing showed a save in progress, and a key held on the review dialog's Save started a second
+    // save once the focus came back to the header's Save.
+    it('reports the save in progress and refuses a second one meanwhile', async () => {
+        const { result } = await mountWithFile();
+        let finishSave;
+        osgiService.save.mockImplementation(() => new Promise(resolve => {
+            finishSave = resolve;
+        }));
+
+        act(() => {
+            result.current.handleRawUpdate('a = 2\n');
+        });
+
+        let firstSave;
+        await act(async () => {
+            firstSave = result.current.handleSave('a = 2\n');
+            await Promise.resolve();
+        });
+        expect(result.current.isSaving).toBe(true);
+
+        await act(async () => {
+            await result.current.handleSave('a = 2\n');
+        });
+        expect(osgiService.save).toHaveBeenCalledTimes(1);
+
+        await act(async () => {
+            finishSave({});
+            await firstSave;
+        });
+        expect(result.current.isSaving).toBe(false);
+    });
+
     it('opens the diff instead of saving when the content changed', async () => {
         const { result } = await mountWithFile();
 

@@ -17,7 +17,10 @@
         "searchDeepTooltip": "Habilitar para pesquisar dentro dos arquivos",
         "fileList": "Arquivos de configuração",
         "fileDisabled": "desativado",
-        "unsaved": "Alterações não salvas"
+        "unsaved": "Alterações não salvas",
+        "loadingFiles": "Carregando arquivos de configuração…",
+        "loadingFile": "Carregando arquivo…",
+        "saving": "Salvando…"
     },
     "notification": {
         "saveSuccess": "Configuração salva com sucesso",
@@ -30,7 +33,8 @@
         "decryptRefused": "Este valor não pode ser descriptografado aqui: não está no arquivo salvo ou foi criptografado com outro segredo",
         "encryptFailed": "Não foi possível criptografar o valor",
         "undecryptableValues": "{{count}} valor(es) criptografado(s) não puderam ser descriptografados e são exibidos como armazenados: não estão no arquivo salvo ou foram criptografados com outro segredo",
-        "dismiss": "Fechar a notificação"
+        "dismiss": "Fechar a notificação",
+        "region": "Notificações"
     },
     "modal": {
         "cancel": "Cancelar",

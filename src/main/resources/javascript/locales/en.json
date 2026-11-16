@@ -17,7 +17,10 @@
         "searchDeepTooltip": "Enable to search within the file content",
         "fileList": "Configuration files",
         "fileDisabled": "disabled",
-        "unsaved": "Unsaved Changes"
+        "unsaved": "Unsaved Changes",
+        "loadingFiles": "Loading configuration files…",
+        "loadingFile": "Loading file…",
+        "saving": "Saving…"
     },
     "notification": {
         "saveSuccess": "Configuration saved successfully",
@@ -30,7 +33,8 @@
         "decryptRefused": "This value cannot be decrypted here: it is not in the saved file, or it was encrypted with another secret",
         "encryptFailed": "The value could not be encrypted",
         "undecryptableValues": "{{count}} encrypted value(s) could not be decrypted and are shown as stored: not in the saved file, or encrypted with another secret",
-        "dismiss": "Close notification"
+        "dismiss": "Close notification",
+        "region": "Notifications"
     },
     "modal": {
         "cancel": "Cancel",

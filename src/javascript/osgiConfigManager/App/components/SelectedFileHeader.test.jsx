@@ -85,3 +85,86 @@ describe('SelectedFileHeader blocked save', () => {
         expect(onSave).toHaveBeenCalled();
     });
 });
+
+// When a confirmed save or a cancel ended, the focused button became disabled and the focus fell to
+// the page. Unavailable, Save and Cancel stay focusable and refuse the click instead.
+describe('SelectedFileHeader unavailable buttons', () => {
+    it('never sets the disabled attribute, with or without changes', () => {
+        const {rerender} = renderHeader({hasUnsaved: false});
+        const buttons = () => [
+            screen.getByRole('button', {name: 'app.save'}),
+            screen.getByRole('button', {name: 'modal.cancel'})
+        ];
+
+        buttons().forEach(button => {
+            expect(button).not.toBeDisabled();
+            expect(button.getAttribute('aria-disabled')).toBe('true');
+        });
+
+        rerender(
+            <SelectedFileHeader
+                selectedFile={{name: 'org.example.yml', path: '/etc/org.example.yml'}}
+                selectedConfigState="USER"
+                hasUnsaved
+                isRawMode
+                isYamlValid
+                validationErrors={[]}
+                onSave={jest.fn()}
+                onCancel={jest.fn()}
+            />
+        );
+        buttons().forEach(button => {
+            expect(button).not.toBeDisabled();
+            expect(button.getAttribute('aria-disabled')).toBeNull();
+        });
+    });
+
+    it('keeps the focus on Save when the changes are saved', () => {
+        const {rerender} = renderHeader();
+        const save = screen.getByRole('button', {name: 'app.save'});
+        save.focus();
+
+        rerender(
+            <SelectedFileHeader
+                selectedFile={{name: 'org.example.yml', path: '/etc/org.example.yml'}}
+                selectedConfigState="USER"
+                hasUnsaved={false}
+                isRawMode
+                isYamlValid
+                validationErrors={[]}
+                onSave={jest.fn()}
+                onCancel={jest.fn()}
+            />
+        );
+
+        expect(document.activeElement).toBe(screen.getByRole('button', {name: 'app.save'}));
+    });
+
+    it('refuses Save and Cancel while nothing changed', () => {
+        const onSave = jest.fn();
+        const onCancel = jest.fn();
+        renderHeader({hasUnsaved: false, onSave, onCancel});
+
+        fireEvent.click(screen.getByRole('button', {name: 'app.save'}));
+        fireEvent.click(screen.getByRole('button', {name: 'modal.cancel'}));
+
+        expect(onSave).not.toHaveBeenCalled();
+        expect(onCancel).not.toHaveBeenCalled();
+    });
+
+    // Nothing showed that a save was running, and Save stayed active meanwhile.
+    it('shows the save in progress and refuses Save and Cancel meanwhile', () => {
+        const onSave = jest.fn();
+        const onCancel = jest.fn();
+        renderHeader({isSaving: true, onSave, onCancel});
+
+        expect(screen.getByText('app.saving')).toBeInTheDocument();
+        const save = screen.getByRole('button', {name: 'app.save'});
+        expect(save.getAttribute('aria-disabled')).toBe('true');
+        fireEvent.click(save);
+        fireEvent.click(screen.getByRole('button', {name: 'modal.cancel'}));
+
+        expect(onSave).not.toHaveBeenCalled();
+        expect(onCancel).not.toHaveBeenCalled();
+    });
+});

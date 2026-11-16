@@ -99,6 +99,10 @@ export const useOsgiConfigs = () => {
     const [error, setError] = useState<string | null>(null);
     const [loadingFiles, setLoadingFiles] = useState<boolean>(false);
     const [loadingFile, setLoadingFile] = useState<boolean>(false);
+    // From the request to the end of the reload that follows it: Save had no in-progress state, and
+    // a key held on the review dialog's Save could start a second save once the focus came back.
+    const [isSaving, setIsSaving] = useState<boolean>(false);
+    const savingRef = useRef<boolean>(false);
     // Read by the mode switch, which awaits before applying its result: a load that starts or ends
     // meanwhile would otherwise have its content overwritten by one serialized from stale properties.
     const loadingFileRef = useRef<boolean>(false);
@@ -391,7 +395,7 @@ export const useOsgiConfigs = () => {
             }
         }
 
-        if (!selectedFile) return;
+        if (!selectedFile || savingRef.current) return;
 
         // Review-before-save: when the user pressed Save, show what will change on disk and persist
         // only once they confirm. An explicit contentToSave means this IS the confirm path, so it
@@ -411,6 +415,8 @@ export const useOsgiConfigs = () => {
             return;
         }
 
+        savingRef.current = true;
+        setIsSaving(true);
         try {
             await osgiService.save({
                 action: 'save',
@@ -462,6 +468,9 @@ export const useOsgiConfigs = () => {
             loadingFileRef.current = false;
             setLoadingFile(false);
             toastError(e.message);
+        } finally {
+            savingRef.current = false;
+            setIsSaving(false);
         }
     }, [isRawMode, rawContent, selectedFile, isYamlValid, properties, originalRawContent, t, success, toastError, resetProperties, encryptRecursive, fetchFiles, fetchFileContent]);
 
@@ -702,6 +711,7 @@ export const useOsgiConfigs = () => {
         hasUnsaved,
         loadingFiles,
         loadingFile,
+        isSaving,
         error,
         isCreatingFile,
         setIsCreatingFile,

@@ -29,6 +29,7 @@ export const SelectedFileHeader = ({
     isRawMode,
     isYamlValid,
     validationErrors = [],
+    isSaving = false,
     onSave,
     onCancel
 }) => {
@@ -36,6 +37,11 @@ export const SelectedFileHeader = ({
     const isYamlFile = configFileKind(selectedFile.name) === 'yml';
     const isBlockedByErrors = hasUnsaved && (isRawMode || isYamlFile) && !isYamlValid;
     const blockedReasonId = useId();
+    // Unavailable, Save and Cancel keep the focus (aria-disabled, never the disabled attribute):
+    // after a confirmed save or a cancel the focused button became disabled, which dropped the focus
+    // to the page. Moonstone's Button also sets disabled from isLoading/isDisabled: neither is passed.
+    const saveUnavailable = !hasUnsaved || isSaving || isBlockedByErrors;
+    const cancelUnavailable = !hasUnsaved || isSaving;
 
     // Typing passes through invalid states (a .cfg line has no key until its '='), so the reason is
     // shown, and announced, only once the content has stayed invalid for a moment.
@@ -94,12 +100,16 @@ export const SelectedFileHeader = ({
                         tooltip={t('modal.cancel')}
                         label={t('modal.cancel')}
                         size="big"
-                        onClick={onCancel}
-                        disabled={!hasUnsaved}
+                        aria-disabled={cancelUnavailable || undefined}
+                        // Decided at the click, not only at render: a held key repeats before React renders.
+                        onClick={() => {
+                            if (!cancelUnavailable) {
+                                onCancel();
+                            }
+                        }}
                     />
 
-                    {/* Blocked by errors, Save stays focusable (aria-disabled, not disabled) so that its
-                        description, the reason below, can be reached. */}
+                    {/* Blocked by errors, its description is the reason below. */}
                     <ActionButton
                         dataCy="save-config-button"
                         tooltip={t('tooltip.save')}
@@ -108,14 +118,23 @@ export const SelectedFileHeader = ({
                         icon={<Save size="big" />}
                         size="big"
                         variant="default"
-                        className={isBlockedByErrors ? 'osgi-save-blocked' : undefined}
-                        aria-disabled={isBlockedByErrors || undefined}
+                        aria-disabled={saveUnavailable || undefined}
                         aria-describedby={isBlockedByErrors ? blockedReasonId : undefined}
-                        // A no-op, not undefined: Moonstone's Button calls its onClick unconditionally.
-                        onClick={isBlockedByErrors ? () => {} : onSave}
-                        disabled={!hasUnsaved}
+                        // Never undefined: Moonstone's Button calls its onClick unconditionally.
+                        onClick={() => {
+                            if (!saveUnavailable) {
+                                onSave();
+                            }
+                        }}
                     />
                 </div>
+
+                {/* Visual: the editor pane's status region announces it. */}
+                {isSaving && (
+                    <Typography data-cy="save-in-progress" variant="caption" aria-hidden="true" style={{color: CHROME_TOKENS.subtleTextColor}}>
+                        {t('app.saving')}
+                    </Typography>
+                )}
 
                 <div data-cy="save-blocked-reason" style={BLOCKED_REASON_STYLE}>
                     {/* Always mounted, so that the reason is announced when it appears; a div, as

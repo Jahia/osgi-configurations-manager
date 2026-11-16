@@ -16,8 +16,10 @@ import { ConfigStateBadge } from './ConfigStateBadge';
 import {
     CHROME_TOKENS,
     getFileStatusIndicatorStyle,
+    InlineLoader,
     OverflowPreviewText,
     PANEL_STYLE,
+    scrollBehavior,
     SEARCH_SECTION_STYLE,
     SIDEBAR_PANE_FLEX,
     VISUALLY_HIDDEN_STYLE
@@ -32,7 +34,8 @@ export const FileSidebar = ({
     searchTerm,
     setSearchTerm,
     searchInContent,
-    setSearchInContent
+    setSearchInContent,
+    loadingFiles = false
 }) => {
     const { t } = useTranslation('osgi-configurations-manager');
 
@@ -73,7 +76,7 @@ export const FileSidebar = ({
             // encodeURIComponent might be safer if filenames have weird chars
             const el = document.getElementById(fileRowId(selectedFile.name));
             if (el) {
-                el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                el.scrollIntoView({ block: 'nearest', behavior: scrollBehavior() });
             }
         }
     }, [selectedFile]);
@@ -140,6 +143,14 @@ export const FileSidebar = ({
                 </div>
             </div>
 
+            {/* Refresh and deep search reload the list while a file is open, and showed nothing. Visual
+                only: the editor pane's status region announces a load that lasts. */}
+            {loadingFiles && files.length > 0 && (
+                <div style={{display: 'flex', justifyContent: 'flex-start', marginBottom: '8px'}}>
+                    <InlineLoader dataCy="file-list-loading" label={t('app.loadingFiles')}/>
+                </div>
+            )}
+
             {/* File List: one Tab stop (the listbox), the arrow keys move the selection. Moonstone
                 gives every row tabIndex 0, which made each file a Tab stop that Enter did not open. */}
             <div
@@ -173,13 +184,13 @@ export const FileSidebar = ({
                                     <div
                                         style={{
                                             display: 'flex',
-                                            alignItems: 'stretch',
-                                            justifyContent: 'flex-start',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
                                             width: '100%',
                                             height: '48px'
                                         }}
                                     >
-                                        <div data-cy={`sidebar-file-status-${encodeURIComponent(f.name)}`} aria-hidden="true" style={getFileStatusIndicatorStyle(f.enabled)} />
+                                        <div data-cy={`sidebar-file-status-${encodeURIComponent(f.name)}`} aria-hidden="true" style={getFileStatusIndicatorStyle(f.enabled, selectedFile?.name === f.name)} />
                                     </div>
                                 </TableBodyCell>
                                 <TableBodyCell>

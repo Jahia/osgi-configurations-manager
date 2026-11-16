@@ -17,7 +17,10 @@
         "searchDeepTooltip": "Activer pour rechercher à l'intérieur des fichiers",
         "fileList": "Fichiers de configuration",
         "fileDisabled": "désactivé",
-        "unsaved": "Modifications non enregistrées"
+        "unsaved": "Modifications non enregistrées",
+        "loadingFiles": "Chargement des fichiers de configuration…",
+        "loadingFile": "Chargement du fichier…",
+        "saving": "Enregistrement…"
     },
     "notification": {
         "saveSuccess": "Configuration enregistrée avec succès",
@@ -30,7 +33,8 @@
         "decryptRefused": "Cette valeur ne peut pas être déchiffrée ici : elle n'est pas dans le fichier enregistré, ou elle a été chiffrée avec un autre secret",
         "encryptFailed": "La valeur n'a pas pu être chiffrée",
         "undecryptableValues": "{{count}} valeur(s) chiffrée(s) n'ont pas pu être déchiffrées et sont affichées telles que stockées : absentes du fichier enregistré, ou chiffrées avec un autre secret",
-        "dismiss": "Fermer la notification"
+        "dismiss": "Fermer la notification",
+        "region": "Notifications"
     },
     "modal": {
         "cancel": "Annuler",

@@ -17,7 +17,10 @@
         "searchDeepTooltip": "Abilita per cercare all'interno dei file",
         "fileList": "File di configurazione",
         "fileDisabled": "disattivato",
-        "unsaved": "Modifiche non salvate"
+        "unsaved": "Modifiche non salvate",
+        "loadingFiles": "Caricamento dei file di configurazione…",
+        "loadingFile": "Caricamento del file…",
+        "saving": "Salvataggio…"
     },
     "notification": {
         "saveSuccess": "Configurazione salvata con successo",
@@ -30,7 +33,8 @@
         "decryptRefused": "Questo valore non può essere decifrato qui: non è nel file salvato oppure è stato cifrato con un altro segreto",
         "encryptFailed": "Impossibile cifrare il valore",
         "undecryptableValues": "{{count}} valore/i cifrato/i non decifrabile/i, mostrato/i come memorizzato/i: non presente/i nel file salvato oppure cifrato/i con un altro segreto",
-        "dismiss": "Chiudi la notifica"
+        "dismiss": "Chiudi la notifica",
+        "region": "Notifiche"
     },
     "modal": {
         "cancel": "Annulla",
