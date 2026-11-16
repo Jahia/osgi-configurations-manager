@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { parseData } from '../utils/configUtils';
+import { findKeyProblems, parseData } from '../utils/configUtils';
 import { countUndecryptedLeaves, decryptTree, encryptTree } from '../utils/cryptoTree';
 import { useFileActions } from './useFileActions';
 import { useTranslation } from 'react-i18next';
@@ -34,6 +34,8 @@ interface ModalConfig {
     deferConfirm?: boolean;
     onConfirm?: (value?: any) => void;
     onOther?: () => void;
+    // See osgiTypes.ts.
+    returnFocus?: () => HTMLElement | null;
 }
 
 interface DiffConfig {
@@ -62,7 +64,7 @@ export const detectConfigStateFromRawContent = (content: string): 'MODULE' | 'MO
 
 export const useOsgiConfigs = () => {
     const { t } = useTranslation('osgi-configurations-manager');
-    const { success, error: toastError, warning: toastWarning } = useToast();
+    const { success, error: toastError, warning: toastWarning, dismiss: dismissToast } = useToast();
 
     // Values the server could not decrypt or refused stay as stored, and the eye button would show
     // the ENC(...) envelope with no explanation: say so once per load or mode switch.
@@ -103,6 +105,20 @@ export const useOsgiConfigs = () => {
     // a key held on the review dialog's Save could start a second save once the focus came back.
     const [isSaving, setIsSaving] = useState<boolean>(false);
     const savingRef = useRef<boolean>(false);
+    // Keys that cannot be saved (blank, or given twice) are shown in the visual editor from the
+    // first refused save until the file is saved, reloaded or left: a duplicate was reported only in
+    // a dialog, and a blank key not at all (WCAG 3.3.1). Each refusal asks the editor to focus the
+    // first faulty key.
+    const [showKeyProblems, setShowKeyProblems] = useState<boolean>(false);
+    const [keyProblemsFocusRequest, setKeyProblemsFocusRequest] = useState<number>(0);
+    const keyProblemsToastRef = useRef<number | null>(null);
+    const clearKeyProblems = useCallback(() => {
+        setShowKeyProblems(false);
+        if (keyProblemsToastRef.current !== null) {
+            dismissToast(keyProblemsToastRef.current);
+            keyProblemsToastRef.current = null;
+        }
+    }, [dismissToast]);
     // Read by the mode switch, which awaits before applying its result: a load that starts or ends
     // meanwhile would otherwise have its content overwritten by one serialized from stale properties.
     const loadingFileRef = useRef<boolean>(false);
@@ -257,6 +273,7 @@ export const useOsgiConfigs = () => {
 
     const selectFile = useCallback((file: OsgiFile | null) => {
         setSelectedFile(file);
+        clearKeyProblems();
         // The next file's editor reports its own state; until then, the previous file's errors must
         // not block Save or be listed under it.
         handleEditorValidate(true, []);
@@ -273,7 +290,7 @@ export const useOsgiConfigs = () => {
             loadingFileRef.current = false;
             setLoadingFile(false);
         }
-    }, [fetchFileContent, resetProperties, handleEditorValidate]);
+    }, [fetchFileContent, resetProperties, handleEditorValidate, clearKeyProblems]);
 
 
 
@@ -348,27 +365,20 @@ export const useOsgiConfigs = () => {
                 // Visual Mode Save (CFG or Properties or YML)
                 let propsToSave = properties;
 
-                // 1. Check for duplicates (if Array)
+                // 1. Keys that cannot be saved: blank, or given twice.
                 if (Array.isArray(propsToSave)) {
-                    const seenKeys = new Set();
-                    const duplicateKeys = new Set();
-                    propsToSave.forEach(entry => {
-                        const type = entry.type?.value || entry.type;
-                        const key = entry.key?.value || entry.key;
-                        if (type === 'property' && key) {
-                            if (seenKeys.has(key)) {
-                                duplicateKeys.add(key);
-                            }
-                            seenKeys.add(key);
+                    const faultyRows = Object.keys(findKeyProblems(propsToSave)).length;
+                    if (faultyRows > 0) {
+                        setShowKeyProblems(true);
+                        setKeyProblemsFocusRequest(previous => previous + 1);
+                        if (keyProblemsToastRef.current !== null) {
+                            dismissToast(keyProblemsToastRef.current);
                         }
-                    });
-
-                    if (duplicateKeys.size > 0) {
-                        setModalConfig({
-                            type: 'alert',
-                            title: t('modal.error.title'),
-                            message: t('modal.error.duplicateKeys', { keys: Array.from(duplicateKeys).join(', ') }) || `Duplicate keys found: ${Array.from(duplicateKeys).join(', ')}`
-                        });
+                        // Shortly after the editor moved the focus to the first faulty key: announced
+                        // together, one cut the other off.
+                        window.setTimeout(() => {
+                            keyProblemsToastRef.current = toastError(t('editor.validation.saveSummary', { count: faultyRows }));
+                        }, 150);
                         return;
                     }
                 }
@@ -429,6 +439,7 @@ export const useOsgiConfigs = () => {
             loadingFileRef.current = true;
             setLoadingFile(true);
             success(t('notification.saveSuccess'));
+            clearKeyProblems();
 
             // Update origins
             if (isRawMode) {
@@ -472,7 +483,7 @@ export const useOsgiConfigs = () => {
             savingRef.current = false;
             setIsSaving(false);
         }
-    }, [isRawMode, rawContent, selectedFile, isYamlValid, properties, originalRawContent, t, success, toastError, resetProperties, encryptRecursive, fetchFiles, fetchFileContent]);
+    }, [isRawMode, rawContent, selectedFile, isYamlValid, properties, originalRawContent, t, success, toastError, dismissToast, clearKeyProblems, resetProperties, encryptRecursive, fetchFiles, fetchFileContent]);
 
     handleSaveRef.current = handleSave;
 
@@ -602,8 +613,9 @@ export const useOsgiConfigs = () => {
             return;
         }
 
+        clearKeyProblems();
         await fetchFileContent(selectedFile.name);
-    }, [fetchFileContent, selectedFile]);
+    }, [fetchFileContent, selectedFile, clearKeyProblems]);
 
     const handleRefreshFiles = useCallback(async () => {
         if (searchInContent) {
@@ -674,21 +686,24 @@ export const useOsgiConfigs = () => {
         });
     }, [addProperty, t]);
 
-    const handleDeleteProperty = useCallback((path: (string | number)[]) => {
+    // options.name: how the editor names the row (its key, or its kind and position); a comment was
+    // named after the Add Comment button. options.returnFocus: where the focus goes once the dialog
+    // closes, the row that took the deleted one's place having nothing to do with it (WCAG 2.4.3).
+    const handleDeleteProperty = useCallback((path: (string | number)[], options: { name?: string; returnFocus?: () => HTMLElement | null } = {}) => {
         const key = path[path.length - 1];
         let displayName = String(key);
 
-        if (Array.isArray(properties) && typeof key === 'number') {
-            const items = properties;
-            if (items[key] && items[key].key && items[key].key.value) {
-                displayName = items[key].key.value;
-            } else if (items[key] && items[key].type) {
-                const typeVal = items[key].type.value || items[key].type;
-                if (typeVal === 'comment') {
-                    displayName = t('editor.button.addComment');
-                } else if (typeVal === 'empty') {
-                    displayName = t('editor.button.addEmptyLine');
-                }
+        if (options.name) {
+            displayName = options.name;
+        } else if (Array.isArray(properties) && typeof key === 'number') {
+            const item = properties[key];
+            const typeVal = item?.type?.value ?? item?.type;
+            if (item?.key?.value) {
+                displayName = item.key.value;
+            } else if (typeVal === 'comment') {
+                displayName = t('editor.entry.comment', { position: key + 1 });
+            } else if (typeVal === 'empty') {
+                displayName = t('editor.entry.emptyLine', { position: key + 1 });
             }
         }
 
@@ -696,6 +711,9 @@ export const useOsgiConfigs = () => {
             type: 'confirm',
             title: t('modal.deleteProp.title'),
             message: t('modal.deleteProp.message', { name: displayName }),
+            // Synchronous, so that the rows are rendered again before the dialog returns the focus.
+            deferConfirm: options.returnFocus ? false : undefined,
+            returnFocus: options.returnFocus,
             onConfirm: () => deleteProperty(path)
         });
     }, [deleteProperty, properties, t]);
@@ -712,6 +730,8 @@ export const useOsgiConfigs = () => {
         loadingFiles,
         loadingFile,
         isSaving,
+        showKeyProblems,
+        keyProblemsFocusRequest,
         error,
         isCreatingFile,
         setIsCreatingFile,

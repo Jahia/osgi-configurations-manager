@@ -164,6 +164,9 @@ export const ModalDialog = ({config, onClose}) => {
     if (config && !returnFocusRef.current && typeof document !== 'undefined') {
         returnFocusRef.current = document.activeElement;
     }
+    // Set when the dialog is confirmed with a returnFocus: a row delete sends the focus to the row
+    // that remains, where the opener now belongs to another row. Cancel keeps the opener.
+    const confirmedReturnFocusRef = React.useRef(null);
     const isOpen = Boolean(config);
     React.useEffect(() => {
         if (isOpen) {
@@ -171,10 +174,17 @@ export const ModalDialog = ({config, onClose}) => {
         }
         const opener = returnFocusRef.current;
         returnFocusRef.current = null;
+        const resolveTarget = confirmedReturnFocusRef.current;
+        confirmedReturnFocusRef.current = null;
         // On the next frame: closed by Enter in a field, the same key press would otherwise
         // activate the opener once it has the focus, and open the dialog again. Only if nothing
         // else took the focus meanwhile (the file list, after a deletion).
         window.requestAnimationFrame(() => {
+            const target = resolveTarget?.();
+            if (target && (!document.activeElement || document.activeElement === document.body)) {
+                target.focus();
+                return;
+            }
             if (opener && opener !== document.body && opener.isConnected && typeof opener.focus === 'function'
                 && (!document.activeElement || document.activeElement === document.body)) {
                 opener.focus();
@@ -377,6 +387,7 @@ export const ModalDialog = ({config, onClose}) => {
             return;
         }
 
+        confirmedReturnFocusRef.current = config.returnFocus || null;
         onClose();
 
         if (!config.onConfirm) {

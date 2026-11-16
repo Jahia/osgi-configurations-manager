@@ -179,7 +179,10 @@
             "unknownMetatypeProperty": "A propriedade '{{key}}' não está declarada no metatype deste PID",
             "saveBlocked": "Não é possível salvar até corrigir estes erros ({{count}}):",
             "errorAt": "Linha {{line}}: {{message}}",
-            "moreErrors": "Mais {{count}} no editor."
+            "moreErrors": "Mais {{count}} no editor.",
+            "emptyKeyField": "Introduza um nome de propriedade.",
+            "duplicateKeyField": "Esta chave também é usada na entrada {{positions}}.",
+            "saveSummary": "Não é possível salvar: chaves a corrigir ({{count}})."
         },
         "metatype": {
             "availableProperties": "Propriedades disponíveis",
@@ -248,7 +251,29 @@
             "showSecret": "Mostrar o valor de {{name}}",
             "hideSecret": "Ocultar o valor de {{name}}",
             "metatypeInfo": "Documentação de {{name}}",
-            "moved": "{{name}} movido para a posição {{position}} de {{total}}"
+            "moved": "{{name}} movido para a posição {{position}} de {{total}}",
+            "deleted": "{{name}} excluído"
+        },
+        "tableEmpty": {
+            "noEntries": "Este arquivo não contém nenhuma entrada.",
+            "noMatch": "Nenhuma propriedade corresponde ao filtro.",
+            "allHidden": "Todas as linhas são comentários ou linhas vazias, que estão ocultos: use «{{comments}}» ou «{{emptyLines}}» para mostrá-los."
+        },
+        "insertPosition": {
+            "after": "As novas linhas são inseridas depois de {{name}}.",
+            "end": "As novas linhas são adicionadas no fim do arquivo."
+        },
+        "required": {
+            "legend": "* Valor obrigatório"
+        },
+        "valueHint": {
+            "boolean": "true ou false",
+            "wholeNumber": "Número inteiro",
+            "number": "Número",
+            "character": "Um único caractere",
+            "options": "Valores permitidos: {{values}}",
+            "more": "{{values}} e mais {{count}}",
+            "list": "vários valores permitidos"
         }
     },
     "tooltip": {

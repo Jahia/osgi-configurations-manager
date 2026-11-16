@@ -60,6 +60,8 @@ const AppContent = () => {
         loadingFiles,
         loadingFile,
         isSaving,
+        showKeyProblems,
+        keyProblemsFocusRequest,
         error,
         isCreatingFile,
         setIsCreatingFile,
@@ -354,6 +356,8 @@ const AppContent = () => {
                                                             handleToggleEmptyLines={handleToggleEmptyLines}
                                                             setShowEmptyLines={setShowEmptyLines}
                                                             metatypeDefinition={metatypeInfo}
+                                                            showKeyProblems={showKeyProblems}
+                                                            keyProblemsFocusRequest={keyProblemsFocusRequest}
                                                         />
                                                     )
                                                 ) : null}
@@ -440,6 +444,10 @@ const App = () => (
                     .osgi-file-list .moonstone-TableRow.moonstone-TableRow-highlighted * {
                         color: HighlightText !important;
                         border-color: HighlightText !important;
+                    }
+                    /* The visual editor's selected row: its bar, in the system's selection colour. */
+                    .osgi-cfg-table [data-selected="true"] {
+                        border-left-color: Highlight !important;
                     }
                 }
                 /* Moonstone's accent and danger buttons were under 4.5:1: white on accent 2.94:1 (Save,

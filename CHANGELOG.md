@@ -41,6 +41,31 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Animations stop when the system asks for reduced motion (WCAG 2.3.3).** The review dialog no
   longer slides in, fields no longer fade, the loading spinner stands still and lists jump instead
   of scrolling smoothly when the system setting "reduce motion" is on.
+- **The visual editor refuses a blank or duplicate key, next to the key itself (WCAG 3.3.1).** A
+  row whose key was cleared was saved as ` = value` with no warning, and duplicate keys were
+  reported only in a dialog that said nothing about where they were. Save now stops before the
+  review dialog. Each faulty key is outlined and marked as invalid, with the reason underneath; a
+  duplicate names the other entries that use it. The first faulty key gets the focus, the filter is
+  cleared if it hides one of them, and a notification says how many keys to fix. Keys are compared
+  regardless of case, as Configuration Admin does: `Foo` and `foo` saved without error and then
+  failed to apply.
+- **The visual editor says what a value expects (WCAG 3.3.2).** Under the value of a Metatype
+  attribute, a line states its format: `true or false`, a whole number, a number, one character,
+  or the allowed values. A required value with no default is marked with an asterisk, explained
+  above the table, and announced as required.
+- **The focus stays in the table after a row is deleted (WCAG 2.4.3).** After the confirmation, the
+  focus went to the Delete button of whichever row took the deleted one's place, or was lost for
+  the last row. It now goes to the next row's first field, or the previous one's, and the deletion
+  is announced. The confirmation also named a comment "Add Comment"; it now says "comment 3".
+- **The visual editor's selected row is shown by more than its colour, and Add says where it
+  inserts (WCAG 1.3.1, 1.4.1).** A bar marks the selected row, in forced colours too, and the Add
+  buttons say after which row the new line goes. A selected row hidden by the filter no longer
+  decides where the line goes, and adding while filtering clears the filter, so the new line is
+  in view.
+- **An empty table says why (WCAG 3.3.2).** The visual editor shows "This file has no entries", "No
+  property matches the filter", or which toggle shows the hidden comments and empty lines.
+- **Long values are no longer cut by text spacing or zoom (WCAG 1.4.12).** The visual editor's
+  fields grew only when their text changed; they now follow their content.
 
 - **A configuration whose extension is in upper case opens in the right editor.** The file list
   shows `Foo.CFG` and `Foo.YML`, but the interface and the server read the extension in lower case

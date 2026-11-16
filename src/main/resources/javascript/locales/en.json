@@ -179,7 +179,10 @@
             "unknownMetatypeProperty": "Property '{{key}}' is not declared in this PID metatype",
             "saveBlocked": "Save is unavailable until these errors are fixed ({{count}}):",
             "errorAt": "Line {{line}}: {{message}}",
-            "moreErrors": "{{count}} more in the editor."
+            "moreErrors": "{{count}} more in the editor.",
+            "emptyKeyField": "Enter a property name.",
+            "duplicateKeyField": "This key is also used on entry {{positions}}.",
+            "saveSummary": "Cannot save: keys to fix ({{count}})."
         },
         "metatype": {
             "availableProperties": "Available Properties",
@@ -248,7 +251,29 @@
             "showSecret": "Show the value of {{name}}",
             "hideSecret": "Hide the value of {{name}}",
             "metatypeInfo": "Documentation of {{name}}",
-            "moved": "{{name}} moved to position {{position}} of {{total}}"
+            "moved": "{{name}} moved to position {{position}} of {{total}}",
+            "deleted": "{{name}} deleted"
+        },
+        "tableEmpty": {
+            "noEntries": "This file has no entries.",
+            "noMatch": "No property matches the filter.",
+            "allHidden": "Every line is a comment or an empty line, and these are hidden: use “{{comments}}” or “{{emptyLines}}” to show them."
+        },
+        "insertPosition": {
+            "after": "New lines are inserted after {{name}}.",
+            "end": "New lines are added at the end of the file."
+        },
+        "required": {
+            "legend": "* Value required"
+        },
+        "valueHint": {
+            "boolean": "true or false",
+            "wholeNumber": "Whole number",
+            "number": "Number",
+            "character": "One character",
+            "options": "Allowed values: {{values}}",
+            "more": "{{values}} and {{count}} more",
+            "list": "several values allowed"
         }
     },
     "configState": {

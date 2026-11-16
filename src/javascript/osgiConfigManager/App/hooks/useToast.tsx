@@ -24,10 +24,12 @@ interface Announcement {
 type Corner = 'bottom-right' | 'bottom-left' | 'top-left' | 'top-right';
 
 interface ToastContextType {
-    notify: (msg: string, type?: ToastType, duration?: number | null) => void;
-    success: (msg: string) => void;
-    error: (msg: string) => void;
-    warning: (msg: string) => void;
+    // Each returns the notification's id, for dismiss.
+    notify: (msg: string, type?: ToastType, duration?: number | null) => number;
+    success: (msg: string) => number;
+    error: (msg: string) => number;
+    warning: (msg: string) => number;
+    dismiss: (id: number) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -204,6 +206,7 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 startTimer(toast.id, delay);
             }
         }
+        return toast.id;
     }, [startTimer, t]);
 
     const success = useCallback((msg: string) => notify(msg, 'success'), [notify]);
@@ -331,7 +334,7 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     // role="alert" was hidden with the rest. data-live-host keeps the module's own dialogs from
     // making the stack inert.
     return (
-        <ToastContext.Provider value={{ notify, success, error, warning }}>
+        <ToastContext.Provider value={{ notify, success, error, warning, dismiss }}>
             {children}
             <div
                 ref={hostRef}

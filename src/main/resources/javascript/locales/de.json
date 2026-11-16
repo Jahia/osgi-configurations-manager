@@ -179,7 +179,10 @@
             "unknownMetatypeProperty": "Eigenschaft '{{key}}' ist nicht im Metatype dieser PID deklariert",
             "saveBlocked": "Speichern ist erst möglich, wenn diese Fehler behoben sind ({{count}}):",
             "errorAt": "Zeile {{line}}: {{message}}",
-            "moreErrors": "{{count}} weitere im Editor."
+            "moreErrors": "{{count}} weitere im Editor.",
+            "emptyKeyField": "Geben Sie einen Eigenschaftsnamen ein.",
+            "duplicateKeyField": "Dieser Schlüssel wird auch in Eintrag {{positions}} verwendet.",
+            "saveSummary": "Speichern nicht möglich: zu korrigierende Schlüssel ({{count}})."
         },
         "metatype": {
             "availableProperties": "Verfügbare Eigenschaften",
@@ -248,7 +251,29 @@
             "showSecret": "Wert von {{name}} anzeigen",
             "hideSecret": "Wert von {{name}} ausblenden",
             "metatypeInfo": "Dokumentation von {{name}}",
-            "moved": "{{name}} an Position {{position}} von {{total}} verschoben"
+            "moved": "{{name}} an Position {{position}} von {{total}} verschoben",
+            "deleted": "{{name}} gelöscht"
+        },
+        "tableEmpty": {
+            "noEntries": "Diese Datei enthält keine Einträge.",
+            "noMatch": "Keine Eigenschaft entspricht dem Filter.",
+            "allHidden": "Alle Zeilen sind Kommentare oder Leerzeilen und ausgeblendet: Verwenden Sie „{{comments}}“ oder „{{emptyLines}}“, um sie anzuzeigen."
+        },
+        "insertPosition": {
+            "after": "Neue Zeilen werden nach {{name}} eingefügt.",
+            "end": "Neue Zeilen werden am Ende der Datei angefügt."
+        },
+        "required": {
+            "legend": "* Wert erforderlich"
+        },
+        "valueHint": {
+            "boolean": "true oder false",
+            "wholeNumber": "Ganze Zahl",
+            "number": "Zahl",
+            "character": "Ein Zeichen",
+            "options": "Zulässige Werte: {{values}}",
+            "more": "{{values}} und {{count}} weitere",
+            "list": "mehrere Werte möglich"
         }
     },
     "tooltip": {

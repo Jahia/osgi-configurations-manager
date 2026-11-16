@@ -179,7 +179,10 @@
             "unknownMetatypeProperty": "Propriété '{{key}}' non déclarée dans le Metatype du PID",
             "saveBlocked": "Enregistrement impossible tant que ces erreurs ne sont pas corrigées ({{count}}) :",
             "errorAt": "Ligne {{line}} : {{message}}",
-            "moreErrors": "{{count}} autre(s) dans l'éditeur."
+            "moreErrors": "{{count}} autre(s) dans l'éditeur.",
+            "emptyKeyField": "Saisissez un nom de propriété.",
+            "duplicateKeyField": "Cette clé est aussi utilisée à l'entrée {{positions}}.",
+            "saveSummary": "Enregistrement impossible : clés à corriger ({{count}})."
         },
         "metatype": {
             "availableProperties": "Propriétés disponibles",
@@ -248,7 +251,29 @@
             "showSecret": "Afficher la valeur de {{name}}",
             "hideSecret": "Masquer la valeur de {{name}}",
             "metatypeInfo": "Documentation de {{name}}",
-            "moved": "{{name}} déplacé en position {{position}} sur {{total}}"
+            "moved": "{{name}} déplacé en position {{position}} sur {{total}}",
+            "deleted": "{{name}} supprimé"
+        },
+        "tableEmpty": {
+            "noEntries": "Ce fichier ne contient aucune entrée.",
+            "noMatch": "Aucune propriété ne correspond au filtre.",
+            "allHidden": "Toutes les lignes sont des commentaires ou des lignes vides, qui sont masqués : utilisez « {{comments}} » ou « {{emptyLines}} » pour les afficher."
+        },
+        "insertPosition": {
+            "after": "Les nouvelles lignes sont insérées après {{name}}.",
+            "end": "Les nouvelles lignes sont ajoutées à la fin du fichier."
+        },
+        "required": {
+            "legend": "* Valeur obligatoire"
+        },
+        "valueHint": {
+            "boolean": "true ou false",
+            "wholeNumber": "Nombre entier",
+            "number": "Nombre",
+            "character": "Un seul caractère",
+            "options": "Valeurs permises : {{values}}",
+            "more": "{{values}} et {{count}} autres",
+            "list": "plusieurs valeurs possibles"
         }
     },
     "configState": {
