@@ -34,7 +34,9 @@
         "encryptFailed": "Der Wert konnte nicht verschlüsselt werden",
         "undecryptableValues": "{{count}} verschlüsselte(r) Wert(e) konnte(n) nicht entschlüsselt werden und werden wie gespeichert angezeigt: nicht in der gespeicherten Datei oder mit einem anderen Geheimnis verschlüsselt",
         "dismiss": "Benachrichtigung schließen",
-        "region": "Benachrichtigungen"
+        "region": "Benachrichtigungen",
+        "encryptNoValue": "Setzen Sie den Cursor in eine Zeile mit einem zu verschlüsselnden Wert",
+        "encryptAlready": "Der Wert dieser Zeile ist bereits verschlüsselt"
     },
     "modal": {
         "cancel": "Abbrechen",
@@ -182,7 +184,8 @@
             "moreErrors": "{{count}} weitere im Editor.",
             "emptyKeyField": "Geben Sie einen Eigenschaftsnamen ein.",
             "duplicateKeyField": "Dieser Schlüssel wird auch in Eintrag {{positions}} verwendet.",
-            "saveSummary": "Speichern nicht möglich: zu korrigierende Schlüssel ({{count}})."
+            "saveSummary": "Speichern nicht möglich: zu korrigierende Schlüssel ({{count}}).",
+            "duplicateKeyAt": "Doppelter Schlüssel '{{key}}', bereits in Zeile {{line}}"
         },
         "metatype": {
             "availableProperties": "Verfügbare Eigenschaften",
@@ -224,7 +227,11 @@
                     "string": "Zeichenkette"
                 }
             },
-            "searchLabel": "Eigenschaften filtern"
+            "searchLabel": "Eigenschaften filtern",
+            "insertNamed": "{{id}} einfügen",
+            "alreadyPresentNamed": "Bereits vorhanden: {{id}}",
+            "searchCount": "Passende Eigenschaften: {{count}}",
+            "searchEnterHint": "Eingabe fügt die Eigenschaft ein, wenn nur eine passt."
         },
         "empty": "leer",
         "emptyLine": "Leerzeile",
@@ -252,7 +259,11 @@
             "hideSecret": "Wert von {{name}} ausblenden",
             "metatypeInfo": "Dokumentation von {{name}}",
             "moved": "{{name}} an Position {{position}} von {{total}} verschoben",
-            "deleted": "{{name}} gelöscht"
+            "deleted": "{{name}} gelöscht",
+            "lineEncrypted": "Wert von Zeile {{line}} verschlüsselt",
+            "lineDecrypted": "Wert von Zeile {{line}} entschlüsselt",
+            "hideAvailableProperties": "Verfügbare Eigenschaften ausblenden",
+            "propertyInserted": "Eigenschaft {{id}} in Zeile {{line}} eingefügt"
         },
         "tableEmpty": {
             "noEntries": "Diese Datei enthält keine Einträge.",
@@ -274,7 +285,8 @@
             "options": "Zulässige Werte: {{values}}",
             "more": "{{values}} und {{count}} weitere",
             "list": "mehrere Werte möglich"
-        }
+        },
+        "rawEditorLabelFor": "Quelltext der Konfiguration {{name}}. Drücken Sie Strg+M (Strg+Umschalt+M unter macOS), damit Tab den Editor verlässt."
     },
     "tooltip": {
         "downloadFile": "Aktuelle Datei herunterladen (Rohdaten)",
@@ -295,16 +307,17 @@
         "format": "YAML-Code formatieren",
         "modeRaw": "In Texteditor wechseln",
         "modeVisual": "In visuellen Editor wechseln",
-        "encryptSelection": "Aktuellen Zeilenwert oder Auswahl verschlüsseln",
-        "decryptSelection": "Ausgewählten Text entschlüsseln",
+        "encryptSelection": "Den Wert der Zeile mit dem Cursor verschlüsseln",
+        "decryptSelection": "Den ENC(...)-Wert der Zeile mit dem Cursor entschlüsseln",
         "showSecret": "Geheimen Wert anzeigen",
         "hideSecret": "Geheimen Wert ausblenden",
         "toggleComments": "Kommentarsichtbarkeit umschalten (außer Kopfzeile)",
         "toggleEmptyLines": "Sichtbarkeit leerer Zeilen umschalten (außer Kopfzeile)",
         "markAsDefault": "Den Header '# default configuration' hinzufügen, damit Jahia lokale Änderungen für Modul-Standardwerte bewahrt",
-        "showSecrets": "Die Werte der Geheimnisse dieser Datei anzeigen. Beim Öffnen einer anderen Datei werden sie wieder maskiert.",
+        "showSecrets": "Die Werte der Geheimnisse dieser Datei anzeigen. Beim Öffnen einer anderen Datei werden sie wieder maskiert. Die Maskierung ist nur visuell: Screenreader lesen die Werte weiterhin vor.",
         "hideSecrets": "Die Werte der Geheimnisse maskieren",
-        "tabMovesFocus": "Wenn aktiviert, verschiebt Tab den Fokus aus dem Editor, statt einzurücken. Auch Strg+M schaltet um (Ctrl+Umschalt+M unter macOS)."
+        "tabMovesFocus": "Wenn aktiviert, verschiebt Tab den Fokus aus dem Editor, statt einzurücken. Auch Strg+M schaltet um (Ctrl+Umschalt+M unter macOS).",
+        "hideMetatypeProperties": "Liste der verfügbaren Eigenschaften schließen"
     },
     "sidebar": {
         "on": "Ein",

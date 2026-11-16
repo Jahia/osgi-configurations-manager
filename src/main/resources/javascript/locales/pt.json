@@ -34,7 +34,9 @@
         "encryptFailed": "Não foi possível criptografar o valor",
         "undecryptableValues": "{{count}} valor(es) criptografado(s) não puderam ser descriptografados e são exibidos como armazenados: não estão no arquivo salvo ou foram criptografados com outro segredo",
         "dismiss": "Fechar a notificação",
-        "region": "Notificações"
+        "region": "Notificações",
+        "encryptNoValue": "Coloque o cursor numa linha com um valor a cifrar",
+        "encryptAlready": "O valor desta linha já está cifrado"
     },
     "modal": {
         "cancel": "Cancelar",
@@ -182,7 +184,8 @@
             "moreErrors": "Mais {{count}} no editor.",
             "emptyKeyField": "Introduza um nome de propriedade.",
             "duplicateKeyField": "Esta chave também é usada na entrada {{positions}}.",
-            "saveSummary": "Não é possível salvar: chaves a corrigir ({{count}})."
+            "saveSummary": "Não é possível salvar: chaves a corrigir ({{count}}).",
+            "duplicateKeyAt": "Chave duplicada '{{key}}', já presente na linha {{line}}"
         },
         "metatype": {
             "availableProperties": "Propriedades disponíveis",
@@ -224,7 +227,11 @@
                     "string": "Texto"
                 }
             },
-            "searchLabel": "Filtrar propriedades"
+            "searchLabel": "Filtrar propriedades",
+            "insertNamed": "Inserir {{id}}",
+            "alreadyPresentNamed": "Já presente: {{id}}",
+            "searchCount": "Propriedades correspondentes: {{count}}",
+            "searchEnterHint": "Enter insere a propriedade quando só uma corresponde."
         },
         "empty": "vazio",
         "emptyLine": "Linha Vazia",
@@ -252,7 +259,11 @@
             "hideSecret": "Ocultar o valor de {{name}}",
             "metatypeInfo": "Documentação de {{name}}",
             "moved": "{{name}} movido para a posição {{position}} de {{total}}",
-            "deleted": "{{name}} excluído"
+            "deleted": "{{name}} excluído",
+            "lineEncrypted": "Valor da linha {{line}} cifrado",
+            "lineDecrypted": "Valor da linha {{line}} decifrado",
+            "hideAvailableProperties": "Ocultar as propriedades disponíveis",
+            "propertyInserted": "Propriedade {{id}} inserida na linha {{line}}"
         },
         "tableEmpty": {
             "noEntries": "Este arquivo não contém nenhuma entrada.",
@@ -274,7 +285,8 @@
             "options": "Valores permitidos: {{values}}",
             "more": "{{values}} e mais {{count}}",
             "list": "vários valores permitidos"
-        }
+        },
+        "rawEditorLabelFor": "Código-fonte da configuração {{name}}. Pressione Ctrl+M (Ctrl+Shift+M no macOS) para que Tab saia do editor."
     },
     "tooltip": {
         "downloadFile": "Baixar arquivo atual (Dados brutos)",
@@ -295,16 +307,17 @@
         "format": "Formatar código YAML",
         "modeRaw": "Alternar para editor de texto",
         "modeVisual": "Alternar para editor visual",
-        "encryptSelection": "Criptografar o valor da linha atual ou seleção",
-        "decryptSelection": "Descriptografar texto selecionado",
+        "encryptSelection": "Cifrar o valor da linha onde está o cursor",
+        "decryptSelection": "Decifrar o valor ENC(...) da linha onde está o cursor",
         "showSecret": "Mostrar valor secreto",
         "hideSecret": "Ocultar valor secreto",
         "toggleComments": "Alternar visibilidade dos comentários (exceto cabeçalho)",
         "toggleEmptyLines": "Mostrar ou ocultar linhas vazias (exceto o cabeçalho)",
         "markAsDefault": "Adicionar o cabeçalho '# default configuration' para que o Jahia preserve as alterações locais dos valores padrão do módulo",
-        "showSecrets": "Mostrar os valores dos segredos deste arquivo. Eles voltam a ser ocultados ao abrir outro arquivo.",
+        "showSecrets": "Mostrar os valores dos segredos deste arquivo. Eles voltam a ser ocultados ao abrir outro arquivo. O mascaramento é apenas visual: os leitores de tela continuam a ler os valores.",
         "hideSecrets": "Ocultar os valores dos segredos",
-        "tabMovesFocus": "Ativado, Tab move o foco para fora do editor em vez de indentar. Ctrl+M também alterna (Ctrl+Shift+M no macOS)."
+        "tabMovesFocus": "Ativado, Tab move o foco para fora do editor em vez de indentar. Ctrl+M também alterna (Ctrl+Shift+M no macOS).",
+        "hideMetatypeProperties": "Fechar a lista de propriedades disponíveis"
     },
     "sidebar": {
         "on": "Ligado",

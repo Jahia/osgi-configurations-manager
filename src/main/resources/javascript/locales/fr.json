@@ -34,7 +34,9 @@
         "encryptFailed": "La valeur n'a pas pu être chiffrée",
         "undecryptableValues": "{{count}} valeur(s) chiffrée(s) n'ont pas pu être déchiffrées et sont affichées telles que stockées : absentes du fichier enregistré, ou chiffrées avec un autre secret",
         "dismiss": "Fermer la notification",
-        "region": "Notifications"
+        "region": "Notifications",
+        "encryptNoValue": "Placez le curseur sur une ligne contenant une valeur à chiffrer",
+        "encryptAlready": "La valeur de cette ligne est déjà chiffrée"
     },
     "modal": {
         "cancel": "Annuler",
@@ -182,7 +184,8 @@
             "moreErrors": "{{count}} autre(s) dans l'éditeur.",
             "emptyKeyField": "Saisissez un nom de propriété.",
             "duplicateKeyField": "Cette clé est aussi utilisée à l'entrée {{positions}}.",
-            "saveSummary": "Enregistrement impossible : clés à corriger ({{count}})."
+            "saveSummary": "Enregistrement impossible : clés à corriger ({{count}}).",
+            "duplicateKeyAt": "Clé dupliquée '{{key}}', déjà présente à la ligne {{line}}"
         },
         "metatype": {
             "availableProperties": "Propriétés disponibles",
@@ -224,7 +227,11 @@
                     "string": "Chaîne"
                 }
             },
-            "searchLabel": "Filtrer les propriétés"
+            "searchLabel": "Filtrer les propriétés",
+            "insertNamed": "Insérer {{id}}",
+            "alreadyPresentNamed": "Déjà présente : {{id}}",
+            "searchCount": "Propriétés correspondantes : {{count}}",
+            "searchEnterHint": "Entrée insère la propriété quand une seule correspond."
         },
         "empty": "vide",
         "emptyLine": "Ligne vide",
@@ -252,7 +259,11 @@
             "hideSecret": "Masquer la valeur de {{name}}",
             "metatypeInfo": "Documentation de {{name}}",
             "moved": "{{name}} déplacé en position {{position}} sur {{total}}",
-            "deleted": "{{name}} supprimé"
+            "deleted": "{{name}} supprimé",
+            "lineEncrypted": "Valeur de la ligne {{line}} chiffrée",
+            "lineDecrypted": "Valeur de la ligne {{line}} déchiffrée",
+            "hideAvailableProperties": "Masquer les propriétés disponibles",
+            "propertyInserted": "Propriété {{id}} insérée à la ligne {{line}}"
         },
         "tableEmpty": {
             "noEntries": "Ce fichier ne contient aucune entrée.",
@@ -274,7 +285,8 @@
             "options": "Valeurs permises : {{values}}",
             "more": "{{values}} et {{count}} autres",
             "list": "plusieurs valeurs possibles"
-        }
+        },
+        "rawEditorLabelFor": "Source de la configuration {{name}}. Appuyez sur Ctrl+M (Ctrl+Maj+M sur macOS) pour que Tab quitte l'éditeur."
     },
     "configState": {
         "badge": {
@@ -317,15 +329,16 @@
         "format": "Formater le code YAML",
         "modeRaw": "Passer en mode texte",
         "modeVisual": "Passer en mode visuel",
-        "encryptSelection": "Chiffrer la valeur de la ligne ou la sélection",
-        "decryptSelection": "Déchiffrer le texte sélectionné",
+        "encryptSelection": "Chiffrer la valeur de la ligne où se trouve le curseur",
+        "decryptSelection": "Déchiffrer la valeur ENC(...) de la ligne où se trouve le curseur",
         "showSecret": "Afficher la valeur secrète",
         "hideSecret": "Masquer la valeur secrète",
         "toggleComments": "Afficher/Masquer les commentaires (sauf en-tête)",
         "toggleEmptyLines": "Afficher ou masquer les lignes vides (sauf l’en-tête)",
-        "showSecrets": "Afficher les valeurs des secrets de ce fichier. Elles sont de nouveau masquées à l'ouverture d'un autre fichier.",
+        "showSecrets": "Afficher les valeurs des secrets de ce fichier. Elles sont de nouveau masquées à l'ouverture d'un autre fichier. Le masquage est seulement visuel : les lecteurs d'écran lisent toujours les valeurs.",
         "hideSecrets": "Masquer les valeurs des secrets",
-        "tabMovesFocus": "Activé, Tab sort de l'éditeur au lieu d'indenter. Ctrl+M bascule aussi ce mode (Ctrl+Maj+M sur macOS)."
+        "tabMovesFocus": "Activé, Tab sort de l'éditeur au lieu d'indenter. Ctrl+M bascule aussi ce mode (Ctrl+Maj+M sur macOS).",
+        "hideMetatypeProperties": "Fermer la liste des propriétés disponibles"
     },
     "sidebar": {
         "on": "On",

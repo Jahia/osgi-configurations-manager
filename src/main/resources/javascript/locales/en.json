@@ -34,7 +34,9 @@
         "encryptFailed": "The value could not be encrypted",
         "undecryptableValues": "{{count}} encrypted value(s) could not be decrypted and are shown as stored: not in the saved file, or encrypted with another secret",
         "dismiss": "Close notification",
-        "region": "Notifications"
+        "region": "Notifications",
+        "encryptNoValue": "Place the cursor on a line holding a value to encrypt",
+        "encryptAlready": "The value of this line is already encrypted"
     },
     "modal": {
         "cancel": "Cancel",
@@ -182,7 +184,8 @@
             "moreErrors": "{{count}} more in the editor.",
             "emptyKeyField": "Enter a property name.",
             "duplicateKeyField": "This key is also used on entry {{positions}}.",
-            "saveSummary": "Cannot save: keys to fix ({{count}})."
+            "saveSummary": "Cannot save: keys to fix ({{count}}).",
+            "duplicateKeyAt": "Duplicate key '{{key}}', already on line {{line}}"
         },
         "metatype": {
             "availableProperties": "Available Properties",
@@ -224,7 +227,11 @@
                     "string": "String"
                 }
             },
-            "searchLabel": "Filter properties"
+            "searchLabel": "Filter properties",
+            "insertNamed": "Insert {{id}}",
+            "alreadyPresentNamed": "Already present: {{id}}",
+            "searchCount": "Matching properties: {{count}}",
+            "searchEnterHint": "Enter inserts the property when only one matches."
         },
         "empty": "empty",
         "emptyLine": "Empty Line",
@@ -252,7 +259,11 @@
             "hideSecret": "Hide the value of {{name}}",
             "metatypeInfo": "Documentation of {{name}}",
             "moved": "{{name}} moved to position {{position}} of {{total}}",
-            "deleted": "{{name}} deleted"
+            "deleted": "{{name}} deleted",
+            "lineEncrypted": "Value of line {{line}} encrypted",
+            "lineDecrypted": "Value of line {{line}} decrypted",
+            "hideAvailableProperties": "Hide available properties",
+            "propertyInserted": "Property {{id}} inserted on line {{line}}"
         },
         "tableEmpty": {
             "noEntries": "This file has no entries.",
@@ -274,7 +285,8 @@
             "options": "Allowed values: {{values}}",
             "more": "{{values}} and {{count}} more",
             "list": "several values allowed"
-        }
+        },
+        "rawEditorLabelFor": "Configuration source of {{name}}. Press Ctrl+M (Ctrl+Shift+M on macOS) to make Tab leave the editor."
     },
     "configState": {
         "badge": {
@@ -317,15 +329,16 @@
         "format": "Format YAML code",
         "modeRaw": "Switch to Raw Editor",
         "modeVisual": "Switch to Visual Editor",
-        "encryptSelection": "Encrypt current line value or selection",
-        "decryptSelection": "Decrypt selected text",
+        "encryptSelection": "Encrypt the value of the line where the cursor is",
+        "decryptSelection": "Decrypt the ENC(...) value of the line where the cursor is",
         "showSecret": "Show secret value",
         "hideSecret": "Hide secret value",
         "toggleComments": "Toggle comments visibility (except header)",
         "toggleEmptyLines": "Toggle empty line visibility (except header)",
-        "showSecrets": "Show the values of the secrets of this file. They are masked again when another file is opened.",
+        "showSecrets": "Show the values of the secrets of this file. They are masked again when another file is opened. Masking is visual only: screen readers still read the values.",
         "hideSecrets": "Mask the values of the secrets",
-        "tabMovesFocus": "When on, Tab moves the focus out of the editor instead of indenting. Ctrl+M toggles it too (Ctrl+Shift+M on macOS)."
+        "tabMovesFocus": "When on, Tab moves the focus out of the editor instead of indenting. Ctrl+M toggles it too (Ctrl+Shift+M on macOS).",
+        "hideMetatypeProperties": "Close the list of available properties"
     },
     "sidebar": {
         "on": "On",

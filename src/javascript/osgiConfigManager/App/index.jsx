@@ -452,36 +452,40 @@ const App = () => (
                 }
                 /* Moonstone's accent and danger buttons were under 4.5:1: white on accent 2.94:1 (Save,
                    the dialogs' confirm), white on danger 3.68:1 (Delete), accent on white 2.94:1 (Add
-                   Property). The dark tones give 5.2:1 and 10.3:1. Unavailable buttons keep their grey. */
+                   Property). The dark tones give 5.2:1 and 10.3:1. Unavailable buttons keep their grey.
+                   Moonstone 2.19+ says variant and colour in data attributes; the one served by older
+                   Jahia 8.2 (8.2.3.2) only in classes (moonstone-button_accent for a filled accent
+                   button, moonstone-button_outlined_accent, moonstone-button_ghost...), so both are
+                   matched. */
                 :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"])
-                    .moonstone-button.moonstone-button[data-variant="default"][data-color="accent"]:not(:disabled):not([aria-disabled="true"]) {
+                    .moonstone-button.moonstone-button:is([data-variant="default"][data-color="accent"], .moonstone-button_accent):not(:disabled):not([aria-disabled="true"]) {
                     background-color: var(--color-accent_dark);
                     border-color: var(--color-accent_dark);
                     color: var(--color-white);
                 }
                 :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"])
-                    .moonstone-button.moonstone-button[data-variant="default"][data-color="accent"]:not(:disabled):not([aria-disabled="true"]):is(:hover, :active) {
+                    .moonstone-button.moonstone-button:is([data-variant="default"][data-color="accent"], .moonstone-button_accent):not(:disabled):not([aria-disabled="true"]):is(:hover, :active) {
                     background-color: var(--color-accent_dark_contrast);
                     border-color: var(--color-accent_dark_contrast);
                 }
                 :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"])
-                    .moonstone-button.moonstone-button[data-variant="default"][data-color="danger"]:not(:disabled):not([aria-disabled="true"]) {
+                    .moonstone-button.moonstone-button:is([data-variant="default"][data-color="danger"], .moonstone-button_danger):not(:disabled):not([aria-disabled="true"]) {
                     background-color: var(--color-danger_dark);
                     border-color: var(--color-danger_dark);
                     color: var(--color-white);
                 }
                 :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"])
-                    .moonstone-button.moonstone-button[data-variant="default"][data-color="danger"]:not(:disabled):not([aria-disabled="true"]):is(:hover, :active) {
+                    .moonstone-button.moonstone-button:is([data-variant="default"][data-color="danger"], .moonstone-button_danger):not(:disabled):not([aria-disabled="true"]):is(:hover, :active) {
                     background-color: color-mix(in srgb, var(--color-danger_dark) 80%, black);
                     border-color: color-mix(in srgb, var(--color-danger_dark) 80%, black);
                 }
                 :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"])
-                    .moonstone-button.moonstone-button[data-variant="outlined"][data-color="accent"]:not(:disabled):not([aria-disabled="true"]) {
+                    .moonstone-button.moonstone-button:is([data-variant="outlined"][data-color="accent"], .moonstone-button_outlined_accent):not(:disabled):not([aria-disabled="true"]) {
                     color: var(--color-accent_dark);
                     border-color: var(--color-accent_dark);
                 }
                 :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"])
-                    .moonstone-button.moonstone-button[data-variant="outlined"][data-color="accent"]:not(:disabled):not([aria-disabled="true"]):is(:hover, :active) {
+                    .moonstone-button.moonstone-button:is([data-variant="outlined"][data-color="accent"], .moonstone-button_outlined_accent):not(:disabled):not([aria-disabled="true"]):is(:hover, :active) {
                     background-color: var(--color-accent_light_plain20);
                 }
                 /* Moonstone's tabs (the Create dialog's Manual / Configuration / Factory) are gray,
@@ -557,17 +561,21 @@ const App = () => (
                 }
                 /* Save and Cancel stay focusable when unavailable (aria-disabled, not disabled), so that
                    the focus is not dropped when a save or a cancel ends, and so they get Moonstone's
-                   :disabled look by hand; !important, as their colours come from rules with more
-                   attribute selectors and :hover:not(:disabled). */
+                   :disabled look by hand: grey on light grey at 40% opacity. The opacity is mixed into
+                   the colours rather than set on the button, which would fade its focus ring too.
+                   !important, as their colours come from rules with more attribute selectors and
+                   :hover:not(:disabled). A filled button is one that is neither ghost nor outlined, in
+                   both Moonstone forms (see above). */
                 .moonstone-button.moonstone-button[aria-disabled="true"] {
-                    color: var(--color-gray_dark) !important;
+                    color: color-mix(in srgb, var(--color-gray_dark) 40%, var(--color-white)) !important;
                     cursor: not-allowed;
+                    box-shadow: none !important;
                 }
-                .moonstone-button.moonstone-button[data-variant="default"][aria-disabled="true"] {
-                    border-color: var(--color-gray_light) !important;
-                    background-color: var(--color-gray_light) !important;
+                .moonstone-button.moonstone-button[aria-disabled="true"]:is([data-variant="default"], :not([data-variant]):not([class*="moonstone-button_ghost"]):not([class*="moonstone-button_outlined"])) {
+                    border-color: color-mix(in srgb, var(--color-gray_light) 40%, var(--color-white)) !important;
+                    background-color: color-mix(in srgb, var(--color-gray_light) 40%, var(--color-white)) !important;
                 }
-                .moonstone-button.moonstone-button[data-variant="ghost"][aria-disabled="true"] {
+                .moonstone-button.moonstone-button[aria-disabled="true"]:is([data-variant="ghost"], [class*="moonstone-button_ghost"]) {
                     background-color: transparent !important;
                 }
                 .osgi-sidebar-status-cell .moonstone-TableCell {

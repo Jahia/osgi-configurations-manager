@@ -66,6 +66,28 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   property matches the filter", or which toggle shows the hidden comments and empty lines.
 - **Long values are no longer cut by text spacing or zoom (WCAG 1.4.12).** The visual editor's
   fields grew only when their text changed; they now follow their content.
+- **The raw editor refuses a duplicate key in a .cfg file.** It was only a warning, so the file
+  saved and the second value replaced the first on reload. Save is now unavailable, and the
+  header lists the line and the line where the key first appears. Keys are compared regardless of
+  case, as in the visual editor.
+- **Unavailable buttons look unavailable again on older Jahia 8.2.** The Moonstone library served
+  by Jahia 8.2.3 marks a button's colour with classes rather than attributes, so an unavailable
+  Save showed in blue, and Save, Delete and Add Property kept their low-contrast colours. Both
+  forms are now matched.
+- **The raw editor says which file it edits, and what its buttons did (WCAG 2.4.6, 4.1.3).** Its
+  name includes the file name. Encrypt and Decrypt say they act on the value of the cursor's line,
+  Encrypt explains why it did nothing on a line without a value or with an encrypted one, and
+  both announce the line they changed, never the value. Inserting a property announces its line.
+- **The available-properties panel is a proper disclosure (WCAG 2.4.3, 4.1.2).** Add Property
+  says whether the panel is open and closes it too. Opening it moves the focus to its search
+  field, whose result count is announced, and Hide brings the focus back to Add Property. Each
+  card's button is named after its property. In a narrow window the panel goes under the editor
+  instead of squeezing it (WCAG 1.4.10).
+- **The raw editor no longer opens suggestions on its own.** A new empty line, or a space in YAML,
+  opened the property list, and the next Enter inserted a property instead of a new line. Typing
+  a letter or Ctrl+Space still suggests. Ctrl+click on a URL no longer opens a new window.
+- **Known limitation:** secrets in the raw editor are masked on screen only. Monaco has no way to
+  hide them from screen readers, which still read them; the Show secrets tooltip now says so.
 
 - **A configuration whose extension is in upper case opens in the right editor.** The file list
   shows `Foo.CFG` and `Foo.YML`, but the interface and the server read the extension in lower case

@@ -14,7 +14,7 @@ import { osgiService } from '../api/osgiService';
 import { lookupKnownPlaintext, rememberPlaintext } from '../utils/cryptoTree';
 import { useToast } from '../hooks/useToast';
 import { buildPropertyDocumentation, findExactMetatypePropertyMatch, formatDefaultValue, getLocalizedTypeLabel, getPropertyLabel, matchesMetatypePropertyQuery } from '../utils/metatypeUtils';
-import { CHROME_TOKENS, PANEL_ACTIONS_STYLE } from './AppChrome';
+import { CHROME_TOKENS, PANEL_ACTIONS_STYLE, VISUALLY_HIDDEN_STYLE } from './AppChrome';
 import { findSecretValues, secretKeyTester } from '../utils/secretMask';
 import { createOwnMonacoWorker } from '../utils/monacoWorkers';
 import { setWorkerFactory } from '../../../vendor/monaco-worker-manager';
@@ -81,6 +81,14 @@ const RAW_EDITOR_CANVAS_STYLE = {
     position: 'relative',
     background: CHROME_TOKENS.panelBackgroundColor
 };
+
+// Below this width the property panel goes under the editor rather than beside it, where it left
+// the editor a sliver (WCAG 1.4.10). Not flex-wrap: in this fixed-height box a wrapped line takes its
+// content's height, and the editor, absolutely positioned in its canvas, collapsed to nothing.
+const RAW_EDITOR_STACK_BELOW_PX = 720;
+
+const RAW_EDITOR_STACKED_MAIN_PANEL_STYLE = { flex: '1 1 55%', minHeight: '300px' };
+const RAW_EDITOR_STACKED_PANEL_STYLE = { flex: '1 1 45%', width: 'auto', minHeight: 0 };
 
 const RAW_EDITOR_PANEL_STYLE = {
     flex: '0 0 340px',
@@ -687,7 +695,8 @@ const getYamlValueSuggestions = (property, t) => (
 );
 
 // Save is refused while the content has errors, and the header says which ones: pass the error
-// markers along with the verdict. Warnings (duplicate or unknown key) do not block Save.
+// markers along with the verdict. A duplicate key in a .cfg file is an error; an unknown key, or a
+// duplicate top-level YAML key under a Metatype (which YAML itself reports), only a warning.
 const reportValidation = (onValidate, markers) => {
     const errors = markers
         .filter(marker => marker.severity === monaco.MarkerSeverity.Error)
@@ -704,6 +713,26 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
     const [showPropertyPanel, setShowPropertyPanel] = useState(false);
     const [propertySearch, setPropertySearch] = useState('');
     const propertySearchId = useId();
+    const propertySearchHintId = useId();
+    const propertyPanelId = useId();
+    const propertyPanelTitleId = useId();
+    const surfaceRef = useRef(null);
+    const [stacked, setStacked] = useState(false);
+    // Polite, never a value: what Encrypt, Decrypt or an insertion did, which changes no field the
+    // user is on (WCAG 4.1.3). Cleared first, so that the same text twice is announced twice, and
+    // a few seconds later, so that it does not linger for the virtual cursor.
+    const [editorStatus, setEditorStatus] = useState('');
+    const statusTimerRef = useRef(null);
+    const announce = text => {
+        setEditorStatus('');
+        window.clearTimeout(statusTimerRef.current);
+        window.requestAnimationFrame(() => setEditorStatus(text));
+        statusTimerRef.current = window.setTimeout(() => setEditorStatus(''), 5000);
+    };
+    useEffect(() => () => window.clearTimeout(statusTimerRef.current), []);
+    // The property search's count, a moment after the last key: on every key it cut the echo of
+    // what was typed.
+    const [searchStatus, setSearchStatus] = useState('');
     // Secret values are masked until the user asks to see them; the choice is not kept per file.
     const [secretsVisible, setSecretsVisible] = useState(false);
     // Monaco takes Tab to indent, so a keyboard user could not leave the editor without knowing
@@ -749,6 +778,71 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
         setSecretsVisible(false);
     }, [filename]);
 
+    // The panel can go away while it has the focus (another file, a Metatype that disappears):
+    // the focus then goes back to its toggle, or to the editor, rather than to <body> (WCAG 2.4.3).
+    const panelShown = showPropertyPanel && supportsMetatypeAssistance;
+    const focusInPanelRef = useRef(false);
+    const addPropertyButton = () => document.querySelector('[data-cy="editor-add-metatype-property"] button');
+    useEffect(() => {
+        if (panelShown || !focusInPanelRef.current) {
+            return;
+        }
+        focusInPanelRef.current = false;
+        if (!document.activeElement || document.activeElement === document.body) {
+            const toggle = addPropertyButton();
+            if (toggle && !toggle.disabled) {
+                toggle.focus();
+            } else {
+                editorRef.current?.focus();
+            }
+        }
+    }, [panelShown]);
+
+    const openPropertyPanel = () => {
+        setShowPropertyPanel(true);
+        // The search field, once the panel is there.
+        window.requestAnimationFrame(() => document.getElementById(propertySearchId)?.focus());
+    };
+    const closePropertyPanel = ({ returnFocus = false } = {}) => {
+        focusInPanelRef.current = false;
+        setShowPropertyPanel(false);
+        // A search kept for the next opening would come back with its count already said.
+        setPropertySearch('');
+        if (returnFocus) {
+            window.requestAnimationFrame(() => addPropertyButton()?.focus());
+        }
+    };
+
+    useEffect(() => {
+        if (!panelShown || !propertySearch.trim()) {
+            setSearchStatus('');
+            return undefined;
+        }
+        const timer = window.setTimeout(() => setSearchStatus(filteredProperties.length > 0
+            ? t('editor.metatype.searchCount', { count: filteredProperties.length })
+            : t('editor.metatype.noResults')), 400);
+        return () => window.clearTimeout(timer);
+    }, [panelShown, propertySearch, filteredProperties.length, t]);
+
+    useEffect(() => {
+        const surface = surfaceRef.current;
+        if (!surface || typeof ResizeObserver === 'undefined') {
+            return undefined;
+        }
+        const observer = new ResizeObserver(entries => {
+            const width = entries[0]?.contentRect.width;
+            if (width) {
+                setStacked(width < RAW_EDITOR_STACK_BELOW_PX);
+            }
+        });
+        observer.observe(surface);
+        return () => observer.disconnect();
+    }, []);
+
+    const editorAriaLabel = filename
+        ? t('editor.rawEditorLabelFor', { name: filename, interpolation: { escapeValue: false } })
+        : t('editor.rawEditorLabel');
+
     useEffect(() => {
         propertyMapRef.current = propertyMap;
         hasMetatypeRef.current = supportsMetatypeAssistance;
@@ -790,7 +884,10 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                 // the textarea no longer focuses the editor, and the raw editor e2e specs could not
                 // type into it.
                 editContext: false,
-                ariaLabel: t('editor.rawEditorLabel')
+                // Says which file it edits: every raw editor had the same name (WCAG 2.4.6).
+                ariaLabel: editorAriaLabel,
+                // Ctrl+click on a URL in a value opened a new window (WCAG 3.2.5).
+                links: false
             });
 
             // Explicitly handle resizing
@@ -975,17 +1072,25 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                                 key = line.substring(0, sepIdx).trim();
                             }
 
-                            if (seenKeys.has(key)) {
+                            // An error, which blocks Save, as in the visual editor: the second value
+                            // silently replaced the first on reload. Compared regardless of case, as
+                            // Configuration Admin does, which refuses Foo and foo in one configuration.
+                            const normalizedKey = key.toLowerCase();
+                            if (seenKeys.has(normalizedKey)) {
                                 markers.push({
-                                    severity: monaco.MarkerSeverity.Warning,
+                                    severity: monaco.MarkerSeverity.Error,
                                     startLineNumber: index + 1,
                                     startColumn: 1,
                                     endLineNumber: index + 1,
                                     endColumn: line.length + 1,
-                                    message: t('editor.validation.duplicateKey', { key }),
+                                    message: t('editor.validation.duplicateKeyAt', {
+                                        key,
+                                        line: seenKeys.get(normalizedKey) + 1,
+                                        interpolation: { escapeValue: false }
+                                    }),
                                 });
                             } else {
-                                seenKeys.set(key, index);
+                                seenKeys.set(normalizedKey, index);
                             }
 
                             if (currentHasMetatype && key && !currentPropertyMap.has(key)) {
@@ -1046,6 +1151,11 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
         }
     }, [language]); // Re-create if language changes (rare)
 
+    // The editor is created once per language: its name follows the file and the interface language.
+    useEffect(() => {
+        editorRef.current?.updateOptions({ ariaLabel: editorAriaLabel });
+    }, [editorAriaLabel, language]);
+
     // Ctrl+M changes the mode from inside the editor: keep the toolbar's toggle in step.
     useEffect(() => {
         const subscription = TabFocus.onDidChangeTabFocus(setTabMovesFocus);
@@ -1099,7 +1209,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
         const editor = editorRef.current;
         const completionProvider = monaco.languages.registerCompletionItemProvider(language, {
             triggerCharacters: language === 'yaml' ? [':', ' '] : ['=', ':', ' '],
-            provideCompletionItems: (model, position) => {
+            provideCompletionItems: (model, position, completionContext) => {
                 if (!supportsMetatypeAssistance) {
                     return { suggestions: [] };
                 }
@@ -1113,6 +1223,12 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                 }
 
                 if (context.kind === 'key') {
+                    // Not on a space (YAML indentation): the list opened unasked, and the next Enter
+                    // inserted a whole property instead of a new line. Typing a letter or Ctrl+Space
+                    // still lists the keys.
+                    if (completionContext?.triggerKind === monaco.languages.CompletionTriggerKind.TriggerCharacter) {
+                        return { suggestions: [] };
+                    }
                     const showFullLineInsert = line.trim() === '';
                     const suggestions = (metatypeDefinition.properties || []).map(property => ({
                         label: property.id,
@@ -1183,27 +1299,9 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
             }
         });
 
-        const autoSuggestOnNewLine = editor.onDidChangeModelContent(event => {
-            if (!supportsMetatypeAssistance || !event.changes.some(change => change.text.includes('\n'))) {
-                return;
-            }
-
-            const model = editor.getModel();
-            const position = editor.getPosition();
-            if (!model || !position) {
-                return;
-            }
-
-            const line = model.getLineContent(position.lineNumber);
-            if (line.trim() === '') {
-                window.requestAnimationFrame(() => editor.trigger('metatype', 'editor.action.triggerSuggest', {}));
-            }
-        });
-
         return () => {
             completionProvider.dispose();
             hoverProvider.dispose();
-            autoSuggestOnNewLine.dispose();
         };
     }, [supportsMetatypeAssistance, language, metatypeDefinition, propertyMap, t]);
 
@@ -1246,16 +1344,19 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
         // ( ?[=:] ?) separator with optional spaces
         // (.*)$ capture rest as value
 
-        if (!match) return;
-
-        const valuePart = match[3];
-        if (!valuePart) return; // Empty value
-
-        const valueTrimmed = valuePart.trim();
-        if (!valueTrimmed) return; // Whitespace only
+        // It did nothing, and said nothing, on a line with no value or one already encrypted.
+        const valueTrimmed = match ? (match[3] || '').trim() : '';
+        if (!valueTrimmed) {
+            toastWarning(t('notification.encryptNoValue'));
+            return;
+        }
 
         // Prevent double encryption
-        if (valueTrimmed.startsWith('ENC(')) return;
+        if (valueTrimmed.startsWith('ENC(')) {
+            toastWarning(t('notification.encryptAlready'));
+            return;
+        }
+        const valuePart = match[3];
 
         // Calculate Range
         // We want to replace the RAW value part, preserving leading spaces if possible?
@@ -1298,6 +1399,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                     range: range,
                     text: result.encryptedValue
                 }]);
+                announce(t('editor.aria.lineEncrypted', { line: position.lineNumber }));
             }
         } catch (e) {
             console.error("Encryption failed", e);
@@ -1352,6 +1454,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                 range: range,
                 text: decryptedValue
             }]);
+            announce(t('editor.aria.lineDecrypted', { line: position.lineNumber }));
         } catch (e) {
             // Refused by the server: the ciphertext is not in the saved file (or not readable).
             console.error("Decryption failed", e);
@@ -1381,6 +1484,11 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
 
         editor.executeEdits('metatype', [{ range, text }]);
         editor.focus();
+        announce(t('editor.aria.propertyInserted', {
+            id: property.id,
+            line: lineIsEmpty ? position.lineNumber : position.lineNumber + 1,
+            interpolation: { escapeValue: false }
+        }));
     };
 
     const showRawPropertyPanel = language === 'properties' || language === 'yaml';
@@ -1388,8 +1496,14 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
     return (
         <div style={{ flex: 1, minHeight: 0, minWidth: 0, width: '100%', display: 'flex', flexDirection: 'column' }}>
             <style>{MASKED_SECRET_STYLE}</style>
-            <div data-cy="raw-editor-surface" style={RAW_EDITOR_SURFACE_STYLE}>
-                <div style={RAW_EDITOR_MAIN_PANEL_STYLE}>
+            <div role="status" data-cy="raw-editor-status" style={VISUALLY_HIDDEN_STYLE}>{editorStatus}</div>
+            <div
+                ref={surfaceRef}
+                data-cy="raw-editor-surface"
+                data-stacked={stacked ? 'true' : 'false'}
+                style={stacked ? { ...RAW_EDITOR_SURFACE_STYLE, flexDirection: 'column' } : RAW_EDITOR_SURFACE_STYLE}
+            >
+                <div style={stacked ? { ...RAW_EDITOR_MAIN_PANEL_STYLE, ...RAW_EDITOR_STACKED_MAIN_PANEL_STYLE } : RAW_EDITOR_MAIN_PANEL_STYLE}>
                     <div data-cy="raw-editor-toolbar" style={RAW_EDITOR_TOOLBAR_STYLE}>
                         <div style={RAW_EDITOR_TOOLBAR_GROUP_STYLE}>
                             <RawToolbarButton
@@ -1459,13 +1573,28 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                             {showRawPropertyPanel && (
                                 <>
                                     <RawToolbarDivider />
+                                    {/* A disclosure: it opens and closes the panel, and says which. */}
                                     <RawToolbarButton
                                         dataCy="editor-add-metatype-property"
                                         label={t('editor.button.addProperty')}
                                         icon={<Add style={TOOLBAR_BUTTON_ICON_STYLE} />}
-                                        onClick={() => supportsMetatypeAssistance && setShowPropertyPanel(true)}
+                                        onClick={() => {
+                                            if (!supportsMetatypeAssistance) {
+                                                return;
+                                            }
+                                            if (panelShown) {
+                                                closePropertyPanel();
+                                            } else {
+                                                openPropertyPanel();
+                                            }
+                                        }}
                                         disabled={!supportsMetatypeAssistance}
-                                        tooltip={supportsMetatypeAssistance ? t('tooltip.addMetatypeProperty') : t('tooltip.addMetatypePropertyDisabled')}
+                                        aria-expanded={supportsMetatypeAssistance ? panelShown : undefined}
+                                        // Only while the panel exists: it is not rendered when closed.
+                                        aria-controls={panelShown ? propertyPanelId : undefined}
+                                        tooltip={!supportsMetatypeAssistance
+                                            ? t('tooltip.addMetatypePropertyDisabled')
+                                            : (panelShown ? t('tooltip.hideMetatypeProperties') : t('tooltip.addMetatypeProperty'))}
                                         describeTooltip
                                     />
                                 </>
@@ -1491,10 +1620,20 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                     </div>
                 </div>
 
-                {showPropertyPanel && supportsMetatypeAssistance && (
-                    <div
+                {panelShown && (
+                    <section
+                        id={propertyPanelId}
                         data-cy="metatype-property-panel"
-                        style={RAW_EDITOR_PANEL_STYLE}
+                        aria-labelledby={propertyPanelTitleId}
+                        style={stacked ? { ...RAW_EDITOR_PANEL_STYLE, ...RAW_EDITOR_STACKED_PANEL_STYLE } : RAW_EDITOR_PANEL_STYLE}
+                        onFocus={() => {
+                            focusInPanelRef.current = true;
+                        }}
+                        onBlur={event => {
+                            if (!event.currentTarget.contains(event.relatedTarget)) {
+                                focusInPanelRef.current = false;
+                            }
+                        }}
                     >
                         <div
                             style={{
@@ -1507,15 +1646,17 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                             }}
                         >
                             <div style={{ minWidth: 0, flex: 1 }}>
-                                <Typography variant="body" weight="bold">{t('editor.metatype.availableProperties')}</Typography>
+                                <Typography component="h3" id={propertyPanelTitleId} variant="body" weight="bold" style={{ margin: 0 }}>{t('editor.metatype.availableProperties')}</Typography>
                                 {metatypeDefinition?.name && (
                                     <Typography variant="caption" color="textSecondary">{metatypeDefinition.name}</Typography>
                                 )}
                             </div>
+                            {/* Its name starts with the visible "Hide", for voice control (WCAG 2.5.3). */}
                             <RawToolbarButton
                                 dataCy="raw-editor-hide-property-panel"
                                 label={t('editor.button.hideAvailableProperties')}
-                                onClick={() => setShowPropertyPanel(false)}
+                                aria-label={t('editor.aria.hideAvailableProperties')}
+                                onClick={() => closePropertyPanel({ returnFocus: true })}
                             />
                         </div>
 
@@ -1547,8 +1688,15 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                                     }
                                 }}
                                 placeholder={t('editor.metatype.searchPlaceholder')}
+                                aria-describedby={propertySearchHintId}
                                 style={RAW_EDITOR_SEARCH_STYLE}
                             />
+                            <Typography id={propertySearchHintId} variant="caption" style={{ display: 'block', marginTop: '4px', color: 'var(--color-gray_dark)' }}>
+                                {t('editor.metatype.searchEnterHint')}
+                            </Typography>
+                            {/* Mounted with the panel, empty until a search: the count was never said, and
+                                "no results" mounted together with its text (WCAG 4.1.3). */}
+                            <div role="status" data-cy="raw-editor-property-search-status" style={VISUALLY_HIDDEN_STYLE}>{searchStatus}</div>
                         </div>
 
                         <div style={{ ...RAW_EDITOR_PANEL_SECTION_STYLE, overflow: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: 0 }}>
@@ -1596,9 +1744,13 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                                                 )}
                                             </div>
                                             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                                {/* Named after its property: every card's button was "Insert" (WCAG 2.4.6). */}
                                                 <Button
                                                     data-cy={`metatype-property-insert-${encodeURIComponent(property.id)}`}
                                                     label={alreadyPresent ? t('editor.metatype.alreadyPresent') : t('editor.metatype.insert')}
+                                                    aria-label={alreadyPresent
+                                                        ? t('editor.metatype.alreadyPresentNamed', { id: property.id, interpolation: { escapeValue: false } })
+                                                        : t('editor.metatype.insertNamed', { id: property.id, interpolation: { escapeValue: false } })}
                                                     variant="ghost"
                                                     disabled={alreadyPresent}
                                                     onClick={() => insertProperty(property)}
@@ -1636,7 +1788,7 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                                 );
                             })}
                         </div>
-                    </div>
+                    </section>
                 )}
             </div>
         </div>
