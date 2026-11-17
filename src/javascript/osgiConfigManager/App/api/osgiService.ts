@@ -57,6 +57,19 @@ interface OsgiFileData {
     configState?: 'MODULE' | 'MODULE_DEFAULT' | 'USER';
 }
 
+export type OsgiUsageKind = 'BOUND' | 'COMPONENT' | 'MANAGED_SERVICE' | 'MANAGED_SERVICE_FACTORY' | 'METATYPE';
+
+export interface OsgiBundleUsage {
+    symbolicName: string;
+    name: string;
+    version: string;
+    usages: Array<{
+        kind: OsgiUsageKind;
+        detail?: string | null;
+        states: string[];
+    }>;
+}
+
 export interface OsgiUiConfig {
     visualFormattingControlsEnabled?: boolean;
 }
@@ -179,6 +192,14 @@ export const osgiService = {
                 metatype: parseJson(file.metatype)
             })
         };
+    },
+
+    // Read-only: which bundles use the configuration of this file, behind the same access check as read.
+    getBundleUsage: async (filename: string): Promise<OsgiBundleUsage[]> => {
+        // A JSON string, not GraphQL types: the module's API scope names its types, and an upgrade
+        // does not rewrite that file, so a new type would be refused on existing instances.
+        const { bundleUsage } = await query('bundleUsage(name: $name)', '($name: String!)', { name: filename });
+        return parseJson(bundleUsage) ?? [];
     },
 
     getAvailableMetatypes: async (): Promise<OsgiServiceResponse> => {

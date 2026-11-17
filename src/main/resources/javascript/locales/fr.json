@@ -362,5 +362,31 @@
             "warning": "Avertissement :",
             "info": "Information :"
         }
+    },
+    "bundleUsage": {
+        "title": "Utilisée par",
+        "loading": "Recherche des bundles qui utilisent cette configuration…",
+        "empty": "Aucun bundle détecté. Un bundle peut tout de même lire cette configuration d'une manière que le gestionnaire ne voit pas.",
+        "error": "Impossible de lister les bundles qui utilisent cette configuration.",
+        "version": "version {{version}}",
+        "componentNamed": "{{kind}} {{name}}",
+        "componentWithStates": "{{kind}} {{name}} ({{states}})",
+        "kind": {
+            "bound": "liée à ce bundle",
+            "component": "composant",
+            "managedService": "service géré",
+            "managedServiceFactory": "fabrique de services gérés",
+            "metatype": "métatype",
+            "other": "autre usage"
+        },
+        "state": {
+            "active": "actif",
+            "satisfied": "satisfait",
+            "unsatisfiedReference": "service manquant",
+            "unsatisfiedConfiguration": "en attente de sa configuration",
+            "failedActivation": "échec du démarrage",
+            "disabled": "désactivé",
+            "unknown": "état inconnu"
+        }
     }
 }

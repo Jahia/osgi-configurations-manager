@@ -8,6 +8,11 @@ jest.mock('react-i18next', () => ({
     })
 }));
 
+// The header lists the bundles using the file; that lookup has its own tests (BundleUsage.test.jsx).
+jest.mock('../api/osgiService', () => ({
+    osgiService: {getBundleUsage: jest.fn(() => new Promise(() => {}))}
+}));
+
 const renderHeader = (props = {}) => render(
     <SelectedFileHeader
         selectedFile={{name: 'org.example.yml', path: '/etc/org.example.yml'}}

@@ -291,6 +291,7 @@ const AppContent = () => {
                                         isYamlValid={isYamlValid}
                                         validationErrors={validationErrors}
                                         isSaving={isSaving}
+                                        isLoadingFile={loadingFile}
                                         onSave={() => handleSave()}
                                         onCancel={handleCancelClick}
                                     />

@@ -424,6 +424,7 @@ namespace: `Query.osgiConfigManager` and `Mutation.osgiConfigManager`. (The earl
 | `uiConfig` | `visualFormattingControlsEnabled` |
 | `file(name: String!)` | `configState`, `rawContent`, `pid`, and `properties` / `metatype` as JSON strings, in file order |
 | `availableMetatypes` | a JSON array of the metatype definitions a file can be created from |
+| `bundleUsage(name: String!)` | a JSON array of the bundles using the file's configuration: `symbolicName`, `name`, `version`, and `usages`, each a `kind` (`BOUND`, `COMPONENT`, `MANAGED_SERVICE`, `MANAGED_SERVICE_FACTORY`, `METATYPE`), a `detail` (component name or PID) and, for a component, its `states`. Same access rule as `file` |
 | `preference(key: String!)` | one of the caller's stored UI preferences |
 | `pluginProbe` | what the decryption probe received, by shape only, as a JSON object |
 

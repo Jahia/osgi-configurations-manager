@@ -139,6 +139,38 @@ class OsgiConfigManagerQueryTest {
     }
 
     @Test
+    @DisplayName("bundleUsage returns the service list as order-preserving JSON")
+    void bundleUsage_isJson() throws Exception {
+        Map<String, Object> usage = new LinkedHashMap<>();
+        usage.put("kind", "COMPONENT");
+        usage.put("detail", "org.acme.Mailer");
+        usage.put("states", List.of("ACTIVE"));
+        Map<String, Object> entry = new LinkedHashMap<>();
+        entry.put("symbolicName", "org.acme.mail");
+        entry.put("name", "Acme Mail");
+        entry.put("version", "2.4.1");
+        entry.put("usages", List.of(usage));
+        when(service.findBundleUsage("org.acme.cfg", true)).thenReturn(List.of(entry));
+
+        assertEquals("[{\"symbolicName\":\"org.acme.mail\",\"name\":\"Acme Mail\",\"version\":\"2.4.1\","
+                        + "\"usages\":[{\"kind\":\"COMPONENT\",\"detail\":\"org.acme.Mailer\",\"states\":[\"ACTIVE\"]}]}]",
+                query.bundleUsage("org.acme.cfg"));
+    }
+
+    @Test
+    @DisplayName("bundleUsage goes through translate: a refused file is FORBIDDEN, without its path")
+    void bundleUsage_denied_isForbidden() throws Exception {
+        when(service.findBundleUsage("hidden.cfg", true)).thenThrow(
+                new org.jahia.modules.osgiconfigmanager.admin.ConfigAccessDeniedException(
+                        "Access denied: /opt/jahia/karaf/etc/hidden.cfg is blacklisted or reserved."));
+
+        OsgiConfigGqlException e = assertThrows(OsgiConfigGqlException.class, () -> query.bundleUsage("hidden.cfg"));
+
+        assertEquals("FORBIDDEN", e.getExtensions().get("code"));
+        assertFalse(e.getMessage().contains("/opt/jahia"));
+    }
+
+    @Test
     @DisplayName("availableMetatypes returns the service list as JSON")
     void availableMetatypes_isJson() throws Exception {
         Map<String, Object> def = new LinkedHashMap<>();

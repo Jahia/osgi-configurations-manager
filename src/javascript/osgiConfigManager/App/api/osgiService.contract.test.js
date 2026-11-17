@@ -28,6 +28,7 @@ describe('osgiService request contract', () => {
         ['getAll (deep)', () => osgiService.getAll('foo', true), 'query', { search: 'foo' }],
         ['read', () => osgiService.read('conf.cfg'), 'query', { name: 'conf.cfg' }],
         ['getAvailableMetatypes', () => osgiService.getAvailableMetatypes(), 'query', {}],
+        ['getBundleUsage', () => osgiService.getBundleUsage('conf.cfg'), 'query', { name: 'conf.cfg' }],
         ['getPreference', () => osgiService.getPreference('osgiEditorMode'), 'query', { key: 'osgiEditorMode' }],
         ['save', () => osgiService.save({ action: 'save', filename: 'conf.cfg', rawContent: 'a = 1\n' }),
             'mutation', { name: 'conf.cfg', rawContent: 'a = 1\n' }],

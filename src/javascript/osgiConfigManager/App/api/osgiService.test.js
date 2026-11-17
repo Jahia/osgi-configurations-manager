@@ -53,6 +53,17 @@ describe('osgiService response mapping', () => {
             .resolves.toEqual({ metatypes: [{ pid: 'org.acme', filename: 'org.acme.cfg' }] });
     });
 
+    it('getBundleUsage parses the JSON array, and reads none as an empty list', async () => {
+        respond({ bundleUsage: '[{"symbolicName":"org.acme","name":"Acme","version":"1.0.0","usages":[{"kind":"BOUND","detail":"org.acme","states":[]}]}]' });
+        await expect(osgiService.getBundleUsage('org.acme.cfg')).resolves.toEqual([{
+            symbolicName: 'org.acme', name: 'Acme', version: '1.0.0',
+            usages: [{ kind: 'BOUND', detail: 'org.acme', states: [] }]
+        }]);
+
+        respond({ bundleUsage: null });
+        await expect(osgiService.getBundleUsage('org.acme.cfg')).resolves.toEqual([]);
+    });
+
     it.each([
         ['save', () => osgiService.save({ action: 'save', filename: 'a.cfg', rawContent: '' }), { save: true }, 'saved'],
         ['toggle', () => osgiService.toggle('a.cfg'), { toggle: true }, 'toggled'],

@@ -8,7 +8,9 @@ import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.cm.ConfigurationAdmin;
 import org.osgi.service.cm.ManagedServiceFactory;
+import org.osgi.service.component.runtime.ServiceComponentRuntime;
 import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.AttributeDefinition;
 import org.osgi.service.metatype.MetaTypeInformation;
@@ -472,6 +474,81 @@ public class OsgiConfigService {
             result.put(KEY_PROPERTIES, readYamlProperties(filePath));
         }
         return result;
+    }
+
+    /**
+     * The bundles that use the configuration of {@code filename}: bound to it, Declarative Services
+     * components taking it, ManagedService(Factory) registrations, and the Metatype provider.
+     * Read-only, and behind the same authorization as {@link #readFile(String, Locale, boolean)}.
+     * See {@link ConfigurationUsageLookup} for the entries' shape.
+     */
+    public List<Map<String, Object>> findBundleUsage(String filename, boolean isRootUser) throws IOException {
+        String safeFilename = validateFilename(filename);
+        ensureFilenameAllowed(safeFilename, isRootUser, "Access");
+
+        Path filePath = resolveConfigPath(safeFilename);
+        if (!Files.exists(filePath)) {
+            throw new ConfigNotFoundException("File not found: " + safeFilename);
+        }
+
+        BundleContext bundleContext = getBundleContext();
+        if (bundleContext == null) {
+            // Outside a framework the PID still comes from the name, and is still authorized.
+            ensureResolvedPidAllowed(safeFilename, new ConfigurationUsageLookup(null, null, null, null)
+                    .resolveTarget(safeFilename, normalizeConfigFilename(safeFilename)), isRootUser);
+            return Collections.emptyList();
+        }
+        // Looked up per call rather than referenced: a reference would tie this component's
+        // lifecycle, which carries the encryption secret, to services only this read needs.
+        ServiceReference<ConfigurationAdmin> configurationAdminReference = bundleContext.getServiceReference(ConfigurationAdmin.class);
+        ServiceReference<ServiceComponentRuntime> runtimeReference = bundleContext.getServiceReference(ServiceComponentRuntime.class);
+        ConfigurationAdmin configurationAdmin = configurationAdminReference == null ? null
+                : bundleContext.getService(configurationAdminReference);
+        ServiceComponentRuntime runtime = null;
+        try {
+            runtime = runtimeReference == null ? null : bundleContext.getService(runtimeReference);
+            ConfigurationUsageLookup lookup =
+                    new ConfigurationUsageLookup(bundleContext, configurationAdmin, runtime, metaTypeService);
+            ConfigurationUsageLookup.Target target = lookup.resolveTarget(safeFilename, normalizeConfigFilename(safeFilename));
+            ensureResolvedPidAllowed(safeFilename, target, isRootUser);
+            return lookup.find(target);
+        } finally {
+            // Only what was obtained: ungetService on a reference this context holds no use of is wrong.
+            if (configurationAdmin != null) {
+                bundleContext.ungetService(configurationAdminReference);
+            }
+            if (runtime != null) {
+                bundleContext.ungetService(runtimeReference);
+            }
+        }
+    }
+
+    /**
+     * The file name is authorized, but the PID it resolves to is what the lookup reports on, and the
+     * two can disagree: a wildcard rule is matched on the file name, so {@code org.acme.secret-x.cfg}
+     * passes {@code org.acme.secret.*} while configuring the factory {@code org.acme.secret}. The
+     * resolved PID and factory PID are refused, as an unauthorized read, when the file filter would
+     * refuse their own file, the manager's own PID included (root keeps that one, as for reads).
+     *
+     * <p>Under a white list the file itself was granted by name, and the white list stays exact on
+     * purpose: the factory PID of a granted instance is not refused for being absent from it. Only
+     * the manager's own PID is still checked then.
+     */
+    private void ensureResolvedPidAllowed(String filename, ConfigurationUsageLookup.Target target, boolean isRootUser)
+            throws ConfigAccessDeniedException {
+        for (String pid : new String[] {target.pid, target.factoryPid}) {
+            if (pid == null) {
+                continue;
+            }
+            String pidFile = pid + DEFAULT_FACTORY_FILE_EXTENSION;
+            boolean refused = ConfigFileFilter.isConfigurationFileOf(SELF_CONFIG_PID, pidFile)
+                    ? !isRootUser
+                    : !fileFilter.hasActiveWhitelist() && !isFilenameAllowed(pidFile, isRootUser);
+            if (refused) {
+                // The message of an unauthorized read, which does not say the PID was the reason.
+                throw new ConfigAccessDeniedException("Access denied: " + filename + " is blacklisted or reserved.");
+            }
+        }
     }
 
     private String getConfigurationPid(String filename) {
