@@ -435,3 +435,40 @@ export const isDeepEqual = (x: any, y: any): boolean => {
 
     return false;
 };
+
+export type KeyProblem = 'empty' | 'duplicate';
+
+/**
+ * The property rows that cannot be saved, by index: a blank key was written as ` = value`, and a
+ * key given twice kept only one of the values on reload. Every occurrence of a duplicate is
+ * reported, so that each row can say what is wrong with it. Keys are compared trimmed, as the
+ * parser reads them back, and regardless of case, as Configuration Admin does: Felix refuses a
+ * dictionary holding both Foo and foo, so such a file saved and then failed to apply.
+ */
+export const findKeyProblems = (entries: any): Record<number, KeyProblem> => {
+    const problems: Record<number, KeyProblem> = {};
+    if (!Array.isArray(entries)) {
+        return problems;
+    }
+    const indicesByKey = new Map<string, number[]>();
+    entries.forEach((entry, index) => {
+        const type = entry?.type?.value ?? entry?.type;
+        if (type !== 'property') {
+            return;
+        }
+        const key = String(entry?.key?.value ?? entry?.key ?? '').trim().toLowerCase();
+        if (!key) {
+            problems[index] = 'empty';
+            return;
+        }
+        indicesByKey.set(key, [...(indicesByKey.get(key) || []), index]);
+    });
+    indicesByKey.forEach(indices => {
+        if (indices.length > 1) {
+            indices.forEach(index => {
+                problems[index] = 'duplicate';
+            });
+        }
+    });
+    return problems;
+};

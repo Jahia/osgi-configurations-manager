@@ -27,6 +27,11 @@ export interface ModalConfig {
     onUnshownError?: (message?: string) => void;
     onConfirm?: (value?: any) => void | Promise<ConfirmResult | void>;
     onOther?: () => void;
+    /**
+     * Where the focus goes when the dialog closes, in place of the control that opened it: that
+     * control may now belong to another row. Read on the frame after closing; null keeps the opener.
+     */
+    returnFocus?: () => HTMLElement | null;
 }
 
 /** What an awaitConfirm action reports back to its dialog. */

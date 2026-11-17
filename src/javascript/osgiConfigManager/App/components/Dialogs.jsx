@@ -12,6 +12,7 @@ import {
     TabItem
 } from '@jahia/moonstone';
 import {useTranslation} from 'react-i18next';
+import {VISUALLY_HIDDEN_STYLE} from './AppChrome';
 
 const BODY_STACK_STYLE = {
     display: 'flex',
@@ -48,6 +49,14 @@ const INSTANCES_LIST_STYLE = {
     background: 'var(--color-gray_light_plain20)'
 };
 
+const PLAIN_LIST_STYLE = {
+    listStyle: 'none',
+    margin: 0,
+    padding: 0
+};
+
+const FILTER_COUNT_DELAY_MS = 400;
+
 const FACTORY_DETAILS_STYLE = {
     border: '1px solid var(--color-gray_light40)',
     borderRadius: 'var(--border-radius-default)',
@@ -58,6 +67,7 @@ const FACTORY_DETAILS_STYLE = {
     gap: 'var(--spacing-medium)'
 };
 
+// Rendered after the footer (see the Modal below), so absolutely placed over the header.
 const CLOSE_BUTTON_STYLE = {
     position: 'absolute',
     top: 'var(--spacing-medium)',
@@ -164,6 +174,9 @@ export const ModalDialog = ({config, onClose}) => {
     if (config && !returnFocusRef.current && typeof document !== 'undefined') {
         returnFocusRef.current = document.activeElement;
     }
+    // Set when the dialog is confirmed with a returnFocus: a row delete sends the focus to the row
+    // that remains, where the opener now belongs to another row. Cancel keeps the opener.
+    const confirmedReturnFocusRef = React.useRef(null);
     const isOpen = Boolean(config);
     React.useEffect(() => {
         if (isOpen) {
@@ -171,10 +184,17 @@ export const ModalDialog = ({config, onClose}) => {
         }
         const opener = returnFocusRef.current;
         returnFocusRef.current = null;
+        const resolveTarget = confirmedReturnFocusRef.current;
+        confirmedReturnFocusRef.current = null;
         // On the next frame: closed by Enter in a field, the same key press would otherwise
         // activate the opener once it has the focus, and open the dialog again. Only if nothing
         // else took the focus meanwhile (the file list, after a deletion).
         window.requestAnimationFrame(() => {
+            const target = resolveTarget?.();
+            if (target && (!document.activeElement || document.activeElement === document.body)) {
+                target.focus();
+                return;
+            }
             if (opener && opener !== document.body && opener.isConnected && typeof opener.focus === 'function'
                 && (!document.activeElement || document.activeElement === document.body)) {
                 opener.focus();
@@ -193,6 +213,12 @@ export const ModalDialog = ({config, onClose}) => {
     const factoryIdentifierId = React.useId();
     const factoryIdentifierErrorId = React.useId();
     const factoryGroupLabelId = React.useId();
+    const tabIdPrefix = React.useId();
+    const tabPanelId = React.useId();
+    const existingInstancesLabelId = React.useId();
+    // What the Configuration or Factory filter left, said a moment after the last key (WCAG 4.1.3).
+    // Empty when the filter is, and when the tab changes, so that the new tab's count is said again.
+    const [settledFilter, setSettledFilter] = React.useState(null);
 
     React.useEffect(() => {
         setPromptValue(config?.defaultValue || '');
@@ -296,6 +322,23 @@ export const ModalDialog = ({config, onClose}) => {
         {id: 'factory', label: t('modal.create.tabs.factory')}
     ]), [t]);
 
+    const filterKey = `${activeCreateTab}|${filterValue}`;
+    React.useEffect(() => {
+        setSettledFilter(null);
+        if (!filterValue.trim() || activeCreateTab === 'manual') {
+            return undefined;
+        }
+        const timer = window.setTimeout(() => setSettledFilter(filterKey), FILTER_COUNT_DELAY_MS);
+        return () => window.clearTimeout(timer);
+    }, [filterKey]); // eslint-disable-line react-hooks/exhaustive-deps
+    const shownOptionCount = activeCreateTab === 'factory' ? availableFactoryMetatypes.length : availableMetatypes.length;
+    let filterCountText = '';
+    if (settledFilter === filterKey) {
+        filterCountText = activeCreateTab === 'factory'
+            ? t('modal.create.factoryCount', {count: shownOptionCount})
+            : t('modal.create.configurationCount', {count: shownOptionCount});
+    }
+
     if (!config) {
         return null;
     }
@@ -377,6 +420,7 @@ export const ModalDialog = ({config, onClose}) => {
             return;
         }
 
+        confirmedReturnFocusRef.current = config.returnFocus || null;
         onClose();
 
         if (!config.onConfirm) {
@@ -401,6 +445,8 @@ export const ModalDialog = ({config, onClose}) => {
             // describe it by its message (WCAG 4.1.2).
             aria-labelledby={titleId}
             aria-describedby={showModalMessage ? messageId : undefined}
+            // A destructive confirmation interrupts: alertdialog, not dialog (WCAG 4.1.2).
+            role={isWarning ? 'alertdialog' : undefined}
             isOpen
             size={isCreateConfig ? 'large' : 'medium'}
             onOpenChange={isOpen => {
@@ -411,15 +457,6 @@ export const ModalDialog = ({config, onClose}) => {
         >
             <>
                 <div style={{position: 'relative'}}>
-                    <div style={CLOSE_BUTTON_STYLE}>
-                        <Button
-                            aria-label={t('modal.cancel')}
-                            icon={<Close/>}
-                            size="small"
-                            variant="ghost"
-                            onClick={onClose}
-                        />
-                    </div>
                     <ModalHeader title={<span id={titleId}>{config.title}</span>}>
                         {showModalMessage ? <span id={messageId}>{config.message}</span> : null}
                     </ModalHeader>
@@ -450,7 +487,6 @@ export const ModalDialog = ({config, onClose}) => {
                                             handleConfirm();
                                         }
                                     }}
-                                    placeholder={t('modal.prompt.placeholder')}
                                 />
                                 {hasFieldError('filename') && (
                                     <Typography id={promptErrorId} data-cy="modal-prompt-error" variant="caption" style={FIELD_ERROR_STYLE}>
@@ -463,10 +499,14 @@ export const ModalDialog = ({config, onClose}) => {
                         {isCreateConfig && (
                             <>
                                 <div style={SECTION_STYLE}>
-                                    <Tab>
+                                    {/* Named, and each tab tied to the panel it shows; only the active panel is
+                                        rendered, so only its tab points to it (WCAG 4.1.2). */}
+                                    <Tab aria-label={t('modal.create.tabsLabel')}>
                                         {createTabs.map(tab => (
                                             <TabItem
                                                 key={tab.id}
+                                                id={`${tabIdPrefix}-${tab.id}`}
+                                                aria-controls={activeCreateTab === tab.id ? tabPanelId : undefined}
                                                 data-cy={`modal-create-tab-${tab.id}`}
                                                 isSelected={activeCreateTab === tab.id}
                                                 label={tab.label}
@@ -479,10 +519,11 @@ export const ModalDialog = ({config, onClose}) => {
                                     </Tab>
                                 </div>
 
+                                <div role="tabpanel" id={tabPanelId} aria-labelledby={`${tabIdPrefix}-${activeCreateTab}`} style={BODY_STACK_STYLE}>
                                 {activeCreateTab === 'manual' && (
                                     <div style={SECTION_STYLE}>
                                         <Typography component="label" htmlFor={manualInputId} variant="subheading" weight="bold">
-                                            {t('modal.create.manualLabel')}
+                                            {t('modal.create.manualLabel')} {t('modal.create.required')}
                                         </Typography>
                                         {/* The allowed extensions were stated only in the error after Create. */}
                                         <Typography id={manualHintId} variant="caption" style={{color: 'var(--color-gray_dark)'}}>
@@ -493,6 +534,7 @@ export const ModalDialog = ({config, onClose}) => {
                                             id={manualInputId}
                                             aria-invalid={hasFieldError('filename') || undefined}
                                             aria-describedby={hasFieldError('filename') ? `${manualHintId} ${manualErrorId}` : manualHintId}
+                                            aria-required="true"
                                             autoFocus
                                             value={manualFilename}
                                             variant="outlined"
@@ -529,15 +571,18 @@ export const ModalDialog = ({config, onClose}) => {
                                             onChange={event => setFilterValue(event.target.value)}
                                             placeholder={t('modal.create.filterPlaceholder')}
                                         />
+                                        {/* Mounted empty: "no results" mounted together with its text, and the
+                                            count was never said. */}
+                                        <div role="status" data-cy="modal-create-filter-count" style={VISUALLY_HIDDEN_STYLE}>{filterCountText}</div>
                                     </div>
                                 )}
 
                                 {/* role="radiogroup", not <fieldset>: Jahia's administration stylesheet gives every
                                     fieldset an !important padding and border that inline styles cannot undo. */}
                                 {activeCreateTab === 'configuration' && (
-                                    <div role="radiogroup" aria-labelledby={metatypeGroupLabelId} style={SECTION_STYLE}>
+                                    <div role="radiogroup" aria-labelledby={metatypeGroupLabelId} aria-required="true" style={SECTION_STYLE}>
                                         <Typography id={metatypeGroupLabelId} variant="subheading" weight="bold">
-                                            {t('modal.create.templateLabel')}
+                                            {t('modal.create.templateLabel')} {t('modal.create.required')}
                                         </Typography>
 
                                         <div style={LIST_STYLE}>
@@ -560,10 +605,8 @@ export const ModalDialog = ({config, onClose}) => {
                                                     meta={definition.bundleName ? `${t('modal.create.bundle')}: ${definition.bundleName}` : null}
                                                     subtitle={definition.pid}
                                                     title={definition.name || definition.pid}
-                                                    onSelect={() => {
-                                                        setSelectedPid(definition.pid);
-                                                        setManualFilename('');
-                                                    }}
+                                                    // The Manual tab keeps what was typed there (WCAG 3.3.7).
+                                                    onSelect={() => setSelectedPid(definition.pid)}
                                                 />
                                             ))}
                                         </div>
@@ -577,9 +620,9 @@ export const ModalDialog = ({config, onClose}) => {
                                 )}
 
                                 {activeCreateTab === 'factory' && (
-                                    <div role="radiogroup" aria-labelledby={factoryGroupLabelId} style={SECTION_STYLE}>
+                                    <div role="radiogroup" aria-labelledby={factoryGroupLabelId} aria-required="true" style={SECTION_STYLE}>
                                         <Typography id={factoryGroupLabelId} variant="subheading" weight="bold">
-                                            {t('modal.create.factoryLabel')}
+                                            {t('modal.create.factoryLabel')} {t('modal.create.required')}
                                         </Typography>
 
                                         <div style={FACTORY_LIST_STYLE}>
@@ -602,10 +645,7 @@ export const ModalDialog = ({config, onClose}) => {
                                                     meta={definition.bundleName ? `${t('modal.create.bundle')}: ${definition.bundleName}` : t('modal.create.instanceCount', {count: definition.instanceCount || 0})}
                                                     subtitle={definition.pid}
                                                     title={definition.name || definition.pid}
-                                                    onSelect={() => {
-                                                        setSelectedFactoryPid(definition.pid);
-                                                        setManualFilename('');
-                                                    }}
+                                                    onSelect={() => setSelectedFactoryPid(definition.pid)}
                                                 />
                                             ))}
                                         </div>
@@ -618,14 +658,16 @@ export const ModalDialog = ({config, onClose}) => {
 
                                                 <div style={SECTION_STYLE}>
                                                     <Typography component="label" htmlFor={factoryIdentifierId} variant="body" weight="bold">
-                                                        {t('modal.create.factoryIdentifierLabel')}
+                                                        {t('modal.create.factoryIdentifierLabel')} {t('modal.create.required')}
                                                     </Typography>
                                                     <Input
                                                         data-cy="modal-create-factory-identifier-input"
                                                         id={factoryIdentifierId}
                                                         aria-invalid={isFactoryIdentifierTaken || hasFieldError('identifier') || undefined}
                                                         aria-describedby={isFactoryIdentifierTaken || hasFieldError('identifier') ? factoryIdentifierErrorId : undefined}
-                                                        autoFocus
+                                                        aria-required="true"
+                                                        // No autoFocus: it mounts when a factory radio is chosen, and took
+                                                        // the focus out of the radio group at the first arrow key (3.2.2).
                                                         value={factoryIdentifier}
                                                         variant="outlined"
                                                         onChange={event => {
@@ -651,7 +693,7 @@ export const ModalDialog = ({config, onClose}) => {
                                                 </div>
 
                                                 <div style={SECTION_STYLE}>
-                                                    <Typography variant="body" weight="bold">
+                                                    <Typography id={existingInstancesLabelId} variant="body" weight="bold">
                                                         {t('modal.create.existingInstances')}
                                                     </Typography>
                                                     {(selectedFactoryMetatype.instances || []).length === 0 && (
@@ -660,9 +702,18 @@ export const ModalDialog = ({config, onClose}) => {
                                                         </Typography>
                                                     )}
                                                     {(selectedFactoryMetatype.instances || []).length > 0 && (
-                                                        <div style={INSTANCES_LIST_STYLE}>
+                                                        // Focusable and named, so the keyboard can scroll it (WCAG 2.1.1);
+                                                        // a list, role="list" as list-style none drops it in Safari.
+                                                        <div
+                                                            className="osgi-scroll-region"
+                                                            role="region"
+                                                            aria-labelledby={existingInstancesLabelId}
+                                                            tabIndex={0}
+                                                            style={INSTANCES_LIST_STYLE}
+                                                        >
+                                                            <ul role="list" style={PLAIN_LIST_STYLE}>
                                                             {(selectedFactoryMetatype.instances || []).map(instance => (
-                                                                <div
+                                                                <li
                                                                     key={instance.filename}
                                                                     data-cy={`modal-create-existing-instance-${encodeURIComponent(instance.filename)}`}
                                                                     style={EXISTING_INSTANCE_STYLE}
@@ -673,8 +724,9 @@ export const ModalDialog = ({config, onClose}) => {
                                                                     <Typography variant="caption" color="textSecondary" style={{wordBreak: 'break-word'}}>
                                                                         {instance.filename}
                                                                     </Typography>
-                                                                </div>
+                                                                </li>
                                                             ))}
+                                                            </ul>
                                                         </div>
                                                     )}
                                                 </div>
@@ -682,6 +734,7 @@ export const ModalDialog = ({config, onClose}) => {
                                         )}
                                     </div>
                                 )}
+                                </div>
                             </>
                         )}
                     </div>
@@ -739,6 +792,19 @@ export const ModalDialog = ({config, onClose}) => {
                         </div>
                     )}
                 </ModalFooter>
+
+                {/* Last in the DOM, still drawn top right: the dialog gives the focus to its first
+                    control, which was this X, so a confirmation opened on Close rather than on Cancel
+                    (WCAG 2.4.3). Named Close, as Cancel is the footer's (WCAG 2.4.6, 3.2.4). */}
+                <div style={CLOSE_BUTTON_STYLE} data-cy="modal-close-button">
+                    <Button
+                        aria-label={t('modal.close')}
+                        icon={<Close/>}
+                        size="small"
+                        variant="ghost"
+                        onClick={onClose}
+                    />
+                </div>
             </>
         </Modal>
     );

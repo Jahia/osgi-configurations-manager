@@ -25,8 +25,10 @@ describe('OSGi Configurations Manager - Selected file header', () => {
         cy.get('[data-cy="selected-file-toolbar"]').should('be.visible');
         cy.get('[data-cy="editor-mode-toggle"][role="group"]').should('be.visible');
         cy.get('[data-cy="editor-mode-visual"]').should('have.attr', 'aria-pressed', 'true');
-        cy.get('[data-cy="cancel-config-button"] button').should('be.disabled');
-        cy.get('[data-cy="save-config-button"] button').should('be.disabled');
+        // Unavailable without changes, but focusable: a disabled button dropped the focus to the
+        // page when a save or a cancel ended.
+        cy.get('[data-cy="cancel-config-button"] button').should('have.attr', 'aria-disabled', 'true').and('not.be.disabled');
+        cy.get('[data-cy="save-config-button"] button').should('have.attr', 'aria-disabled', 'true').and('not.be.disabled');
         cy.ensureVisualCfgMode();
         cy.get('[data-cy="editor-mode-toggle"]').should('have.attr', 'data-mode', 'visual');
     });

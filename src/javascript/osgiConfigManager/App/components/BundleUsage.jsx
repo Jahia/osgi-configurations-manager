@@ -21,12 +21,8 @@ const STATE_KEYS = {
     DISABLED: 'bundleUsage.state.disabled'
 };
 
-// CHROME_TOKENS.subtleTextColor is gray_dark at 60% on main, 3.82:1 on white (WCAG 1.4.3). This is
-// the opaque 7:1 value PR #190 gives that token; use the token again once it is merged. A browser
-// without color-mix drops the declaration and the text inherits the dark colour.
-const SECONDARY_TEXT_COLOR = 'color-mix(in srgb, var(--color-gray_dark) 80%, var(--color-white))';
 // Long symbolic names and versions wrap rather than clip (WCAG 1.4.10).
-const TEXT_STYLE = {color: SECONDARY_TEXT_COLOR, overflowWrap: 'anywhere'};
+const TEXT_STYLE = {color: CHROME_TOKENS.subtleTextColor, overflowWrap: 'anywhere'};
 const LIST_STYLE = {margin: '4px 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '2px'};
 
 const describeUsage = (t, usage) => {

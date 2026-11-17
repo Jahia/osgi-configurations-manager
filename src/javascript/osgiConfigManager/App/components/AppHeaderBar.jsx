@@ -34,7 +34,9 @@ export const AppHeaderBar = ({
 
             <Separator spacing="none" size="full"/>
 
-            <div role="toolbar" className="flexRow_between alignCenter moonstone-header_toolbar">
+            {/* No role="toolbar": three independent buttons, each a Tab stop, without the arrow-key model
+                that role promises (WCAG 4.1.2). */}
+            <div className="flexRow_between alignCenter moonstone-header_toolbar">
                 <div className="flexRow alignCenter flexFluid moonstone-header_actions">
                     <ActionButton
                         dataCy="create-file-button"

@@ -22,7 +22,8 @@ describe('OSGi Configurations Manager - Mark as default', () => {
         // Act: complete the confirmation flow (the lifecycle spec only exercises the cancel path).
         cy.get('[data-cy="mark-as-default-button"] button', {timeout: 30000})
             .should('not.be.disabled')
-            .click();
+            .and('not.have.attr', 'aria-disabled');
+        cy.get('[data-cy="mark-as-default-button"] button').click();
         cy.get('[data-cy="modal-dialog"]', {timeout: 30000}).should('be.visible');
         cy.contains('Mark as default configuration').should('be.visible');
         cy.confirmModal();
@@ -33,5 +34,13 @@ describe('OSGi Configurations Manager - Mark as default', () => {
             .its('data.rawContent')
             .should('contain', '# default configuration');
         cy.get('[data-cy="config-state-badge-module_default"]', {timeout: 30000}).should('be.visible');
+        // Now unavailable, yet still focusable and described by the reason.
+        cy.get('[data-cy="mark-as-default-button"] button')
+            .should('have.attr', 'aria-disabled', 'true')
+            .and('not.be.disabled')
+            .invoke('attr', 'aria-describedby')
+            .then(id => {
+                cy.get(`[id="${id}"]`).should('contain', 'already a module default');
+            });
     });
 });

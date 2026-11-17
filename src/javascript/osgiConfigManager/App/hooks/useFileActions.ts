@@ -4,6 +4,7 @@ import { osgiService } from '../api/osgiService';
 import { useToast } from './useToast';
 import { OsgiFile, ModalConfig, ConfirmResult } from './osgiTypes';
 import { filesOfSameConfiguration, isDisabledFile } from '../utils/configIdentity';
+import { errorText } from '../utils/errorText';
 
 interface FileActionsDeps {
     selectedFile: OsgiFile | null;
@@ -43,9 +44,12 @@ export const useFileActions = ({
             if (selectedFile && selectedFile.name === f.name) {
                 selectFile({ ...f, name: newName, enabled: !f.enabled });
             }
-            success(t('notification.toggleSuccess', { name: f.name }) || `Toggled ${f.name}`);
+            // Says the state reached: "Toggled status" did not.
+            success(isDisabled
+                ? t('notification.enableSuccess', { name: newName })
+                : t('notification.disableSuccess', { name: f.name }));
         } catch (e: any) {
-            toastError(t('modal.error.toggle', { error: e.message }));
+            toastError(t('modal.error.toggle', { error: errorText(e) }));
         }
     }, [fetchFiles, selectFile, selectedFile, success, t, toastError]);
 
@@ -90,7 +94,7 @@ export const useFileActions = ({
                         document.querySelector<HTMLElement>('[data-cy="file-list"]')?.focus();
                     });
                 } catch (e: any) {
-                    toastError(t('modal.error.delete', { error: e.message }));
+                    toastError(t('modal.error.delete', { error: errorText(e) }));
                 }
             }
         });
@@ -115,7 +119,7 @@ export const useFileActions = ({
                     await fetchFileContent(f.name);
                     success(t('notification.markAsDefaultSuccess', { name: f.name }));
                 } catch (e: any) {
-                    toastError(t('modal.error.markAsDefault', { error: e.message }));
+                    toastError(t('modal.error.markAsDefault', { error: errorText(e) }));
                 }
             }
         });
@@ -139,7 +143,7 @@ export const useFileActions = ({
             success(t('notification.createSuccess', { name: filename }) || `Created ${filename}`);
             return { ok: true };
         } catch (e: any) {
-            return { ok: false, field: 'filename', message: t('modal.error.create', { error: e.message }) };
+            return { ok: false, field: 'filename', message: t('modal.error.create', { error: errorText(e) }) };
         }
     }, [fetchFiles, selectFile, success, t]);
 
@@ -152,7 +156,7 @@ export const useFileActions = ({
             success(t('notification.createSuccess', { name: filename }) || `Created ${filename}`);
             return { ok: true };
         } catch (e: any) {
-            const message = t('modal.error.create', { error: e.message });
+            const message = t('modal.error.create', { error: errorText(e) });
             return instanceIdentifier ? { ok: false, field: 'identifier', message } : { ok: false, message };
         }
     }, [fetchFiles, selectFile, success, t]);
@@ -188,11 +192,14 @@ export const useFileActions = ({
                 }
             });
         } catch (e: any) {
-            toastError(t('modal.error.create', { error: e.message }));
+            const failure = t('modal.error.create', { error: errorText(e) });
+            // Also in the dialog, which opens in the same moment and takes the focus: a screen reader
+            // cuts the notification short to read the dialog. The notification stays as the record.
+            toastError(failure);
             setModalConfig({
                 type: 'prompt',
                 title: t('modal.create.title'),
-                message: t('modal.create.manualFallbackMessage'),
+                message: `${failure} ${t('modal.create.manualFallbackMessage')}`,
                 awaitConfirm: true,
                 onUnshownError: toastError,
                 onConfirm: async (name?: string): Promise<ConfirmResult> => (
@@ -226,10 +233,10 @@ export const useFileActions = ({
                     await fetchFiles();
                     const isEnabled = !isDisabledFile(filename);
                     selectFile({ name: filename, enabled: isEnabled, configState: 'USER' });
-                    success(t('notification.uploadSuccess', { name: filename }) || `Uploaded ${filename}`);
+                    success(t('notification.uploadSuccess', { name: filename }));
 
                 } catch (err: any) {
-                    toastError(t('modal.error.save', { error: err.message }));
+                    toastError(t('modal.error.import', { error: errorText(err) }));
                 }
             };
             reader.readAsText(file);
@@ -246,7 +253,7 @@ export const useFileActions = ({
                     severity: 'warning',
                     title: t('modal.error.title'),
                     message: t('modal.error.invalidExtensionUpload'),
-                    cancelLabel: t('modal.ok'),
+                    cancelLabel: t('modal.close'),
                     confirmLabel: null
                 });
                 return;
@@ -258,7 +265,7 @@ export const useFileActions = ({
                 conflicts = filesOfSameConfiguration(allFiles, filename);
             } catch (err: any) {
                 // Fail closed: without the list, an overwrite could not be confirmed.
-                toastError(t('modal.error.save', { error: err.message }));
+                toastError(t('modal.error.import', { error: errorText(err) }));
                 return;
             }
 

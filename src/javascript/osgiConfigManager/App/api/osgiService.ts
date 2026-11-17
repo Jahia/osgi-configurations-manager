@@ -173,6 +173,12 @@ export const osgiService = {
         return { files: result.files, uiConfig: result.uiConfig };
     },
 
+    /** The interface options alone, without the file list. */
+    getUiConfig: async (): Promise<OsgiUiConfig | undefined> => {
+        const { uiConfig } = await query('uiConfig { visualFormattingControlsEnabled }');
+        return uiConfig;
+    },
+
     read: async (filename: string): Promise<OsgiServiceResponse> => {
         const { file } = await query('file(name: $name) { configState rawContent pid properties metatype }',
             '($name: String!)', { name: filename });

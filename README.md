@@ -81,7 +81,7 @@ A Jahia module to manage OSGi configurations directly from the Jahia Administrat
     -   Built with **Jahia Moonstone** design system for a native look and feel.
     -   **Internationalization (i18n)**: Fully translated in English 🇬🇧, French 🇫🇷, German 🇩🇪, Italian 🇮🇹, Spanish 🇪🇸, and Portuguese 🇵🇹.
     -   Responsive layout with sticky headers and optimized scrolling.
-    -   Unsaved changes protection (confirmation modals) across file switching, create, upload, refresh, disable and mark-as-default flows.
+    -   Unsaved changes protection (confirmation modals) across file switching, create, import, refresh, disable and mark-as-default flows.
     -   Accessible dialogs: both modals are exposed as dialogs to assistive technology, with focus
         moved into the dialog and returned on close.
 

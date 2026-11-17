@@ -1,5 +1,5 @@
 {
-    "label": "Gestionnaire de Config OSGi",
+    "label": "Gestionnaire de Configurations OSGi",
     "app": {
         "title": "Gestionnaire de Configurations OSGi",
         "new": "Nouveau",
@@ -11,26 +11,39 @@
         "delete": "Supprimer",
         "enable": "Activer",
         "save": "Enregistrer",
-        "searchPlaceholder": "Filtrer les configs...",
+        "discardChanges": "Abandonner les modifications",
+        "searchPlaceholder": "Filtrer les fichiers...",
         "searchLabel": "Filtrer les fichiers de configuration",
         "searchDeep": "Rechercher dans le contenu",
         "searchDeepTooltip": "Activer pour rechercher à l'intérieur des fichiers",
         "fileList": "Fichiers de configuration",
         "fileDisabled": "désactivé",
-        "unsaved": "Modifications non enregistrées"
+        "unsaved": "Modifications non enregistrées",
+        "loadingFiles": "Chargement des fichiers de configuration…",
+        "loadingFile": "Chargement du fichier…",
+        "saving": "Enregistrement…",
+        "noFileMatches": "Aucun fichier ne correspond au filtre",
+        "fileCount": "Fichiers : {{count}}",
+        "fileListHint": "Les flèches ouvrent chaque fichier ; avec des modifications non enregistrées, elles ne font que déplacer, et Entrée ouvre",
+        "fileUnsaved": "modifications non enregistrées",
+        "unsavedAnnouncement": "{{name}} a des modifications non enregistrées"
     },
     "notification": {
         "saveSuccess": "Configuration enregistrée avec succès",
-        "toggleSuccess": "Statut de {{name}} modifié",
+        "enableSuccess": "{{name}} activé",
+        "disableSuccess": "{{name}} désactivé",
         "deleteSuccess": "{{name}} supprimé",
         "createSuccess": "{{name}} créé",
         "markAsDefaultSuccess": "{{name}} est maintenant marqué comme configuration par défaut",
-        "uploadSuccess": "{{name}} téléchargé",
+        "uploadSuccess": "{{name}} importé",
         "decryptNoValue": "Placez le curseur sur une ligne contenant une valeur ENC(...)",
         "decryptRefused": "Cette valeur ne peut pas être déchiffrée ici : elle n'est pas dans le fichier enregistré, ou elle a été chiffrée avec un autre secret",
         "encryptFailed": "La valeur n'a pas pu être chiffrée",
         "undecryptableValues": "{{count}} valeur(s) chiffrée(s) n'ont pas pu être déchiffrées et sont affichées telles que stockées : absentes du fichier enregistré, ou chiffrées avec un autre secret",
-        "dismiss": "Fermer la notification"
+        "dismiss": "Fermer la notification",
+        "region": "Notifications",
+        "encryptNoValue": "Placez le curseur sur une ligne contenant une valeur à chiffrer",
+        "encryptAlready": "La valeur de cette ligne est déjà chiffrée"
     },
     "modal": {
         "cancel": "Annuler",
@@ -38,24 +51,24 @@
         "ok": "OK",
         "create": {
             "title": "Créer une nouvelle configuration",
-            "message": "Créez un fichier vide ou sélectionnez une configuration Metatype non encore matérialisée.",
+            "message": "Créez un fichier vide, ou une configuration déclarée par une définition Metatype qui n'a pas encore de fichier.",
             "confirm": "Créer",
             "manualLabel": "Nom de fichier manuel",
             "manualPlaceholder": "Ex: org.test.config.cfg",
             "manualFallbackMessage": "Entrez le nom du fichier à créer (ex: org.test.config.cfg) :",
             "or": "ou",
-            "filterLabel": "Filtre",
+            "filterLabel": "Filtrer les configurations disponibles",
             "tabs": {
-                "manual": "Manuel",
-                "configuration": "Configuration",
-                "factory": "Factory"
+                "manual": "Fichier vide",
+                "configuration": "Depuis Metatype",
+                "factory": "Instance de factory"
             },
             "templateLabel": "Configuration disponible depuis le Metatype",
             "factoryLabel": "Configurations multi-instances (factory)",
-            "filterPlaceholder": "Filtrer les configurations disponibles...",
+            "filterPlaceholder": "Partie d'un nom",
             "emptyMetatypes": "Aucune configuration Metatype disponible à créer.",
             "emptyFactories": "Aucune factory Metatype disponible.",
-            "suggestedFilename": "Fichier créé",
+            "suggestedFilename": "Fichier à créer",
             "bundle": "Bundle",
             "instanceCount": "{{count}} instance(s) existante(s)",
             "factoryPattern": "Modèle de nom de fichier",
@@ -64,22 +77,26 @@
             "factoryIdentifierExists": "Une instance avec ce nom existe déjà.",
             "existingInstances": "Instances existantes",
             "emptyInstances": "Aucune instance existante pour cette factory.",
-            "manualHint": "Terminez le nom par .cfg ou .yml, par exemple org.test.config.cfg. Ajoutez .disabled pour la créer désactivée."
+            "manualHint": "Terminez le nom par .cfg ou .yml, par exemple org.test.config.cfg. Ajoutez .disabled pour la créer désactivée.",
+            "tabsLabel": "Façons de créer une configuration",
+            "required": "(obligatoire)",
+            "configurationCount": "Configurations : {{count}}",
+            "factoryCount": "Factories : {{count}}"
         },
         "unsaved": {
             "title": "Modifications non enregistrées",
-            "message": "Vous avez des modifications non enregistrées qui seront perdues si vous continuez. Voulez-vous abandonner les modifications et continuer ?",
-            "confirm": "Abandonner",
+            "message": "Vous avez des modifications non enregistrées. Si vous continuez, elles seront perdues.",
+            "confirm": "Abandonner les modifications",
             "cancel": "Continuer l'édition"
         },
         "deleteFile": {
             "title": "Supprimer la configuration",
-            "message": "Êtes-vous sûr de vouloir supprimer {{name}} ?",
+            "message": "Supprimer {{name}} du serveur ? Cette action est définitive. Téléchargez-le d'abord si vous voulez en garder une copie.",
             "confirm": "Supprimer"
         },
         "disableFile": {
             "title": "Désactiver la configuration",
-            "message": "Êtes-vous sûr de vouloir désactiver {{name}} ? Certaines configurations peuvent figer l'interface si elles sont désactivées.",
+            "message": "Désactiver {{name}} ? Désactiver certaines configurations peut bloquer l'interface.",
             "confirm": "Désactiver",
             "cancel": "Annuler"
         },
@@ -90,7 +107,8 @@
         },
         "deleteProp": {
             "title": "Supprimer la propriété",
-            "message": "Êtes-vous sûr de vouloir supprimer {{name}} ?"
+            "message": "Supprimer {{name}} ?",
+            "confirm": "Supprimer"
         },
         "addProp": {
             "title": "Ajouter une propriété",
@@ -102,15 +120,16 @@
         },
         "error": {
             "title": "Erreur",
-            "save": "Erreur lors de l'enregistrement : {{error}}",
-            "toggle": "Erreur lors du basculement : {{error}}",
+            "save": "Erreur lors de l'enregistrement : {{error}}. Vos modifications sont toujours dans l'éditeur.",
+            "import": "Erreur lors de l'import : {{error}}",
+            "toggle": "Erreur lors de l'activation ou de la désactivation : {{error}}",
             "create": "Erreur lors de la création : {{error}}",
             "markAsDefault": "Erreur lors du marquage en configuration par défaut : {{error}}",
             "delete": "Erreur lors de la suppression : {{error}}",
             "invalidYaml": "Le contenu YAML est invalide. Veuillez corriger les erreurs de syntaxe avant d'enregistrer.",
             "propertyExists": "La propriété '{{name}}' existe déjà.",
             "invalidExtension": "Le nom du fichier doit se terminer par .cfg, .yml, .cfg.disabled ou .yml.disabled",
-            "invalidExtensionUpload": "Seuls les fichiers .cfg et .yml sont supportés.",
+            "invalidExtensionUpload": "Seuls les fichiers .cfg et .yml peuvent être importés.",
             "duplicateKeys": "Clés dupliquées trouvées : {{keys}}"
         },
         "conflict": {
@@ -120,11 +139,8 @@
             "rename": "Renommer"
         },
         "rename": {
-            "title": "Renommer le fichier",
+            "title": "Renommer le fichier importé",
             "message": "Entrez un nouveau nom de fichier, terminé par .cfg ou .yml :"
-        },
-        "prompt": {
-            "placeholder": "Saisissez une valeur..."
         },
         "diff": {
             "title": "Vérifier les modifications : {{name}}",
@@ -137,7 +153,7 @@
         "header": {
             "property": "Propriété / Clé",
             "value": "Valeur",
-            "security": "Sécurité",
+            "encrypted": "Chiffré",
             "actions": "Actions",
             "reorder": "Réordonner",
             "type": "Type"
@@ -147,7 +163,7 @@
             "addMetatypeProperty": "Ajouter une propriété",
             "addComment": "Ajouter un commentaire",
             "addEmptyLine": "Ajouter une ligne vide",
-            "hideAvailableProperties": "Masquer",
+            "hideAvailableProperties": "Masquer les propriétés disponibles",
             "undo": "Annuler",
             "redo": "Rétablir",
             "format": "Formater",
@@ -155,7 +171,7 @@
             "modeVisual": "Mode Visuel",
             "encrypt": "Chiffrer",
             "decrypt": "Déchiffrer",
-            "toggleComments": "Basculer les commentaires",
+            "toggleComments": "Afficher les commentaires",
             "toggleEmptyLines": "Afficher les lignes vides",
             "showSecrets": "Afficher les secrets ({{count}})",
             "hideSecrets": "Masquer les secrets",
@@ -175,7 +191,11 @@
             "unknownMetatypeProperty": "Propriété '{{key}}' non déclarée dans le Metatype du PID",
             "saveBlocked": "Enregistrement impossible tant que ces erreurs ne sont pas corrigées ({{count}}) :",
             "errorAt": "Ligne {{line}} : {{message}}",
-            "moreErrors": "{{count}} autre(s) dans l'éditeur."
+            "moreErrors": "{{count}} autre(s) dans l'éditeur.",
+            "emptyKeyField": "Saisissez un nom de propriété.",
+            "duplicateKeyField": "Cette clé est aussi utilisée à l'entrée {{positions}}.",
+            "saveSummary": "Enregistrement impossible : clés à corriger ({{count}}).",
+            "duplicateKeyAt": "Clé dupliquée '{{key}}', déjà présente à la ligne {{line}}"
         },
         "metatype": {
             "availableProperties": "Propriétés disponibles",
@@ -217,7 +237,11 @@
                     "string": "Chaîne"
                 }
             },
-            "searchLabel": "Filtrer les propriétés"
+            "searchLabel": "Filtrer les propriétés",
+            "insertNamed": "Insérer {{id}}",
+            "alreadyPresentNamed": "Déjà présente : {{id}}",
+            "searchCount": "Propriétés correspondantes : {{count}}",
+            "searchEnterHint": "Entrée insère la propriété quand une seule correspond."
         },
         "empty": "vide",
         "emptyLine": "Ligne vide",
@@ -244,8 +268,34 @@
             "showSecret": "Afficher la valeur de {{name}}",
             "hideSecret": "Masquer la valeur de {{name}}",
             "metatypeInfo": "Documentation de {{name}}",
-            "moved": "{{name}} déplacé en position {{position}} sur {{total}}"
-        }
+            "moved": "{{name}} déplacé en position {{position}} sur {{total}}",
+            "deleted": "{{name}} supprimé",
+            "lineEncrypted": "Valeur de la ligne {{line}} chiffrée",
+            "lineDecrypted": "Valeur de la ligne {{line}} déchiffrée",
+            "propertyInserted": "Propriété {{id}} insérée à la ligne {{line}}"
+        },
+        "tableEmpty": {
+            "noEntries": "Ce fichier ne contient aucune entrée.",
+            "noMatch": "Aucune propriété ne correspond au filtre.",
+            "allHidden": "Toutes les lignes sont des commentaires ou des lignes vides, qui sont masqués : activez « {{comments}} » ou « {{emptyLines}} » pour les afficher."
+        },
+        "insertPosition": {
+            "after": "Les nouvelles lignes sont insérées après {{name}}.",
+            "end": "Les nouvelles lignes sont ajoutées à la fin du fichier."
+        },
+        "required": {
+            "legend": "* Valeur obligatoire"
+        },
+        "valueHint": {
+            "boolean": "true ou false",
+            "wholeNumber": "Nombre entier",
+            "number": "Nombre",
+            "character": "Un seul caractère",
+            "options": "Valeurs permises : {{values}}",
+            "more": "{{values}} et {{count}} autres",
+            "list": "plusieurs valeurs possibles"
+        },
+        "rawEditorLabelFor": "Source de la configuration {{name}}. Appuyez sur Ctrl+M (Ctrl+Maj+M sur macOS) pour que Tab quitte l'éditeur."
     },
     "configState": {
         "badge": {
@@ -270,9 +320,10 @@
     },
     "tooltip": {
         "downloadFile": "Télécharger le fichier actuel (Données brutes)",
-        "uploadFile": "Téléverser un fichier de configuration (.yml, .cfg)",
+        "uploadFile": "Importer un fichier de configuration (.yml, .cfg)",
         "refreshFiles": "Recharger la liste des configurations",
         "save": "Enregistrer les modifications",
+        "discardChanges": "Abandonner vos modifications et recharger la version enregistrée",
         "markAsDefault": "Ajouter l'en-tête '# default configuration' pour que Jahia préserve les modifications locales",
         "createFile": "Créer un nouveau fichier de configuration",
         "deleteFile": "Supprimer ce fichier",
@@ -285,18 +336,21 @@
         "deleteProperty": "Supprimer cette propriété",
         "undo": "Annuler la dernière action",
         "redo": "Rétablir l'action annulée",
-        "format": "Formater le code YAML",
+        "format": "Formater le fichier (indentation et espacement)",
         "modeRaw": "Passer en mode texte",
         "modeVisual": "Passer en mode visuel",
-        "encryptSelection": "Chiffrer la valeur de la ligne ou la sélection",
-        "decryptSelection": "Déchiffrer le texte sélectionné",
+        "encryptSelection": "Chiffrer la valeur de la ligne où se trouve le curseur",
+        "decryptSelection": "Déchiffrer la valeur ENC(...) de la ligne où se trouve le curseur",
         "showSecret": "Afficher la valeur secrète",
         "hideSecret": "Masquer la valeur secrète",
-        "toggleComments": "Afficher/Masquer les commentaires (sauf en-tête)",
-        "toggleEmptyLines": "Afficher ou masquer les lignes vides (sauf l’en-tête)",
-        "showSecrets": "Afficher les valeurs des secrets de ce fichier. Elles sont de nouveau masquées à l'ouverture d'un autre fichier.",
+        "toggleComments": "Afficher ou masquer les commentaires. Le commentaire d'en-tête reste toujours visible.",
+        "toggleEmptyLines": "Afficher ou masquer les lignes vides. Celles de l'en-tête restent toujours visibles.",
+        "showSecrets": "Afficher les valeurs des secrets de ce fichier. Elles sont de nouveau masquées à l'ouverture d'un autre fichier. Le masquage est seulement visuel : les lecteurs d'écran lisent toujours les valeurs.",
         "hideSecrets": "Masquer les valeurs des secrets",
-        "tabMovesFocus": "Activé, Tab sort de l'éditeur au lieu d'indenter. Ctrl+M bascule aussi ce mode (Ctrl+Maj+M sur macOS)."
+        "tabMovesFocus": "Activé, Tab sort de l'éditeur au lieu d'indenter. Ctrl+M bascule aussi ce mode (Ctrl+Maj+M sur macOS).",
+        "hideMetatypeProperties": "Fermer la liste des propriétés disponibles",
+        "markAsDefaultAlready": "Indisponible : cette configuration est déjà une configuration par défaut de module",
+        "markAsDefaultModule": "Indisponible : seule une configuration locale (Utilisateur) peut être marquée par défaut"
     },
     "sidebar": {
         "on": "On",

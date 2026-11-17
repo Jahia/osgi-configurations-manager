@@ -42,6 +42,7 @@ const MODE_SELECTOR_STYLE = {
 export const SelectedFileToolbar = ({
     selectedFile,
     canMarkAsDefault,
+    configState = 'USER',
     isRawMode,
     onToggleFile,
     onMarkAsDefault,
@@ -58,6 +59,11 @@ export const SelectedFileToolbar = ({
         {label: t('editor.button.modeRaw'), value: 'raw', tooltip: t('tooltip.modeRaw'), icon: <Code style={BUTTON_ICON_STYLE} />}
     ];
     const currentMode = isRawMode ? 'raw' : 'visual';
+    // Why Mark as Default is unavailable, as its tooltip and its description: the disabled
+    // attribute took it out of the Tab order with no reason given (WCAG 4.1.2, 3.3.2).
+    const markAsDefaultReason = configState === 'MODULE_DEFAULT'
+        ? t('tooltip.markAsDefaultAlready')
+        : t('tooltip.markAsDefaultModule');
 
     return (
         <div data-cy="selected-file-toolbar" style={TOOLBAR_STYLE}>
@@ -71,11 +77,17 @@ export const SelectedFileToolbar = ({
                 />
                 <ActionButton
                     dataCy="mark-as-default-button"
-                    tooltip={t('tooltip.markAsDefault')}
+                    tooltip={canMarkAsDefault ? t('tooltip.markAsDefault') : markAsDefaultReason}
+                    describeTooltip={!canMarkAsDefault}
                     label={t('app.markAsDefault')}
                     icon={<Module style={BUTTON_ICON_STYLE} />}
-                    onClick={() => onMarkAsDefault(selectedFile)}
-                    disabled={!canMarkAsDefault}
+                    aria-disabled={!canMarkAsDefault || undefined}
+                    // Guarded here: the handler would otherwise ask to discard unsaved changes first.
+                    onClick={() => {
+                        if (canMarkAsDefault) {
+                            onMarkAsDefault(selectedFile);
+                        }
+                    }}
                 />
                 <ActionButton
                     dataCy="download-file-button"
