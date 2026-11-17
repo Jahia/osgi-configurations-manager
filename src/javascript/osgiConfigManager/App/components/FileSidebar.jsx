@@ -300,16 +300,20 @@ export const FileSidebar = ({
                                     }}
                                     style={{ cursor: 'pointer' }}
                                 >
+                                    {/* The dot starts 10px in: at the edge, the list's focus ring (6px
+                                        with its white inner edge) and the active option's ring covered it. */}
                                     <TableBodyCell
                                         className="osgi-sidebar-status-cell"
-                                        width="12px"
+                                        width="22px"
                                     >
                                         <div
                                             style={{
                                                 display: 'flex',
                                                 alignItems: 'center',
-                                                justifyContent: 'center',
+                                                justifyContent: 'flex-start',
+                                                boxSizing: 'border-box',
                                                 width: '100%',
+                                                paddingLeft: '10px',
                                                 minHeight: '48px'
                                             }}
                                         >
