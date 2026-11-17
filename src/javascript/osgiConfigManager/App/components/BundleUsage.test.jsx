@@ -5,7 +5,8 @@ import {osgiService} from '../api/osgiService';
 
 jest.mock('react-i18next', () => ({
     useTranslation: () => ({
-        t: (key, options) => (options ? `${key}:${Object.values(options).join(':')}` : key)
+        // The interpolation settings are not text: only the values are spelled out.
+        t: (key, {interpolation: _interpolation, ...values} = {}) => (Object.keys(values).length ? `${key}:${Object.values(values).join(':')}` : key)
     })
 }));
 

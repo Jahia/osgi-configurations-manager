@@ -7,6 +7,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **The "Used by" line shows component names and versions as they are.** A name containing `&` or
+  `/`, such as `a.B&C/D`, showed as `a.B&amp;C&#x2F;D`: i18next escaped it for HTML and React
+  escaped it again.
+
 ## [1.3.0] - 2026-11-17
 
 ### Added
