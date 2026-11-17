@@ -70,7 +70,11 @@
             "factoryIdentifierExists": "Eine Instanz mit diesem Namen existiert bereits.",
             "existingInstances": "Vorhandene Instanzen",
             "emptyInstances": "Für diese Factory existiert noch keine Instanz.",
-            "manualHint": "Der Name muss auf .cfg oder .yml enden, z.B. org.test.config.cfg. Hängen Sie .disabled an, um sie deaktiviert anzulegen."
+            "manualHint": "Der Name muss auf .cfg oder .yml enden, z.B. org.test.config.cfg. Hängen Sie .disabled an, um sie deaktiviert anzulegen.",
+            "tabsLabel": "Möglichkeiten, eine Konfiguration zu erstellen",
+            "required": "(erforderlich)",
+            "configurationCount": "Konfigurationen: {{count}}",
+            "factoryCount": "Factories: {{count}}"
         },
         "unsaved": {
             "title": "Ungespeicherte Änderungen",

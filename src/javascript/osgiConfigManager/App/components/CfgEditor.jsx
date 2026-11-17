@@ -9,7 +9,7 @@ import {
     Checkbox,
     Button,
     Tooltip,
-    Close,
+    Delete,
     Add,
     Typography,
     Comments,
@@ -1196,7 +1196,8 @@ export const CfgEditor = ({
                                         <WithTooltip label={t('editor.aria.delete', {name})}>
                                             <Button
                                                 data-cy={`cfg-delete-${index}`}
-                                                icon={<Close />}
+                                                // A trash can: the X also closes the dialogs (WCAG 3.2.4).
+                                                icon={<Delete />}
                                                 variant="ghost"
                                                 color="danger"
                                                 aria-label={t('editor.aria.delete', {name})}

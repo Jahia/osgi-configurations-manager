@@ -1706,12 +1706,14 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                                 </Typography>
                             )}
 
+                            {/* A list of cards, so its size and each card's position are said (WCAG 1.3.1). */}
+                            <ul role="list" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             {filteredProperties.map(property => {
                                 const alreadyPresent = existingKeys.has(property.id);
                                 const defaultValue = formatDefaultValue(property);
 
                                 return (
-                                    <div data-cy={`metatype-property-card-${encodeURIComponent(property.id)}`} key={property.id} style={{
+                                    <li data-cy={`metatype-property-card-${encodeURIComponent(property.id)}`} key={property.id} style={{
                                         border: '1px solid var(--color-gray_light40)',
                                         borderRadius: '6px',
                                         padding: '10px',
@@ -1784,9 +1786,10 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                                                 </Typography>
                                             )}
                                         </div>
-                                    </div>
+                                    </li>
                                 );
                             })}
+                            </ul>
                         </div>
                     </section>
                 )}

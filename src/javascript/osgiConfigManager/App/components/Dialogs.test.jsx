@@ -1,5 +1,5 @@
 import React from 'react';
-import {render, screen, fireEvent, within, waitFor} from '@testing-library/react';
+import {render, screen, fireEvent, within, waitFor, act} from '@testing-library/react';
 import {ModalDialog} from './Dialogs';
 
 jest.mock('react-i18next', () => ({
@@ -24,7 +24,7 @@ describe('ModalDialog create configuration options', () => {
         render(<ModalDialog config={{...config, onConfirm}} onClose={jest.fn()}/>);
         fireEvent.click(screen.getByRole('tab', {name: 'modal.create.tabs.configuration'}));
 
-        const group = screen.getByRole('radiogroup', {name: 'modal.create.templateLabel'});
+        const group = screen.getByRole('radiogroup', {name: 'modal.create.templateLabel modal.create.required'});
         const radios = within(group).getAllByRole('radio');
         expect(radios).toHaveLength(2);
         expect(radios.every(radio => !radio.checked)).toBe(true);
@@ -40,7 +40,7 @@ describe('ModalDialog create configuration options', () => {
         render(<ModalDialog config={{...config, onConfirm: jest.fn()}} onClose={jest.fn()}/>);
         fireEvent.click(screen.getByRole('tab', {name: 'modal.create.tabs.factory'}));
 
-        const group = screen.getByRole('radiogroup', {name: 'modal.create.factoryLabel'});
+        const group = screen.getByRole('radiogroup', {name: 'modal.create.factoryLabel modal.create.required'});
         const radio = within(group).getByRole('radio', {name: /Factory/});
         fireEvent.click(radio);
         expect(radio.checked).toBe(true);
@@ -71,7 +71,7 @@ describe('ModalDialog create with awaitConfirm', () => {
         const onConfirm = jest.fn().mockResolvedValue({ok: false, field: 'filename', message: 'modal.error.invalidExtension'});
         render(<ModalDialog config={createConfig(onConfirm)} onClose={onClose}/>);
 
-        const input = screen.getByRole('textbox', {name: 'modal.create.manualLabel'});
+        const input = screen.getByRole('textbox', {name: 'modal.create.manualLabel modal.create.required'});
         fireEvent.change(input, {target: {value: 'org.example.txt'}});
         fireEvent.click(screen.getByRole('button', {name: 'modal.create.confirm'}));
 
@@ -91,7 +91,7 @@ describe('ModalDialog create with awaitConfirm', () => {
         const onClose = jest.fn();
         render(<ModalDialog config={createConfig(jest.fn().mockResolvedValue({ok: true}))} onClose={onClose}/>);
 
-        fireEvent.change(screen.getByRole('textbox', {name: 'modal.create.manualLabel'}), {target: {value: 'org.example.cfg'}});
+        fireEvent.change(screen.getByRole('textbox', {name: 'modal.create.manualLabel modal.create.required'}), {target: {value: 'org.example.cfg'}});
         fireEvent.click(screen.getByRole('button', {name: 'modal.create.confirm'}));
 
         await waitFor(() => expect(onClose).toHaveBeenCalled());
@@ -100,7 +100,7 @@ describe('ModalDialog create with awaitConfirm', () => {
     it('states the allowed extensions before submission', () => {
         render(<ModalDialog config={createConfig(jest.fn())} onClose={jest.fn()}/>);
 
-        const input = screen.getByRole('textbox', {name: 'modal.create.manualLabel'});
+        const input = screen.getByRole('textbox', {name: 'modal.create.manualLabel modal.create.required'});
         expect(document.getElementById(input.getAttribute('aria-describedby')).textContent).toBe('modal.create.manualHint');
     });
 });
@@ -139,5 +139,83 @@ describe('ModalDialog import conflict and focus return', () => {
 
         await waitFor(() => expect(document.activeElement).toBe(opener));
         opener.remove();
+    });
+});
+
+describe('ModalDialog batch 4 (dialogs)', () => {
+    const create = {
+        type: 'createConfig',
+        title: 'modal.create.title',
+        confirmLabel: 'modal.create.confirm',
+        availableMetatypes: [
+            {pid: 'org.example.alpha', name: 'Alpha', filename: 'org.example.alpha.cfg'},
+            {pid: 'org.example.factory', name: 'Factory', factory: true, filename: 'org.example.factory-*.cfg',
+                instances: [{identifier: 'one', filename: 'org.example.factory-one.cfg'}]}
+        ],
+        onConfirm: jest.fn()
+    };
+
+    // The dialog focuses its first control: the X came first and was named like the footer's Cancel.
+    it('puts the Close button after the footer, named Close', () => {
+        render(<ModalDialog config={{type: 'confirm', title: 't', message: 'm', onConfirm: jest.fn()}} onClose={jest.fn()}/>);
+        const buttons = screen.getAllByRole('button').filter(button => !button.hasAttribute('data-floating-ui-focus-guard'));
+        expect(buttons[buttons.length - 1].getAttribute('aria-label')).toBe('modal.close');
+        expect(screen.queryByRole('button', {name: 'modal.cancel'})).not.toBeNull();
+        expect(screen.getAllByRole('button', {name: 'modal.cancel'})).toHaveLength(1);
+    });
+
+    it('is an alertdialog when it confirms a destructive action', () => {
+        render(<ModalDialog config={{type: 'confirm', severity: 'warning', title: 't', message: 'm', onConfirm: jest.fn()}} onClose={jest.fn()}/>);
+        expect(screen.getByRole('alertdialog')).toBeTruthy();
+    });
+
+    it('names the tab list and ties the selected tab to its panel', () => {
+        render(<ModalDialog config={create} onClose={jest.fn()}/>);
+        expect(screen.getByRole('tablist').getAttribute('aria-label')).toBe('modal.create.tabsLabel');
+        const manual = screen.getByRole('tab', {name: 'modal.create.tabs.manual'});
+        const panel = screen.getByRole('tabpanel');
+        expect(manual.getAttribute('aria-controls')).toBe(panel.id);
+        expect(panel.getAttribute('aria-labelledby')).toBe(manual.id);
+        expect(screen.getByRole('tab', {name: 'modal.create.tabs.factory'}).getAttribute('aria-controls')).toBeNull();
+    });
+
+    // Choosing a template cleared the name typed in Manual (WCAG 3.3.7).
+    it('keeps the filename typed in Manual when an option is chosen', () => {
+        render(<ModalDialog config={create} onClose={jest.fn()}/>);
+        fireEvent.change(screen.getByRole('textbox', {name: 'modal.create.manualLabel modal.create.required'}), {target: {value: 'my.cfg'}});
+        fireEvent.click(screen.getByRole('tab', {name: 'modal.create.tabs.configuration'}));
+        fireEvent.click(screen.getByRole('radio', {name: /Alpha/}));
+        fireEvent.click(screen.getByRole('tab', {name: 'modal.create.tabs.manual'}));
+        expect(screen.getByRole('textbox', {name: 'modal.create.manualLabel modal.create.required'}).value).toBe('my.cfg');
+    });
+
+    it('says how many options the filter leaves, after a pause', () => {
+        jest.useFakeTimers();
+        try {
+            render(<ModalDialog config={create} onClose={jest.fn()}/>);
+            fireEvent.click(screen.getByRole('tab', {name: 'modal.create.tabs.configuration'}));
+            const status = document.querySelector('[data-cy="modal-create-filter-count"]');
+            expect(status.textContent).toBe('');
+            const filter = document.querySelector('[data-cy="modal-create-filter-input"] input, input[data-cy="modal-create-filter-input"]');
+            fireEvent.change(filter, {target: {value: 'alp'}});
+            act(() => {
+                jest.advanceTimersByTime(500);
+            });
+            expect(status.textContent).toBe('modal.create.configurationCount');
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
+    it('lists the existing instances in a named, focusable region, and marks the identifier required', () => {
+        render(<ModalDialog config={create} onClose={jest.fn()}/>);
+        fireEvent.click(screen.getByRole('tab', {name: 'modal.create.tabs.factory'}));
+        fireEvent.click(screen.getByRole('radio', {name: /Factory/}));
+        const region = screen.getByRole('region', {name: 'modal.create.existingInstances'});
+        expect(region.tabIndex).toBe(0);
+        expect(within(region).getAllByRole('listitem')).toHaveLength(1);
+        const identifier = document.querySelector('[data-cy="modal-create-factory-identifier-input"] input, input[data-cy="modal-create-factory-identifier-input"]');
+        expect(identifier.getAttribute('aria-required')).toBe('true');
+        expect(document.activeElement).not.toBe(identifier);
     });
 });

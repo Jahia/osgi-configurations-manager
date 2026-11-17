@@ -86,6 +86,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **The raw editor no longer opens suggestions on its own.** A new empty line, or a space in YAML,
   opened the property list, and the next Enter inserted a property instead of a new line. Typing
   a letter or Ctrl+Space still suggests. Ctrl+click on a URL no longer opens a new window.
+- **Confirmations open on Cancel, and their X is named Close (WCAG 2.4.3, 2.4.6).** The dialogs
+  gave the focus to their first control, the X, which was also named Cancel like the footer
+  button. The X now comes last in the reading order, still drawn top right, and a destructive
+  confirmation is announced as an alert dialog. The review dialog opens on the changes rather
+  than on Show secrets.
+- **The Create dialog says what it needs and keeps what was typed (WCAG 3.3.2, 3.3.7, 4.1.2).**
+  The filename, the template, the factory and the instance identifier are marked as required.
+  The tabs are named and tied to their panel, and the filter's result count is announced.
+  Choosing a template or a factory no longer clears the name typed in Manual, and choosing a
+  factory no longer pulls the focus out of the list. The existing instances can be scrolled by
+  keyboard.
+- **Lists are lists, and deleting a row shows a trash can (WCAG 1.3.1, 3.2.4).** The existing
+  instances, the property picker and the raw editor's property cards are announced as lists with
+  their size. A row's delete button used the X that closes dialogs.
 - **Known limitation:** secrets in the raw editor are masked on screen only. Monaco has no way to
   hide them from screen readers, which still read them; the Show secrets tooltip now says so.
 

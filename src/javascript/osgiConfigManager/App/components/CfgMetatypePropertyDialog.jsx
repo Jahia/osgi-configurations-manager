@@ -159,21 +159,26 @@ export const CfgMetatypePropertyDialog = ({
                         {t('editor.metatype.cfgPicker.count', { count: filteredProperties.length })}
                     </div>
 
-                    <div style={{
+                    {/* A list, so its size and each option's position are said (WCAG 1.3.1); role="list"
+                        as list-style none drops it in Safari. */}
+                    <ul role="list" style={{
                         border: '1px solid #ececec',
                         borderRadius: '6px',
                         background: '#fafafa',
                         overflow: 'auto',
                         maxHeight: '360px',
                         display: 'flex',
-                        flexDirection: 'column'
+                        flexDirection: 'column',
+                        listStyle: 'none',
+                        margin: 0,
+                        padding: 0
                     }}>
                         {filteredProperties.map(property => {
                             const defaultValue = formatDefaultValue(property);
                             return (
+                                <li key={property.id}>
                                 <button
                                     type="button"
-                                    key={property.id}
                                     data-cy={`cfg-metatype-property-option-${encodeURIComponent(property.id)}`}
                                     onClick={() => {
                                         onSelectMetatypeProperty(property);
@@ -217,9 +222,10 @@ export const CfgMetatypePropertyDialog = ({
                                         </Typography>
                                     )}
                                 </button>
+                                </li>
                             );
                         })}
-                    </div>
+                    </ul>
 
                     <div style={{
                         borderTop: '1px solid #ececec',
