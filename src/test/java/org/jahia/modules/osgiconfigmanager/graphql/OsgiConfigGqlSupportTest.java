@@ -1,5 +1,8 @@
 package org.jahia.modules.osgiconfigmanager.graphql;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import org.jahia.modules.osgiconfigmanager.admin.ConfigAccessDeniedException;
 import org.jahia.modules.osgiconfigmanager.admin.ConfigConflictException;
 import org.jahia.modules.osgiconfigmanager.admin.ConfigNotFoundException;
@@ -10,6 +13,7 @@ import org.jahia.services.usermanager.JahiaUser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
@@ -190,6 +194,29 @@ class OsgiConfigGqlSupportTest {
         assertEquals("CONFLICT", code(OsgiConfigGqlSupport.translate(new ConfigConflictException("x"))));
         assertEquals("FORBIDDEN", code(OsgiConfigGqlSupport.translate(new ConfigAccessDeniedException("x"))));
         assertEquals("BAD_REQUEST", code(OsgiConfigGqlSupport.translate(new IOException("too big"))));
+    }
+
+    @Test
+    @DisplayName("a refused name cannot forge a log line: the logged reason carries no line break")
+    void translate_loggedReason_hasNoLineBreak() {
+        Logger supportLogger = (Logger) LoggerFactory.getLogger(OsgiConfigGqlSupport.class);
+        ListAppender<ILoggingEvent> audit = new ListAppender<>();
+        audit.start();
+        supportLogger.addAppender(audit);
+        try {
+            OsgiConfigGqlSupport.translate(new ConfigAccessDeniedException(
+                    "Access denied: a.cfg\n[AUDIT] User: root | Action: SAVE is blacklisted or reserved."));
+            OsgiConfigGqlSupport.translate(new IOException("Invalid filename: a\r\n[AUDIT] User: root\u2028.cfg"));
+        } finally {
+            supportLogger.detachAppender(audit);
+        }
+
+        assertEquals(2, audit.list.size());
+        for (ILoggingEvent event : audit.list) {
+            String line = event.getFormattedMessage();
+            assertFalse(line.matches("(?s).*[\\p{Cc}\u2028\u2029].*"), line);
+            assertTrue(line.startsWith("[AUDIT] "), line);
+        }
     }
 
     @Test

@@ -50,9 +50,19 @@ a change appears to require relaxing one, that comment is the thing to read firs
   agree; when only exact names were case-insensitive, wildcard rules were bypassable.
 - **A filename guard compares the configuration, not one spelling of its file (SEC-525, SEC-602).**
   Karaf applies `<pid>.cfg`, `<pid>.yml`, their `.disabled` copies, any case and the factory forms
-  `<pid>-*` / `<pid>~*` to the same PID. The manager's own configuration and every blacklist entry go
-  through `ConfigFileFilter.isConfigurationFileOf`; comparing a literal file name reopened the bypass
-  twice. The whitelist stays exact on purpose: widening it grants access.
+  `<pid>-*` / `<pid>~*` to the same PID. The manager's own configuration and every exact blacklist
+  entry go through `ConfigFileFilter.isConfigurationFileOf`; a wildcard blacklist entry is tried on
+  the requested stem and on its factory PID (the stem before its first `-`, and before its first
+  `~`), under every admitted extension. Comparing a literal file name reopened the bypass twice, and
+  wildcards that skipped the factory PID a third time: `org.acme.secret.*` let
+  `org.acme.secret-x.cfg` create an instance of the hidden PID. The whitelist stays exact on
+  purpose: widening it grants access.
+- **A file name carries no control character, and a line break never moves a name across a list.**
+  `validateFilename` refuses control characters and the Unicode line separators. In the filter,
+  blacklist wildcards are compiled with `DOTALL` and whitelist wildcards without it, so each list
+  refuses such a name on its own: `*` stopping at a line break let `org.apache.felix\nx.cfg`
+  through `org.apache.*`. The reasons `translate` logs go through `auditValue`, as they quote the
+  name the caller sent.
 - **Visual ↔ raw round-trips must preserve `_order`.** The visual `.cfg` editor reserializes through
   the raw representation, so dropping the recorded key order reorders or loses the user's lines on
   save.

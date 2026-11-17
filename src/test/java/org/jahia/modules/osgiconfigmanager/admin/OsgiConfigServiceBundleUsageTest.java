@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -61,14 +62,14 @@ class OsgiConfigServiceBundleUsageTest {
     }
 
     @Test
-    @DisplayName("a factory file that escapes a wildcard rule is refused for the factory PID it configures")
-    void factoryFileEscapingWildcardIsRefused(@TempDir Path etc) throws IOException {
+    @DisplayName("a factory file of a PID hidden by a wildcard rule is refused")
+    void factoryFileOfWildcardHiddenPidIsRefused(@TempDir Path etc) throws IOException {
         write(etc, "org.acme.secret-x.cfg");
         OsgiConfigService service = serviceIn(etc, Map.of("filteredFiles", "org.acme.secret.*"));
 
-        // The wildcard is matched on the file name, which it does not cover...
-        assertTrue(service.isFilenameAllowed("org.acme.secret-x.cfg", false));
-        // ...but the file configures the factory org.acme.secret, which it hides.
+        // The file configures the factory org.acme.secret, which the rule hides: the filter refuses
+        // the name itself (it used to let it through, and only the resolved PID was refused).
+        assertFalse(service.isFilenameAllowed("org.acme.secret-x.cfg", false));
         ConfigAccessDeniedException denied = assertThrows(ConfigAccessDeniedException.class,
                 () -> service.findBundleUsage("org.acme.secret-x.cfg", false));
         assertEquals("Access denied: org.acme.secret-x.cfg is blacklisted or reserved.", denied.getMessage());

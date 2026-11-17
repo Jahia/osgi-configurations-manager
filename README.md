@@ -123,8 +123,12 @@ A `filteredFiles` entry hides the **configuration**, not one spelling of its fil
 `<pid>.cfg` and `<pid>.yml` to the same PID, so an exact entry such as `my-secret-config.cfg` also
 hides `my-secret-config.yml`, their `.disabled` copies, any upper/lower-case variant, and the factory
 files of the same PID (`my-secret-config-<name>.cfg`, `my-secret-config~<name>.yml`). A wildcard entry
-is tried against every admitted extension. `allowedFiles` entries, on the contrary, match the exact
-name only: a white list grants access, so it is not widened.
+is tried against every admitted extension, and also hides the factory files of the configurations it
+matches: `org.acme.secret.*` hides `org.acme.secret-<name>.cfg` as well as `org.acme.secret.cfg`.
+`allowedFiles` entries, on the contrary, match the exact name only: a white list grants access, so it
+is not widened.
+
+A file name cannot contain a control character such as a line break.
 
 The manager's own configuration, `org.jahia.modules.osgiconfigmanager`, is reserved for `root` in the
 same way, whatever its extension, case or factory form.

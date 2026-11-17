@@ -7,10 +7,14 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -40,6 +44,53 @@ class OsgiConfigServicePathTest {
         OsgiConfigService service = newServicePointedAt(etc);
         assertThrows(IOException.class, () -> service.validateFilename(null));
         assertThrows(IOException.class, () -> service.validateFilename(""));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "org.apache.felix.eventadmin.impl.EventAdmin-x\ny.cfg",
+            "foo\rbar.cfg",
+            "foo\tbar.cfg",
+            "foo\u0001bar.cfg",
+            "foo\u007fbar.cfg",
+            "foo\u0085bar.yml",
+            "foo\u2028bar.cfg",
+            "foo\u2029bar.cfg.disabled"
+    })
+    @DisplayName("S5: validateFilename rejects control characters and line separators")
+    void validateFilenameRejectsControlCharacters(String bad, @TempDir Path etc) {
+        // A line break in the name took it out of a wildcard blacklist entry and forged log lines;
+        // FileInstall does not load such a file, so no real configuration has one.
+        OsgiConfigService service = newServicePointedAt(etc);
+        assertThrows(IOException.class, () -> service.validateFilename(bad));
+    }
+
+    @Test
+    @DisplayName("a delegated administrator cannot create a factory file of a PID a wildcard entry hides")
+    void createRefusesFactoryFileOfWildcardHiddenPid(@TempDir Path etc) {
+        OsgiConfigService service = newServicePointedAt(etc);
+        service.updateConfig(Map.of("filteredFiles", "org.acme.secret.*"));
+
+        assertThrows(ConfigAccessDeniedException.class, () -> service.createFile("org.acme.secret-x.cfg", false));
+        assertThrows(ConfigAccessDeniedException.class, () -> service.createFile("org.acme.secret~x.yml", false));
+        assertFalse(Files.exists(etc.resolve("org.acme.secret-x.cfg")));
+        assertFalse(Files.exists(etc.resolve("org.acme.secret~x.yml")));
+
+        assertDoesNotThrow(() -> service.createFile("org.acme.secretx-y.cfg", false));
+        assertTrue(Files.exists(etc.resolve("org.acme.secretx-y.cfg")), "a neighbour is still created");
+    }
+
+    @Test
+    @DisplayName("a name with a line break is refused before the filter, and no file is created")
+    void createRefusesNameWithLineBreak(@TempDir Path etc) throws IOException {
+        OsgiConfigService service = newServicePointedAt(etc);
+        service.updateConfig(Map.of("filteredFiles", "org.apache.*"));
+
+        assertThrows(IOException.class,
+                () -> service.createFile("org.apache.felix.eventadmin.impl.EventAdmin-x\ny.cfg", false));
+        try (Stream<Path> created = Files.list(etc)) {
+            assertEquals(0, created.count());
+        }
     }
 
     @ParameterizedTest
