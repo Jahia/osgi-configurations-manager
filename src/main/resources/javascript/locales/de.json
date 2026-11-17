@@ -11,7 +11,8 @@
         "delete": "Löschen",
         "enable": "Aktivieren",
         "save": "Änderungen speichern",
-        "searchPlaceholder": "Konfigurationen filtern...",
+        "discardChanges": "Änderungen verwerfen",
+        "searchPlaceholder": "Dateien filtern...",
         "searchLabel": "Konfigurationsdateien filtern",
         "searchDeep": "Im Inhalt suchen",
         "searchDeepTooltip": "Aktivieren, um innerhalb des Dateiinhalts zu suchen",
@@ -29,10 +30,11 @@
     },
     "notification": {
         "saveSuccess": "Konfiguration erfolgreich gespeichert",
-        "toggleSuccess": "Status für {{name}} geändert",
+        "enableSuccess": "{{name}} aktiviert",
+        "disableSuccess": "{{name}} deaktiviert",
         "deleteSuccess": "{{name}} gelöscht",
         "createSuccess": "{{name}} erstellt",
-        "uploadSuccess": "{{name}} hochgeladen",
+        "uploadSuccess": "{{name}} importiert",
         "markAsDefaultSuccess": "{{name}} ist jetzt als Standardkonfiguration markiert",
         "decryptNoValue": "Setzen Sie den Cursor auf eine Zeile mit einem ENC(...)-Wert",
         "decryptRefused": "Dieser Wert kann hier nicht entschlüsselt werden: er ist nicht in der gespeicherten Datei oder wurde mit einem anderen Geheimnis verschlüsselt",
@@ -49,24 +51,24 @@
         "ok": "OK",
         "create": {
             "title": "Neue Konfiguration erstellen",
-            "message": "Erstellen Sie eine leere Datei oder wählen Sie eine Metatype-Konfiguration, die noch nicht materialisiert wurde.",
+            "message": "Erstellen Sie eine leere Datei oder eine Konfiguration, die eine Metatype-Definition beschreibt und noch keine Datei hat.",
             "confirm": "Erstellen",
             "manualLabel": "Manueller Dateiname",
             "manualPlaceholder": "Z.B. org.test.config.cfg",
             "manualFallbackMessage": "Geben Sie den Dateinamen ein, der erstellt werden soll (z.B. org.test.config.cfg):",
             "or": "oder",
-            "filterLabel": "Filter",
+            "filterLabel": "Verfügbare Konfigurationen filtern",
             "tabs": {
-                "manual": "Manuell",
-                "configuration": "Konfiguration",
-                "factory": "Factory"
+                "manual": "Leere Datei",
+                "configuration": "Aus Metatype",
+                "factory": "Factory-Instanz"
             },
             "templateLabel": "Verfügbare Konfiguration aus dem Metatype",
             "factoryLabel": "Mehrinstanz-Konfigurationen (Factory)",
-            "filterPlaceholder": "Verfügbare Konfigurationen filtern...",
+            "filterPlaceholder": "Teil eines Namens",
             "emptyMetatypes": "Zurzeit ist keine Metatype-Konfiguration zum Erstellen verfügbar.",
             "emptyFactories": "Zurzeit ist keine Metatype-Factory verfügbar.",
-            "suggestedFilename": "Erstellte Datei",
+            "suggestedFilename": "Zu erstellende Datei",
             "bundle": "Bundle",
             "instanceCount": "{{count}} vorhandene Instanz(en)",
             "factoryPattern": "Dateinamenmuster",
@@ -83,24 +85,25 @@
         },
         "unsaved": {
             "title": "Ungespeicherte Änderungen",
-            "message": "Sie haben ungespeicherte Änderungen, die verloren gehen, wenn Sie fortfahren. Möchten Sie die Änderungen verwerfen und fortfahren?",
+            "message": "Sie haben ungespeicherte Änderungen. Wenn Sie fortfahren, gehen sie verloren.",
             "confirm": "Änderungen verwerfen",
             "cancel": "Weiter bearbeiten"
         },
         "deleteFile": {
             "title": "Konfiguration löschen",
-            "message": "Sind Sie sicher, dass Sie {{name}} löschen möchten?",
+            "message": "{{name}} vom Server löschen? Dies kann nicht rückgängig gemacht werden. Laden Sie die Datei zuerst herunter, wenn Sie eine Kopie behalten möchten.",
             "confirm": "Löschen"
         },
         "disableFile": {
             "title": "Konfiguration deaktivieren",
-            "message": "Sind Sie sicher, dass Sie {{name}} deaktivieren möchten? Einige Konfigurationen können die Oberfläche blockieren, wenn sie deaktiviert werden.",
+            "message": "{{name}} deaktivieren? Das Deaktivieren einiger Konfigurationen kann die Oberfläche blockieren.",
             "confirm": "Deaktivieren",
             "cancel": "Abbrechen"
         },
         "deleteProp": {
             "title": "Eigenschaft löschen",
-            "message": "Sind Sie sicher, dass Sie {{name}} löschen möchten?"
+            "message": "{{name}} löschen?",
+            "confirm": "Löschen"
         },
         "addProp": {
             "title": "Eigenschaft hinzufügen",
@@ -112,14 +115,15 @@
         },
         "error": {
             "title": "Fehler",
-            "save": "Fehler beim Speichern: {{error}}",
-            "toggle": "Fehler beim Umschalten: {{error}}",
+            "save": "Fehler beim Speichern: {{error}}. Ihre Änderungen sind weiterhin im Editor.",
+            "import": "Fehler beim Importieren: {{error}}",
+            "toggle": "Fehler beim Aktivieren oder Deaktivieren: {{error}}",
             "create": "Fehler beim Erstellen der Datei: {{error}}",
             "delete": "Fehler beim Löschen: {{error}}",
             "invalidYaml": "Der YAML-Inhalt ist ungültig. Bitte korrigieren Sie Syntaxfehler vor dem Speichern.",
             "propertyExists": "Die Eigenschaft '{{name}}' existiert bereits.",
             "invalidExtension": "Der Dateiname muss mit .cfg, .yml, .cfg.disabled oder .yml.disabled enden",
-            "invalidExtensionUpload": "Nur .cfg und .yml Dateien werden unterstützt.",
+            "invalidExtensionUpload": "Nur .cfg- und .yml-Dateien können importiert werden.",
             "duplicateKeys": "Doppelte Schlüssel gefunden: {{keys}}",
             "markAsDefault": "Fehler beim Markieren der Datei als Standardkonfiguration: {{error}}"
         },
@@ -130,11 +134,8 @@
             "rename": "Umbenennen"
         },
         "rename": {
-            "title": "Datei umbenennen",
+            "title": "Importierte Datei umbenennen",
             "message": "Neuen Dateinamen eingeben, endend auf .cfg oder .yml:"
-        },
-        "prompt": {
-            "placeholder": "Hier eingeben..."
         },
         "diff": {
             "title": "Änderungen überprüfen: {{name}}",
@@ -152,7 +153,7 @@
         "header": {
             "property": "Eigenschaft / Schlüssel",
             "value": "Wert",
-            "security": "Sicherheit",
+            "encrypted": "Verschlüsselt",
             "actions": "Aktionen",
             "reorder": "Neu anordnen",
             "type": "Typ"
@@ -162,7 +163,7 @@
             "addMetatypeProperty": "Eigenschaft hinzufügen",
             "addComment": "Kommentar hinzufügen",
             "addEmptyLine": "Leerzeile hinzufügen",
-            "hideAvailableProperties": "Ausblenden",
+            "hideAvailableProperties": "Verfügbare Eigenschaften ausblenden",
             "undo": "Rückgängig",
             "redo": "Wiederherstellen",
             "format": "Formatieren",
@@ -170,8 +171,8 @@
             "modeVisual": "Visueller Modus",
             "encrypt": "Verschlüsseln",
             "decrypt": "Entschlüsseln",
-            "toggleEmptyLines": "Leerzeilen umschalten",
-            "toggleComments": "Kommentare umschalten",
+            "toggleEmptyLines": "Leerzeilen anzeigen",
+            "toggleComments": "Kommentare anzeigen",
             "showSecrets": "Geheimnisse anzeigen ({{count}})",
             "hideSecrets": "Geheimnisse ausblenden",
             "showSecretsInDiff": "Geheimnisse anzeigen",
@@ -271,13 +272,12 @@
             "deleted": "{{name}} gelöscht",
             "lineEncrypted": "Wert von Zeile {{line}} verschlüsselt",
             "lineDecrypted": "Wert von Zeile {{line}} entschlüsselt",
-            "hideAvailableProperties": "Verfügbare Eigenschaften ausblenden",
             "propertyInserted": "Eigenschaft {{id}} in Zeile {{line}} eingefügt"
         },
         "tableEmpty": {
             "noEntries": "Diese Datei enthält keine Einträge.",
             "noMatch": "Keine Eigenschaft entspricht dem Filter.",
-            "allHidden": "Alle Zeilen sind Kommentare oder Leerzeilen und ausgeblendet: Verwenden Sie „{{comments}}“ oder „{{emptyLines}}“, um sie anzuzeigen."
+            "allHidden": "Alle Zeilen sind Kommentare oder Leerzeilen und ausgeblendet: Aktivieren Sie „{{comments}}“ oder „{{emptyLines}}“, um sie anzuzeigen."
         },
         "insertPosition": {
             "after": "Neue Zeilen werden nach {{name}} eingefügt.",
@@ -299,9 +299,10 @@
     },
     "tooltip": {
         "downloadFile": "Aktuelle Datei herunterladen (Rohdaten)",
-        "uploadFile": "Konfigurationsdatei hochladen (.yml, .cfg)",
+        "uploadFile": "Konfigurationsdatei importieren (.yml, .cfg)",
         "refreshFiles": "Konfigurationsliste neu laden",
         "save": "Änderungen speichern",
+        "discardChanges": "Ihre Änderungen verwerfen und die gespeicherte Version neu laden",
         "createFile": "Neue Konfigurationsdatei erstellen",
         "deleteFile": "Diese Datei löschen",
         "toggleFile": "Diese Konfiguration aktivieren oder deaktivieren",
@@ -313,15 +314,15 @@
         "deleteProperty": "Diese Eigenschaft löschen",
         "undo": "Letzte Änderung rückgängig machen",
         "redo": "Rückgängig gemachte Änderung wiederherstellen",
-        "format": "YAML-Code formatieren",
+        "format": "Datei formatieren (Einrückung und Abstände)",
         "modeRaw": "In Texteditor wechseln",
         "modeVisual": "In visuellen Editor wechseln",
         "encryptSelection": "Den Wert der Zeile mit dem Cursor verschlüsseln",
         "decryptSelection": "Den ENC(...)-Wert der Zeile mit dem Cursor entschlüsseln",
         "showSecret": "Geheimen Wert anzeigen",
         "hideSecret": "Geheimen Wert ausblenden",
-        "toggleComments": "Kommentarsichtbarkeit umschalten (außer Kopfzeile)",
-        "toggleEmptyLines": "Sichtbarkeit leerer Zeilen umschalten (außer Kopfzeile)",
+        "toggleComments": "Kommentare ein- oder ausblenden. Der Kommentar der Kopfzeile bleibt immer sichtbar.",
+        "toggleEmptyLines": "Leerzeilen ein- oder ausblenden. Die der Kopfzeile bleiben immer sichtbar.",
         "markAsDefault": "Den Header '# default configuration' hinzufügen, damit Jahia lokale Änderungen für Modul-Standardwerte bewahrt",
         "showSecrets": "Die Werte der Geheimnisse dieser Datei anzeigen. Beim Öffnen einer anderen Datei werden sie wieder maskiert. Die Maskierung ist nur visuell: Screenreader lesen die Werte weiterhin vor.",
         "hideSecrets": "Die Werte der Geheimnisse maskieren",

@@ -1,5 +1,5 @@
 {
-    "label": "OSGi Config Manager",
+    "label": "OSGi Configurations Manager",
     "app": {
         "title": "OSGi Configurations Manager",
         "new": "New",
@@ -11,7 +11,8 @@
         "delete": "Delete",
         "enable": "Enable",
         "save": "Save Changes",
-        "searchPlaceholder": "Filter configs...",
+        "discardChanges": "Discard Changes",
+        "searchPlaceholder": "Filter files...",
         "searchLabel": "Filter configuration files",
         "searchDeep": "Search in content",
         "searchDeepTooltip": "Enable to search within the file content",
@@ -29,11 +30,12 @@
     },
     "notification": {
         "saveSuccess": "Configuration saved successfully",
-        "toggleSuccess": "Toggled status for {{name}}",
+        "enableSuccess": "Enabled {{name}}",
+        "disableSuccess": "Disabled {{name}}",
         "deleteSuccess": "Deleted {{name}}",
         "createSuccess": "Created {{name}}",
         "markAsDefaultSuccess": "{{name}} is now marked as default configuration",
-        "uploadSuccess": "Uploaded {{name}}",
+        "uploadSuccess": "Imported {{name}}",
         "decryptNoValue": "Place the cursor on a line holding an ENC(...) value",
         "decryptRefused": "This value cannot be decrypted here: it is not in the saved file, or it was encrypted with another secret",
         "encryptFailed": "The value could not be encrypted",
@@ -49,24 +51,24 @@
         "ok": "OK",
         "create": {
             "title": "Create new configuration",
-            "message": "Create an empty file or select a Metatype configuration that has not been materialized yet.",
+            "message": "Create an empty file, or a configuration declared by a Metatype definition that has no file yet.",
             "confirm": "Create",
             "manualLabel": "Manual filename",
             "manualPlaceholder": "e.g. org.test.config.cfg",
             "manualFallbackMessage": "Enter the filename to create (e.g. org.test.config.cfg):",
             "or": "or",
-            "filterLabel": "Filter",
+            "filterLabel": "Filter available configurations",
             "tabs": {
-                "manual": "Manual",
-                "configuration": "Configuration",
-                "factory": "Factory"
+                "manual": "Empty File",
+                "configuration": "From Metatype",
+                "factory": "Factory Instance"
             },
             "templateLabel": "Available configuration from Metatype",
             "factoryLabel": "Multi-instance configurations (factory)",
-            "filterPlaceholder": "Filter available configurations...",
+            "filterPlaceholder": "Part of a name",
             "emptyMetatypes": "No Metatype configuration is currently available to create.",
             "emptyFactories": "No Metatype factory is currently available.",
-            "suggestedFilename": "Created file",
+            "suggestedFilename": "File to create",
             "bundle": "Bundle",
             "instanceCount": "{{count}} existing instance(s)",
             "factoryPattern": "Filename pattern",
@@ -83,18 +85,18 @@
         },
         "unsaved": {
             "title": "Unsaved Changes",
-            "message": "You have unsaved changes which will be lost if you continue. Do you want to discard changes and continue?",
+            "message": "You have unsaved changes. If you continue, they will be lost.",
             "confirm": "Discard Changes",
             "cancel": "Keep Editing"
         },
         "deleteFile": {
             "title": "Delete configuration",
-            "message": "Are you sure you want to delete {{name}}?",
+            "message": "Delete {{name}} from the server? This cannot be undone. Download it first if you want to keep a copy.",
             "confirm": "Delete"
         },
         "disableFile": {
             "title": "Disable configuration",
-            "message": "Are you sure you want to disable {{name}}? Some configurations can freeze the interface when disabled.",
+            "message": "Disable {{name}}? Disabling some configurations can make the interface stop responding.",
             "confirm": "Disable",
             "cancel": "Cancel"
         },
@@ -105,7 +107,8 @@
         },
         "deleteProp": {
             "title": "Delete Property",
-            "message": "Are you sure you want to delete {{name}}?"
+            "message": "Delete {{name}}?",
+            "confirm": "Delete"
         },
         "addProp": {
             "title": "Add Property",
@@ -117,15 +120,16 @@
         },
         "error": {
             "title": "Error",
-            "save": "Error saving: {{error}}",
-            "toggle": "Error toggling: {{error}}",
+            "save": "Error saving: {{error}}. Your changes are still in the editor.",
+            "import": "Error importing: {{error}}",
+            "toggle": "Error enabling or disabling: {{error}}",
             "create": "Error creating file: {{error}}",
             "markAsDefault": "Error marking file as default configuration: {{error}}",
             "delete": "Error deleting: {{error}}",
             "invalidYaml": "The YAML content is invalid. Please fix syntax errors before saving.",
             "propertyExists": "Property '{{name}}' already exists.",
             "invalidExtension": "Filename must end with .cfg, .yml, .cfg.disabled or .yml.disabled",
-            "invalidExtensionUpload": "Only .cfg and .yml files are supported.",
+            "invalidExtensionUpload": "Only .cfg and .yml files can be imported.",
             "duplicateKeys": "Duplicate keys found: {{keys}}"
         },
         "conflict": {
@@ -135,11 +139,8 @@
             "rename": "Rename"
         },
         "rename": {
-            "title": "Rename uploaded file",
+            "title": "Rename imported file",
             "message": "Enter a new file name, ending in .cfg or .yml:"
-        },
-        "prompt": {
-            "placeholder": "Type here..."
         },
         "diff": {
             "title": "Review Changes: {{name}}",
@@ -152,7 +153,7 @@
         "header": {
             "property": "Property / Key",
             "value": "Value",
-            "security": "Security",
+            "encrypted": "Encrypted",
             "actions": "Actions",
             "reorder": "Reorder",
             "type": "Type"
@@ -162,7 +163,7 @@
             "addMetatypeProperty": "Add Property",
             "addComment": "Add Comment",
             "addEmptyLine": "Add Empty Line",
-            "hideAvailableProperties": "Hide",
+            "hideAvailableProperties": "Hide available properties",
             "undo": "Undo",
             "redo": "Redo",
             "format": "Format",
@@ -170,8 +171,8 @@
             "modeVisual": "Visual Edit",
             "encrypt": "Encrypt",
             "decrypt": "Decrypt",
-            "toggleComments": "Toggle Comments",
-            "toggleEmptyLines": "Toggle Empty Lines",
+            "toggleComments": "Show Comments",
+            "toggleEmptyLines": "Show Empty Lines",
             "showSecrets": "Show secrets ({{count}})",
             "hideSecrets": "Hide secrets",
             "showSecretsInDiff": "Show secrets",
@@ -271,13 +272,12 @@
             "deleted": "{{name}} deleted",
             "lineEncrypted": "Value of line {{line}} encrypted",
             "lineDecrypted": "Value of line {{line}} decrypted",
-            "hideAvailableProperties": "Hide available properties",
             "propertyInserted": "Property {{id}} inserted on line {{line}}"
         },
         "tableEmpty": {
             "noEntries": "This file has no entries.",
             "noMatch": "No property matches the filter.",
-            "allHidden": "Every line is a comment or an empty line, and these are hidden: use “{{comments}}” or “{{emptyLines}}” to show them."
+            "allHidden": "Every line is a comment or an empty line, and these are hidden: turn on “{{comments}}” or “{{emptyLines}}” to show them."
         },
         "insertPosition": {
             "after": "New lines are inserted after {{name}}.",
@@ -320,9 +320,10 @@
     },
     "tooltip": {
         "downloadFile": "Download current file (Raw Data)",
-        "uploadFile": "Upload configuration file (.yml, .cfg)",
+        "uploadFile": "Import a configuration file (.yml, .cfg)",
         "refreshFiles": "Reload the configuration list",
         "save": "Save changes",
+        "discardChanges": "Discard your edits and reload the saved version",
         "markAsDefault": "Add the '# default configuration' header so Jahia preserves local changes for module defaults",
         "createFile": "Create a new configuration file",
         "deleteFile": "Delete this file",
@@ -335,15 +336,15 @@
         "deleteProperty": "Delete this property",
         "undo": "Undo last change",
         "redo": "Redo reversed change",
-        "format": "Format YAML code",
+        "format": "Format the file (indentation and spacing)",
         "modeRaw": "Switch to Raw Editor",
         "modeVisual": "Switch to Visual Editor",
         "encryptSelection": "Encrypt the value of the line where the cursor is",
         "decryptSelection": "Decrypt the ENC(...) value of the line where the cursor is",
         "showSecret": "Show secret value",
         "hideSecret": "Hide secret value",
-        "toggleComments": "Toggle comments visibility (except header)",
-        "toggleEmptyLines": "Toggle empty line visibility (except header)",
+        "toggleComments": "Show or hide the comments. The header comment always stays visible.",
+        "toggleEmptyLines": "Show or hide the empty lines. Those of the header always stay visible.",
         "showSecrets": "Show the values of the secrets of this file. They are masked again when another file is opened. Masking is visual only: screen readers still read the values.",
         "hideSecrets": "Mask the values of the secrets",
         "tabMovesFocus": "When on, Tab moves the focus out of the editor instead of indenting. Ctrl+M toggles it too (Ctrl+Shift+M on macOS).",

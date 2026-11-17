@@ -93,7 +93,7 @@ describe('SelectedFileHeader unavailable buttons', () => {
         const {rerender} = renderHeader({hasUnsaved: false});
         const buttons = () => [
             screen.getByRole('button', {name: 'app.save'}),
-            screen.getByRole('button', {name: 'modal.cancel'})
+            screen.getByRole('button', {name: 'app.discardChanges'})
         ];
 
         buttons().forEach(button => {
@@ -146,7 +146,7 @@ describe('SelectedFileHeader unavailable buttons', () => {
         renderHeader({hasUnsaved: false, onSave, onCancel});
 
         fireEvent.click(screen.getByRole('button', {name: 'app.save'}));
-        fireEvent.click(screen.getByRole('button', {name: 'modal.cancel'}));
+        fireEvent.click(screen.getByRole('button', {name: 'app.discardChanges'}));
 
         expect(onSave).not.toHaveBeenCalled();
         expect(onCancel).not.toHaveBeenCalled();
@@ -162,7 +162,7 @@ describe('SelectedFileHeader unavailable buttons', () => {
         const save = screen.getByRole('button', {name: 'app.save'});
         expect(save.getAttribute('aria-disabled')).toBe('true');
         fireEvent.click(save);
-        fireEvent.click(screen.getByRole('button', {name: 'modal.cancel'}));
+        fireEvent.click(screen.getByRole('button', {name: 'app.discardChanges'}));
 
         expect(onSave).not.toHaveBeenCalled();
         expect(onCancel).not.toHaveBeenCalled();
@@ -172,6 +172,15 @@ describe('SelectedFileHeader unavailable buttons', () => {
 describe('SelectedFileHeader title and unsaved changes', () => {
     beforeEach(() => jest.useFakeTimers());
     afterEach(() => jest.useRealTimers());
+
+    // It was labelled "Cancel", the word that closes the dialogs, which did not say it reverts the file.
+    it('names the revert button after its effect and describes it', () => {
+        renderHeader();
+
+        const discard = screen.getByRole('button', {name: 'app.discardChanges'});
+        expect(discard).toHaveAccessibleDescription('tooltip.discardChanges');
+        expect(screen.queryByRole('button', {name: 'modal.cancel'})).toBeNull();
+    });
 
     it('makes the file name a level 2 heading with the given id, and shows the whole path', () => {
         renderHeader({titleId: 'editor-title', hasUnsaved: false});

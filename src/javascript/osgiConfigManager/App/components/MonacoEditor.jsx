@@ -1578,7 +1578,9 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                                     {/* A disclosure: it opens and closes the panel, and says which. */}
                                     <RawToolbarButton
                                         dataCy="editor-add-metatype-property"
-                                        label={t('editor.button.addProperty')}
+                                        // Named after the panel it opens: "Add Property" also named the
+                                        // visual editor's button, which adds a row.
+                                        label={t('editor.metatype.availableProperties')}
                                         icon={<Add style={TOOLBAR_BUTTON_ICON_STYLE} />}
                                         onClick={() => {
                                             if (!supportsMetatypeAssistance) {
@@ -1653,11 +1655,10 @@ export const MonacoEditor = ({ value, onChange, onValidate, language = 'yaml', m
                                     <Typography variant="caption" color="textSecondary">{metatypeDefinition.name}</Typography>
                                 )}
                             </div>
-                            {/* Its name starts with the visible "Hide", for voice control (WCAG 2.5.3). */}
+                            {/* Its visible text is its whole name: "Hide" alone did not say what it hid. */}
                             <RawToolbarButton
                                 dataCy="raw-editor-hide-property-panel"
                                 label={t('editor.button.hideAvailableProperties')}
-                                aria-label={t('editor.aria.hideAvailableProperties')}
                                 onClick={() => closePropertyPanel({ returnFocus: true })}
                             />
                         </div>

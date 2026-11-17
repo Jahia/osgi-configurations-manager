@@ -487,7 +487,6 @@ export const ModalDialog = ({config, onClose}) => {
                                             handleConfirm();
                                         }
                                     }}
-                                    placeholder={t('modal.prompt.placeholder')}
                                 />
                                 {hasFieldError('filename') && (
                                     <Typography id={promptErrorId} data-cy="modal-prompt-error" variant="caption" style={FIELD_ERROR_STYLE}>

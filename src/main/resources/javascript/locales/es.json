@@ -1,5 +1,5 @@
 {
-    "label": "Gestor de Config OSGi",
+    "label": "Administrador de configuraciones OSGi",
     "app": {
         "title": "Administrador de configuraciones OSGi",
         "new": "Nuevo",
@@ -11,7 +11,8 @@
         "delete": "Eliminar",
         "enable": "Habilitar",
         "save": "Guardar cambios",
-        "searchPlaceholder": "Filtrar configuraciones...",
+        "discardChanges": "Descartar cambios",
+        "searchPlaceholder": "Filtrar archivos...",
         "searchLabel": "Filtrar archivos de configuración",
         "searchDeep": "Buscar en contenido",
         "searchDeepTooltip": "Habilitar para buscar dentro de los archivos",
@@ -29,10 +30,11 @@
     },
     "notification": {
         "saveSuccess": "Configuración guardada con éxito",
-        "toggleSuccess": "Estado cambiado para {{name}}",
+        "enableSuccess": "{{name}} habilitado",
+        "disableSuccess": "{{name}} deshabilitado",
         "deleteSuccess": "{{name}} eliminado",
         "createSuccess": "{{name}} creado",
-        "uploadSuccess": "{{name}} subido",
+        "uploadSuccess": "{{name}} importado",
         "markAsDefaultSuccess": "{{name}} ahora está marcado como configuración predeterminada",
         "decryptNoValue": "Coloque el cursor en una línea que contenga un valor ENC(...)",
         "decryptRefused": "Este valor no se puede descifrar aquí: no está en el archivo guardado o se cifró con otro secreto",
@@ -49,24 +51,24 @@
         "ok": "OK",
         "create": {
             "title": "Crear nueva configuración",
-            "message": "Crea un archivo vacío o selecciona una configuración Metatype que todavía no tenga archivo asociado.",
+            "message": "Crea un archivo vacío, o una configuración declarada por una definición Metatype que todavía no tiene archivo.",
             "confirm": "Crear",
             "manualLabel": "Nombre de archivo manual",
             "manualPlaceholder": "Ej.: org.test.config.cfg",
             "manualFallbackMessage": "Introduce el nombre del archivo que quieres crear (ej.: org.test.config.cfg):",
             "or": "o",
-            "filterLabel": "Filtro",
+            "filterLabel": "Filtrar configuraciones disponibles",
             "tabs": {
-                "manual": "Manual",
-                "configuration": "Configuración",
-                "factory": "Factory"
+                "manual": "Archivo vacío",
+                "configuration": "Desde Metatype",
+                "factory": "Instancia de factory"
             },
             "templateLabel": "Configuración disponible desde Metatype",
             "factoryLabel": "Configuraciones multiinstancia (factory)",
-            "filterPlaceholder": "Filtrar configuraciones disponibles...",
+            "filterPlaceholder": "Parte de un nombre",
             "emptyMetatypes": "No hay configuraciones Metatype disponibles para crear.",
             "emptyFactories": "No hay factories Metatype disponibles.",
-            "suggestedFilename": "Archivo creado",
+            "suggestedFilename": "Archivo que se creará",
             "bundle": "Bundle",
             "instanceCount": "{{count}} instancia(s) existente(s)",
             "factoryPattern": "Patrón de nombre de archivo",
@@ -83,24 +85,25 @@
         },
         "unsaved": {
             "title": "Cambios no guardados",
-            "message": "Tienes cambios no guardados que se perderán si continúas. ¿Quieres descartar los cambios y continuar?",
+            "message": "Tienes cambios sin guardar. Si continúas, se perderán.",
             "confirm": "Descartar cambios",
             "cancel": "Seguir editando"
         },
         "deleteFile": {
             "title": "Eliminar configuración",
-            "message": "¿Estás seguro de que quieres eliminar {{name}}?",
+            "message": "¿Eliminar {{name}} del servidor? Esta acción no se puede deshacer. Descárgalo antes si quieres conservar una copia.",
             "confirm": "Eliminar"
         },
         "disableFile": {
             "title": "Deshabilitar configuración",
-            "message": "¿Estás seguro de que quieres deshabilitar {{name}}? Algunas configuraciones pueden congelar la interfaz si se deshabilitan.",
+            "message": "¿Deshabilitar {{name}}? Deshabilitar algunas configuraciones puede bloquear la interfaz.",
             "confirm": "Deshabilitar",
             "cancel": "Cancelar"
         },
         "deleteProp": {
             "title": "Eliminar propiedad",
-            "message": "¿Estás seguro de que quieres eliminar {{name}}?"
+            "message": "¿Eliminar {{name}}?",
+            "confirm": "Eliminar"
         },
         "addProp": {
             "title": "Añadir propiedad",
@@ -112,14 +115,15 @@
         },
         "error": {
             "title": "Error",
-            "save": "Error al guardar: {{error}}",
-            "toggle": "Error al cambiar: {{error}}",
+            "save": "Error al guardar: {{error}}. Tus cambios siguen en el editor.",
+            "import": "Error al importar: {{error}}",
+            "toggle": "Error al habilitar o deshabilitar: {{error}}",
             "create": "Error al crear: {{error}}",
             "delete": "Error al eliminar: {{error}}",
             "invalidYaml": "El contenido YAML no es válido. Por favor, corrija los errores de sintaxis antes de guardar.",
             "propertyExists": "La propiedad '{{name}}' ya existe.",
             "invalidExtension": "El nombre del archivo debe terminar en .cfg, .yml, .cfg.disabled o .yml.disabled",
-            "invalidExtensionUpload": "Solo se admiten archivos .cfg y .yml.",
+            "invalidExtensionUpload": "Solo se pueden importar archivos .cfg y .yml.",
             "duplicateKeys": "Se encontraron claves duplicadas: {{keys}}",
             "markAsDefault": "Error al marcar el archivo como configuración predeterminada: {{error}}"
         },
@@ -130,11 +134,8 @@
             "rename": "Renombrar"
         },
         "rename": {
-            "title": "Renombrar archivo",
+            "title": "Renombrar el archivo importado",
             "message": "Introduce un nuevo nombre de archivo, terminado en .cfg o .yml:"
-        },
-        "prompt": {
-            "placeholder": "Escribe aquí..."
         },
         "diff": {
             "title": "Revisar cambios: {{name}}",
@@ -152,7 +153,7 @@
         "header": {
             "property": "Propiedad / Clave",
             "value": "Valor",
-            "security": "Seguridad",
+            "encrypted": "Cifrado",
             "actions": "Acciones",
             "reorder": "Reordenar",
             "type": "Tipo"
@@ -162,7 +163,7 @@
             "addMetatypeProperty": "Añadir propiedad",
             "addComment": "Añadir comentario",
             "addEmptyLine": "Añadir línea vacía",
-            "hideAvailableProperties": "Ocultar",
+            "hideAvailableProperties": "Ocultar las propiedades disponibles",
             "undo": "Deshacer",
             "redo": "Rehacer",
             "format": "Formato",
@@ -170,8 +171,8 @@
             "modeVisual": "Modo Visual",
             "encrypt": "Cifrar",
             "decrypt": "Descifrar",
-            "toggleEmptyLines": "Alternar líneas vacías",
-            "toggleComments": "Alternar comentarios",
+            "toggleEmptyLines": "Mostrar líneas vacías",
+            "toggleComments": "Mostrar comentarios",
             "showSecrets": "Mostrar secretos ({{count}})",
             "hideSecrets": "Ocultar secretos",
             "showSecretsInDiff": "Mostrar secretos",
@@ -271,13 +272,12 @@
             "deleted": "{{name}} eliminado",
             "lineEncrypted": "Valor de la línea {{line}} cifrado",
             "lineDecrypted": "Valor de la línea {{line}} descifrado",
-            "hideAvailableProperties": "Ocultar las propiedades disponibles",
             "propertyInserted": "Propiedad {{id}} insertada en la línea {{line}}"
         },
         "tableEmpty": {
             "noEntries": "Este archivo no contiene ninguna entrada.",
             "noMatch": "Ninguna propiedad coincide con el filtro.",
-            "allHidden": "Todas las líneas son comentarios o líneas vacías, que están ocultos: use «{{comments}}» o «{{emptyLines}}» para mostrarlos."
+            "allHidden": "Todas las líneas son comentarios o líneas vacías, que están ocultos: activa «{{comments}}» o «{{emptyLines}}» para mostrarlos."
         },
         "insertPosition": {
             "after": "Las líneas nuevas se insertan después de {{name}}.",
@@ -299,9 +299,10 @@
     },
     "tooltip": {
         "downloadFile": "Descargar archivo actual (Datos sin procesar)",
-        "uploadFile": "Cargar archivo de configuración (.yml, .cfg)",
+        "uploadFile": "Importar un archivo de configuración (.yml, .cfg)",
         "refreshFiles": "Recargar la lista de configuraciones",
         "save": "Guardar cambios",
+        "discardChanges": "Descartar tus cambios y volver a cargar la versión guardada",
         "createFile": "Crear un nuevo archivo de configuración",
         "deleteFile": "Eliminar este archivo",
         "toggleFile": "Habilitar o deshabilitar esta configuración",
@@ -313,15 +314,15 @@
         "deleteProperty": "Eliminar esta propiedad",
         "undo": "Deshacer último cambio",
         "redo": "Rehacer cambio deshecho",
-        "format": "Formatear código YAML",
+        "format": "Formatear el archivo (sangría y espacios)",
         "modeRaw": "Cambiar a editor de texto",
         "modeVisual": "Cambiar a editor visual",
         "encryptSelection": "Cifrar el valor de la línea donde está el cursor",
         "decryptSelection": "Descifrar el valor ENC(...) de la línea donde está el cursor",
         "showSecret": "Mostrar valor secreto",
         "hideSecret": "Ocultar valor secreto",
-        "toggleComments": "Alternar visibilidad de comentarios (excepto cabecera)",
-        "toggleEmptyLines": "Mostrar u ocultar líneas vacías (excepto la cabecera)",
+        "toggleComments": "Mostrar u ocultar los comentarios. El comentario de cabecera siempre queda visible.",
+        "toggleEmptyLines": "Mostrar u ocultar las líneas vacías. Las de la cabecera siempre quedan visibles.",
         "markAsDefault": "Añadir la cabecera '# default configuration' para que Jahia conserve los cambios locales de los valores predeterminados del módulo",
         "showSecrets": "Mostrar los valores de los secretos de este archivo. Se vuelven a ocultar al abrir otro archivo. El enmascarado es solo visual: los lectores de pantalla siguen leyendo los valores.",
         "hideSecrets": "Ocultar los valores de los secretos",

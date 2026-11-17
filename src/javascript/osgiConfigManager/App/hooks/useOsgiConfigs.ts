@@ -7,6 +7,7 @@ import { OsgiAvailableMetatypeDefinition, OsgiMetatypeDefinition, osgiService } 
 import { useToast } from './useToast';
 import { useProperties } from './useProperties';
 import { configFileKind } from '../utils/configIdentity';
+import { errorText } from '../utils/errorText';
 
 /** An error marker of the raw editor, which blocks Save. */
 export interface ValidationError {
@@ -356,7 +357,7 @@ export const useOsgiConfigs = () => {
                         severity: 'warning',
                         title: t('modal.error.title'),
                         message: t('modal.error.invalidYaml'),
-                        cancelLabel: t('modal.ok'),
+                        cancelLabel: t('modal.close'),
                         confirmLabel: null
                     });
                     return;
@@ -478,7 +479,8 @@ export const useOsgiConfigs = () => {
         } catch (e: any) {
             loadingFileRef.current = false;
             setLoadingFile(false);
-            toastError(e.message);
+            // Says what failed and that nothing was lost: the bare server message did neither.
+            toastError(t('modal.error.save', { error: errorText(e) }));
         } finally {
             savingRef.current = false;
             setIsSaving(false);
@@ -676,7 +678,7 @@ export const useOsgiConfigs = () => {
                             severity: 'warning',
                             title: t('modal.error.title'),
                             message: msg,
-                            cancelLabel: t('modal.ok'),
+                            cancelLabel: t('modal.close'),
                             confirmLabel: null
                         });
                     }, 100);
@@ -711,6 +713,8 @@ export const useOsgiConfigs = () => {
             type: 'confirm',
             title: t('modal.deleteProp.title'),
             message: t('modal.deleteProp.message', { name: displayName }),
+            // Named after the action: the danger button read "OK".
+            confirmLabel: t('modal.deleteProp.confirm'),
             // Synchronous, so that the rows are rendered again before the dialog returns the focus.
             deferConfirm: options.returnFocus ? false : undefined,
             returnFocus: options.returnFocus,

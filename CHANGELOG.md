@@ -123,6 +123,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   reason and could not be reached by keyboard. It now stays reachable, and its tooltip and its
   description say that the file is already a module default, or that only a local configuration
   can be marked as default.
+- **Labels and messages say what they do (WCAG 2.4.6, 3.3.2, 3.2.4).** The header's Cancel, which
+  reverts the file, is now Discard Changes, the word Cancel being kept for closing dialogs. One verb,
+  Import, replaces Upload in the tooltip, the notification and the rename dialog, and the menu
+  entry has the page's own name. The raw editor's Add Property, which opens the list of available
+  properties, is named after that list; its Hide button says what it hides. Toggle Comments and
+  Toggle Empty Lines are Show Comments and Show Empty Lines, on or off. In **New**, the tabs are
+  Empty File, From Metatype and Factory Instance, and "Created file" reads "File to create". The
+  visual editor's Security column is Encrypted. Deleting a file says that it cannot be undone and
+  suggests downloading it first; deleting a property asks with a Delete button rather than OK; the
+  error dialogs close with Close. A failed save says that the changes are still in the editor, a
+  failed import is reported as an import, and enabling or disabling a file says which it did.
 - **Known limitation:** secrets in the raw editor are masked on screen only. Monaco has no way to
   hide them from screen readers, which still read them; the Show secrets tooltip now says so.
 

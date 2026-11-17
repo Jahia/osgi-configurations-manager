@@ -166,10 +166,12 @@ export const SelectedFileHeader = ({
                         justifyContent: 'flex-end'
                     }}
                 >
+                    {/* Named after its effect: "Cancel" is also the word that closes the dialogs. */}
                     <ActionButton
                         dataCy="cancel-config-button"
-                        tooltip={t('modal.cancel')}
-                        label={t('modal.cancel')}
+                        tooltip={t('tooltip.discardChanges')}
+                        describeTooltip
+                        label={t('app.discardChanges')}
                         size="big"
                         aria-disabled={cancelUnavailable || undefined}
                         // Decided at the click, not only at render: a held key repeats before React renders.

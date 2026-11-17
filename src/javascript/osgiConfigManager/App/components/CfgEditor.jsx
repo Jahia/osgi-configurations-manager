@@ -261,7 +261,7 @@ const CfgEditorHeader = ({t}) => (
 
             <TableBodyCell component="th" scope="col" style={{...cfgTableHeaderCellStyle, ...CFG_COLUMN_WIDTHS.security, justifyContent: 'center'}}>
                 <Typography variant="caption" weight="bold" style={{color: CHROME_TOKENS.strongTextColor}}>
-                    {t('editor.header.security')}
+                    {t('editor.header.encrypted')}
                 </Typography>
             </TableBodyCell>
 
