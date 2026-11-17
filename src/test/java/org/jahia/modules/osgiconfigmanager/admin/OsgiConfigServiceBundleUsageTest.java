@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -57,6 +58,42 @@ class OsgiConfigServiceBundleUsageTest {
         assertThrows(ConfigAccessDeniedException.class,
                 () -> service.findBundleUsage(OsgiConfigService.SELF_CONFIG_PID + ".cfg", false));
         assertTrue(service.findBundleUsage(OsgiConfigService.SELF_CONFIG_PID + ".cfg", true).isEmpty());
+    }
+
+    @Test
+    @DisplayName("a factory file that escapes a wildcard rule is refused for the factory PID it configures")
+    void factoryFileEscapingWildcardIsRefused(@TempDir Path etc) throws IOException {
+        write(etc, "org.acme.secret-x.cfg");
+        OsgiConfigService service = serviceIn(etc, Map.of("filteredFiles", "org.acme.secret.*"));
+
+        // The wildcard is matched on the file name, which it does not cover...
+        assertTrue(service.isFilenameAllowed("org.acme.secret-x.cfg", false));
+        // ...but the file configures the factory org.acme.secret, which it hides.
+        ConfigAccessDeniedException denied = assertThrows(ConfigAccessDeniedException.class,
+                () -> service.findBundleUsage("org.acme.secret-x.cfg", false));
+        assertEquals("Access denied: org.acme.secret-x.cfg is blacklisted or reserved.", denied.getMessage());
+        assertThrows(ConfigAccessDeniedException.class, () -> service.findBundleUsage("org.acme.secret-x.cfg", true),
+                "a black list applies to root as for reads");
+    }
+
+    @Test
+    @DisplayName("the manager's own factory form is refused to a delegated admin, allowed to root")
+    void selfFactoryFormIsRootOnly(@TempDir Path etc) throws IOException {
+        String selfFactoryFile = OsgiConfigService.SELF_CONFIG_PID + "~second.cfg";
+        write(etc, selfFactoryFile);
+        OsgiConfigService service = serviceIn(etc, Map.of());
+
+        assertThrows(ConfigAccessDeniedException.class, () -> service.findBundleUsage(selfFactoryFile, false));
+        assertTrue(service.findBundleUsage(selfFactoryFile, true).isEmpty());
+    }
+
+    @Test
+    @DisplayName("under a white list, a granted factory instance is not refused for its factory PID")
+    void whitelistedFactoryInstanceIsAllowed(@TempDir Path etc) throws IOException {
+        write(etc, "org.acme.mail-smtp.cfg");
+        OsgiConfigService service = serviceIn(etc, Map.of("allowedFiles", "org.acme.mail-smtp.cfg"));
+
+        assertTrue(service.findBundleUsage("org.acme.mail-smtp.cfg", false).isEmpty());
     }
 
     @Test

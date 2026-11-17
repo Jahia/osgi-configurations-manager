@@ -10,7 +10,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -33,6 +35,10 @@ class ApiScopeCoverageTest {
     void everyTypeIsInTheScope() throws IOException, URISyntaxException {
         String scope = new String(getClass().getClassLoader().getResourceAsStream(SCOPE_FILE).readAllBytes(),
                 StandardCharsets.UTF_8);
+        // Whole names, not substrings: graphql.OsgiConfigFileContent must not count as graphql.OsgiConfigFile.
+        Set<String> granted = Arrays.stream(scope.split("[\\s,:\"]+"))
+                .filter(token -> token.startsWith("graphql."))
+                .collect(Collectors.toSet());
         Path packageDir = Paths.get(GqlConfigFile.class.getResource(GqlConfigFile.class.getSimpleName() + ".class").toURI())
                 .getParent();
 
@@ -44,7 +50,7 @@ class ApiScopeCoverageTest {
                     .map(name -> load(name.substring(0, name.length() - ".class".length())))
                     .filter(type -> type.isAnnotationPresent(GraphQLName.class))
                     .map(type -> type.getAnnotation(GraphQLName.class).value())
-                    .filter(name -> !scope.contains("graphql." + name))
+                    .filter(name -> !granted.contains("graphql." + name))
                     .sorted()
                     .collect(Collectors.toList());
         }

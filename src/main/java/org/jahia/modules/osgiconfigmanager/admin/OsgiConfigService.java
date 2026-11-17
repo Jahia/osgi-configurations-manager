@@ -493,25 +493,60 @@ public class OsgiConfigService {
 
         BundleContext bundleContext = getBundleContext();
         if (bundleContext == null) {
+            // Outside a framework the PID still comes from the name, and is still authorized.
+            ensureResolvedPidAllowed(safeFilename, new ConfigurationUsageLookup(null, null, null, null)
+                    .resolveTarget(safeFilename, normalizeConfigFilename(safeFilename)), isRootUser);
             return Collections.emptyList();
         }
         // Looked up per call rather than referenced: a reference would tie this component's
         // lifecycle, which carries the encryption secret, to services only this read needs.
         ServiceReference<ConfigurationAdmin> configurationAdminReference = bundleContext.getServiceReference(ConfigurationAdmin.class);
         ServiceReference<ServiceComponentRuntime> runtimeReference = bundleContext.getServiceReference(ServiceComponentRuntime.class);
+        ConfigurationAdmin configurationAdmin = configurationAdminReference == null ? null
+                : bundleContext.getService(configurationAdminReference);
+        ServiceComponentRuntime runtime = null;
         try {
-            ConfigurationAdmin configurationAdmin = configurationAdminReference == null ? null
-                    : bundleContext.getService(configurationAdminReference);
-            ServiceComponentRuntime runtime = runtimeReference == null ? null
-                    : bundleContext.getService(runtimeReference);
-            return new ConfigurationUsageLookup(bundleContext, configurationAdmin, runtime, metaTypeService)
-                    .find(safeFilename, normalizeConfigFilename(safeFilename));
+            runtime = runtimeReference == null ? null : bundleContext.getService(runtimeReference);
+            ConfigurationUsageLookup lookup =
+                    new ConfigurationUsageLookup(bundleContext, configurationAdmin, runtime, metaTypeService);
+            ConfigurationUsageLookup.Target target = lookup.resolveTarget(safeFilename, normalizeConfigFilename(safeFilename));
+            ensureResolvedPidAllowed(safeFilename, target, isRootUser);
+            return lookup.find(target);
         } finally {
-            if (configurationAdminReference != null) {
+            // Only what was obtained: ungetService on a reference this context holds no use of is wrong.
+            if (configurationAdmin != null) {
                 bundleContext.ungetService(configurationAdminReference);
             }
-            if (runtimeReference != null) {
+            if (runtime != null) {
                 bundleContext.ungetService(runtimeReference);
+            }
+        }
+    }
+
+    /**
+     * The file name is authorized, but the PID it resolves to is what the lookup reports on, and the
+     * two can disagree: a wildcard rule is matched on the file name, so {@code org.acme.secret-x.cfg}
+     * passes {@code org.acme.secret.*} while configuring the factory {@code org.acme.secret}. The
+     * resolved PID and factory PID are refused, as an unauthorized read, when the file filter would
+     * refuse their own file, the manager's own PID included (root keeps that one, as for reads).
+     *
+     * <p>Under a white list the file itself was granted by name, and the white list stays exact on
+     * purpose: the factory PID of a granted instance is not refused for being absent from it. Only
+     * the manager's own PID is still checked then.
+     */
+    private void ensureResolvedPidAllowed(String filename, ConfigurationUsageLookup.Target target, boolean isRootUser)
+            throws ConfigAccessDeniedException {
+        for (String pid : new String[] {target.pid, target.factoryPid}) {
+            if (pid == null) {
+                continue;
+            }
+            String pidFile = pid + DEFAULT_FACTORY_FILE_EXTENSION;
+            boolean refused = ConfigFileFilter.isConfigurationFileOf(SELF_CONFIG_PID, pidFile)
+                    ? !isRootUser
+                    : !fileFilter.hasActiveWhitelist() && !isFilenameAllowed(pidFile, isRootUser);
+            if (refused) {
+                // The message of an unauthorized read, which does not say the PID was the reason.
+                throw new ConfigAccessDeniedException("Access denied: " + filename + " is blacklisted or reserved.");
             }
         }
     }

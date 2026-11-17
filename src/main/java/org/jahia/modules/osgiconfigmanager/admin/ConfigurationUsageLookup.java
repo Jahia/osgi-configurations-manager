@@ -75,12 +75,38 @@ final class ConfigurationUsageLookup {
     static final class Target {
         final String pid;
         final String factoryPid;
-        final List<Configuration> configurations;
+        final List<Loaded> configurations;
 
-        Target(String pid, String factoryPid, List<Configuration> configurations) {
+        Target(String pid, String factoryPid, List<Loaded> configurations) {
             this.pid = pid;
             this.factoryPid = factoryPid;
             this.configurations = configurations;
+        }
+    }
+
+    /**
+     * One configuration as it was when read. Configuration Admin throws IllegalStateException from
+     * every getter of a configuration deleted meanwhile (a file removed during the lookup), so each
+     * value is read once, and a configuration that is gone is left out rather than failing the call.
+     */
+    static final class Loaded {
+        final String pid;
+        final String factoryPid;
+        final String location;
+
+        private Loaded(String pid, String factoryPid, String location) {
+            this.pid = pid;
+            this.factoryPid = factoryPid;
+            this.location = location;
+        }
+
+        static Loaded read(Configuration configuration) {
+            try {
+                return new Loaded(configuration.getPid(), configuration.getFactoryPid(), configuration.getBundleLocation());
+            } catch (RuntimeException e) {
+                LOGGER.debug("Skipping a configuration deleted, or not readable, during the lookup", e);
+                return null;
+            }
         }
     }
 
@@ -93,7 +119,11 @@ final class ConfigurationUsageLookup {
      * @param baseName     the file name without its extension and {@code .disabled}
      */
     List<Map<String, Object>> find(String filename, String baseName) {
-        Target target = resolveTarget(filename, baseName);
+        return find(resolveTarget(filename, baseName));
+    }
+
+    /** As {@link #find(String, String)}, for a target already resolved (and authorized) by the caller. */
+    List<Map<String, Object>> find(Target target) {
         Map<Long, Map<String, Object>> byBundle = new LinkedHashMap<>();
         Bundle[] bundles = context.getBundles();
 
@@ -114,12 +144,11 @@ final class ConfigurationUsageLookup {
     }
 
     Target resolveTarget(String filename, String baseName) {
-        List<Configuration> loaded = listConfigurations(
+        List<Loaded> loaded = listConfigurations(
                 "(" + FILEINSTALL_FILENAME + "=*/" + escapeFilterValue(filename) + ")");
         if (!loaded.isEmpty()) {
-            Configuration configuration = loaded.get(0);
-            String factoryPid = configuration.getFactoryPid();
-            return new Target(factoryPid == null ? configuration.getPid() : null, factoryPid, loaded);
+            Loaded configuration = loaded.get(0);
+            return new Target(configuration.factoryPid == null ? configuration.pid : null, configuration.factoryPid, loaded);
         }
 
         // Not loaded (a .disabled file, or not picked up yet): read the name as FileInstall does.
@@ -138,21 +167,15 @@ final class ConfigurationUsageLookup {
         if (bundles == null) {
             return;
         }
-        for (Configuration configuration : target.configurations) {
-            String location;
-            try {
-                location = configuration.getBundleLocation();
-            } catch (RuntimeException e) {
-                LOGGER.debug("Unable to read the bundle location of {}", configuration.getPid(), e);
-                continue;
-            }
+        for (Loaded configuration : target.configurations) {
+            String location = configuration.location;
             // Null: not bound yet. A multi-location ("?region") is open to any bundle of that region.
             if (location == null || location.startsWith(MULTI_LOCATION_PREFIX)) {
                 continue;
             }
             for (Bundle bundle : bundles) {
                 if (location.equals(bundle.getLocation())) {
-                    addUsage(byBundle, bundle, BOUND, configuration.getPid(), null);
+                    addUsage(byBundle, bundle, BOUND, configuration.pid, null);
                 }
             }
         }
@@ -192,7 +215,8 @@ final class ConfigurationUsageLookup {
 
     /**
      * The states of the component's configurations, sorted. For a factory instance, only the
-     * component configuration created from that instance, when it can be told apart.
+     * component configuration created from that instance, and none when it has none (a .disabled or
+     * not yet loaded file): the other instances' states belong to other files, which may be hidden.
      */
     private List<String> componentStates(ComponentDescriptionDTO description, Target target) {
         if (!serviceComponentRuntime.isComponentEnabled(description)) {
@@ -205,18 +229,18 @@ final class ConfigurationUsageLookup {
         }
         Set<String> instancePids = new LinkedHashSet<>();
         if (target.factoryPid != null) {
-            target.configurations.forEach(configuration -> instancePids.add(configuration.getPid()));
+            target.configurations.forEach(configuration -> instancePids.add(configuration.pid));
         }
         Set<String> states = new TreeSet<>();
         Set<String> instanceStates = new TreeSet<>();
         for (ComponentConfigurationDTO configuration : configurations) {
             String state = stateName(configuration.state);
             states.add(state);
-            if (!instancePids.isEmpty() && servicePids(configuration).stream().anyMatch(instancePids::contains)) {
+            if (servicePids(configuration).stream().anyMatch(instancePids::contains)) {
                 instanceStates.add(state);
             }
         }
-        return new ArrayList<>(instanceStates.isEmpty() ? states : instanceStates);
+        return new ArrayList<>(target.factoryPid != null ? instanceStates : states);
     }
 
     private static Collection<String> servicePids(ComponentConfigurationDTO configuration) {
@@ -298,13 +322,23 @@ final class ConfigurationUsageLookup {
         }
     }
 
-    private List<Configuration> listConfigurations(String filter) {
+    private List<Loaded> listConfigurations(String filter) {
         if (configurationAdmin == null) {
             return List.of();
         }
         try {
             Configuration[] configurations = configurationAdmin.listConfigurations(filter);
-            return configurations == null ? List.of() : Arrays.asList(configurations);
+            if (configurations == null) {
+                return List.of();
+            }
+            List<Loaded> loaded = new ArrayList<>();
+            for (Configuration configuration : configurations) {
+                Loaded read = Loaded.read(configuration);
+                if (read != null) {
+                    loaded.add(read);
+                }
+            }
+            return loaded;
         } catch (Exception e) {
             LOGGER.debug("Unable to list configurations matching {}", filter, e);
             return List.of();

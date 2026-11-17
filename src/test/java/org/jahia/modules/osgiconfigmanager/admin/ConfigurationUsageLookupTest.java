@@ -189,6 +189,51 @@ class ConfigurationUsageLookupTest {
     }
 
     @Test
+    @DisplayName("DS factory: an unloaded instance reports no state, not the other instances' states")
+    void unloadedFactoryInstanceReportsNoForeignState() {
+        ComponentDescriptionDTO mailer = component("org.example.mail.Mailer", mailBundle, PID);
+        when(runtime.getComponentDescriptionDTOs()).thenReturn(List.of(mailer));
+        when(runtime.isComponentEnabled(mailer)).thenReturn(true);
+        when(runtime.getComponentConfigurationDTOs(mailer)).thenReturn(List.of(
+                componentConfiguration(ComponentConfigurationDTO.FAILED_ACTIVATION, PID + "~hidden")));
+
+        List<Map<String, Object>> result = find(PID + "~smtp.cfg.disabled", PID + "~smtp");
+
+        assertEquals(List.of(), usages(result.get(0)).get(0).get("states"),
+                "another instance's state belongs to another file, which may be hidden");
+    }
+
+    @Test
+    @DisplayName("a configuration deleted during the lookup is skipped, not an internal error")
+    void skipsConfigurationDeletedDuringLookup() throws Exception {
+        Configuration deleted = mock(Configuration.class);
+        when(deleted.getPid()).thenThrow(new IllegalStateException("Configuration deleted"));
+        when(deleted.getFactoryPid()).thenThrow(new IllegalStateException("Configuration deleted"));
+        when(deleted.getBundleLocation()).thenThrow(new IllegalStateException("Configuration deleted"));
+        Configuration alive = configuration(PID, null, "mvn:org.example/mail/2.4.1");
+        when(configurationAdmin.listConfigurations(LOADED_FILTER)).thenReturn(new Configuration[] {deleted, alive});
+
+        List<Map<String, Object>> result = find(FILE, PID);
+
+        assertEquals(1, result.size());
+        assertEquals(List.of(Map.of("kind", "BOUND", "detail", PID, "states", List.of())), usages(result.get(0)));
+    }
+
+    @Test
+    @DisplayName("a file whose only configuration was deleted meanwhile falls back to its name")
+    void fallsBackToNameWhenTheOnlyConfigurationIsGone() throws Exception {
+        Configuration deleted = mock(Configuration.class);
+        when(deleted.getPid()).thenThrow(new IllegalStateException("Configuration deleted"));
+        when(configurationAdmin.listConfigurations(LOADED_FILTER)).thenReturn(new Configuration[] {deleted});
+
+        ConfigurationUsageLookup.Target target =
+                new ConfigurationUsageLookup(context, configurationAdmin, runtime, metaTypeService).resolveTarget(FILE, PID);
+
+        assertEquals(PID, target.pid);
+        assertTrue(target.configurations.isEmpty());
+    }
+
+    @Test
     @DisplayName("managed service: a ManagedService registered with the PID names its bundle")
     void reportsManagedService() throws Exception {
         ServiceReference<?> reference = mock(ServiceReference.class);
