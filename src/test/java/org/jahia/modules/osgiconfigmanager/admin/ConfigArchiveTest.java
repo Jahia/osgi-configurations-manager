@@ -144,6 +144,30 @@ class ConfigArchiveTest {
     }
 
     @Test
+    @DisplayName("an ENC(...) hint on a comment line is neither a secret nor an undecryptable value")
+    void commentHintsAreNotValues(@TempDir Path source, @TempDir Path target) throws IOException {
+        OsgiConfigService from = serviceIn(source, Map.of());
+        String envelope = from.encrypt("s3cr3t-value", "org.example.cfg");
+        String hint = "# password is a secret: keep it encrypted (ENC(...)), use the Encrypted checkbox\n";
+        write(source, "org.example.cfg", hint + "! or ENC(abc)\npassword = " + envelope + "\n");
+        write(source, "org.other.yml", "# token: ENC(...)\ntoken: plain\n");
+
+        Map<String, Object> exported = from.exportArchive(List.of("org.example.cfg", "org.other.yml"), PASSWORD, false);
+        assertTrue(((List<?>) exported.get("warnings")).isEmpty(), "a hint is not reported as undecryptable");
+
+        Map<String, Object> preview = from.previewArchiveImport((String) exported.get("archive"), PASSWORD, false);
+        Map<?, ?> file = (Map<?, ?>) ((List<?>) preview.get("files")).get(0);
+        assertEquals(1, file.get("secrets"));
+        assertEquals(0, file.get("undecryptable"));
+
+        OsgiConfigService to = serviceIn(target, Map.of());
+        to.importArchive((String) exported.get("archive"), PASSWORD, List.of("org.example.cfg", "org.other.yml"), false);
+        String imported = read(target, "org.example.cfg");
+        assertTrue(imported.startsWith(hint + "! or ENC(abc)\npassword = ENC("), "the comments are written back unchanged");
+        assertEquals("# token: ENC(...)\ntoken: plain\n", read(target, "org.other.yml"));
+    }
+
+    @Test
     @DisplayName("only the chosen files are written")
     void importsOnlyChosenFiles(@TempDir Path source, @TempDir Path target) throws IOException {
         OsgiConfigService from = serviceIn(source, Map.of());
