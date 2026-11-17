@@ -21,7 +21,12 @@ const STATE_KEYS = {
     DISABLED: 'bundleUsage.state.disabled'
 };
 
-const TEXT_STYLE = {color: CHROME_TOKENS.subtleTextColor, overflowWrap: 'anywhere'};
+// CHROME_TOKENS.subtleTextColor is gray_dark at 60% on main, 3.82:1 on white (WCAG 1.4.3). This is
+// the opaque 7:1 value PR #190 gives that token; use the token again once it is merged. A browser
+// without color-mix drops the declaration and the text inherits the dark colour.
+const SECONDARY_TEXT_COLOR = 'color-mix(in srgb, var(--color-gray_dark) 80%, var(--color-white))';
+// Long symbolic names and versions wrap rather than clip (WCAG 1.4.10).
+const TEXT_STYLE = {color: SECONDARY_TEXT_COLOR, overflowWrap: 'anywhere'};
 const LIST_STYLE = {margin: '4px 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '2px'};
 
 const describeUsage = (t, usage) => {
@@ -42,14 +47,19 @@ const describeUsage = (t, usage) => {
 export const BundleUsage = ({fileName, isLoadingFile = false}) => {
     const {t} = useTranslation('osgi-configurations-manager');
     const labelId = useId();
-    const [state, setState] = useState({status: 'loading', bundles: []});
+    // Idle at mount, so that the status region exists, empty, before its first text: a live
+    // region mounted together with its text is not announced reliably (WCAG 4.1.3).
+    const [state, setState] = useState({status: 'idle', bundles: []});
 
     useEffect(() => {
-        if (isLoadingFile || !fileName) {
+        if (!fileName) {
+            return undefined;
+        }
+        setState({status: 'loading', bundles: []});
+        if (isLoadingFile) {
             return undefined;
         }
         let current = true;
-        setState({status: 'loading', bundles: []});
         osgiService.getBundleUsage(fileName)
             .then(bundles => current && setState({status: 'loaded', bundles}))
             .catch(() => current && setState({status: 'error', bundles: []}));
@@ -64,7 +74,7 @@ export const BundleUsage = ({fileName, isLoadingFile = false}) => {
         message = t('bundleUsage.loading');
     } else if (status === 'error') {
         message = t('bundleUsage.error');
-    } else if (bundles.length === 0) {
+    } else if (status === 'loaded' && bundles.length === 0) {
         message = t('bundleUsage.empty');
     }
 

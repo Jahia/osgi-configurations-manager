@@ -73,6 +73,21 @@ describe('BundleUsage', () => {
         await waitFor(() => expect(screen.getByRole('status').textContent).toBe('bundleUsage.error'));
     });
 
+    // A live region mounted together with its text is not announced reliably (WCAG 4.1.3): the
+    // first render, before any effect, has the region and no text yet.
+    it('mounts its status region empty, before the loading text', () => {
+        // Server rendering runs no effect, so it shows the first render; it needs TextEncoder, which jsdom lacks.
+        // Required here, not imported: the polyfill must be in place before react-dom/server loads.
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        global.TextEncoder = global.TextEncoder || require('util').TextEncoder;
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const {renderToStaticMarkup} = require('react-dom/server');
+        const markup = renderToStaticMarkup(<BundleUsage fileName="org.example.mail.cfg"/>);
+
+        expect(markup).toContain('<div data-cy="bundle-usage-status" role="status"></div>');
+        expect(osgiService.getBundleUsage).not.toHaveBeenCalled();
+    });
+
     it('announces the loading, and waits for the file to load before asking', async () => {
         osgiService.getBundleUsage.mockResolvedValue([]);
 
