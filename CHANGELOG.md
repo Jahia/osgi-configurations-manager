@@ -9,6 +9,134 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Notifications no longer replace each other, and an error is heard while a dialog is open.**
+  A notification replaced the one before it, so a save's confirmation could vanish under the
+  warning that followed it. Up to three now stay on screen, each with its own Close button, and an
+  error or a warning is the last to go. Their announcements no longer cut each other short. While
+  a dialog was open, screen readers did not read an error notification at all; they now do, and
+  the error that opens the manual Create dialog also appears in that dialog. Errors have an icon of
+  their own instead of the warning icon in another colour (WCAG 1.4.1, 4.1.3). When the
+  notifications would cover the element that has the keyboard focus, they move to another corner
+  (WCAG 2.4.11).
+- **Save and Cancel keep the keyboard focus, and a save shows that it is running (WCAG 2.4.3,
+  4.1.3).** After a confirmed save or a cancel, the focused button became disabled and the focus
+  fell back to the top of the page. Save and Cancel now stay reachable when there is nothing to
+  save, and are announced as unavailable. While a save runs, the header shows "Saving…", and Save
+  and Cancel cannot start a second save or a reload. A load that lasts more than a second is
+  announced, and reloading the file list (Refresh, search in content) now shows a loading line.
+  The loading labels showed their keys (`app.loadingFiles`) and are now translated.
+- **Text and icons are easier to read (WCAG 1.4.3, 1.4.11).** Several elements were too pale:
+  - the selected file;
+  - Save, the Delete button and Add Property;
+  - the dialogs' confirm buttons;
+  - the file path under the file name;
+  - the banners' and notifications' icons;
+  - the enabled/disabled mark beside each file.
+
+  They now use darker shades of the same colours. The enabled/disabled mark becomes a filled
+  green dot for an enabled file and a hollow grey ring for a disabled one, so it no longer
+  depends on colour, and it stays visible in Windows high-contrast mode, as does the selected
+  file. Decorative icons are hidden
+  from screen readers.
+- **Animations stop when the system asks for reduced motion (WCAG 2.3.3).** The review dialog no
+  longer slides in, fields no longer fade, the loading spinner stands still and lists jump instead
+  of scrolling smoothly when the system setting "reduce motion" is on.
+- **The visual editor refuses a blank or duplicate key, next to the key itself (WCAG 3.3.1).** A
+  row whose key was cleared was saved as ` = value` with no warning, and duplicate keys were
+  reported only in a dialog that said nothing about where they were. Save now stops before the
+  review dialog. Each faulty key is outlined and marked as invalid, with the reason underneath; a
+  duplicate names the other entries that use it. The first faulty key gets the focus, the filter is
+  cleared if it hides one of them, and a notification says how many keys to fix. Keys are compared
+  regardless of case, as Configuration Admin does: `Foo` and `foo` saved without error and then
+  failed to apply.
+- **The visual editor says what a value expects (WCAG 3.3.2).** Under the value of a Metatype
+  attribute, a line states its format: `true or false`, a whole number, a number, one character,
+  or the allowed values. A required value with no default is marked with an asterisk, explained
+  above the table, and announced as required.
+- **The focus stays in the table after a row is deleted (WCAG 2.4.3).** After the confirmation, the
+  focus went to the Delete button of whichever row took the deleted one's place, or was lost for
+  the last row. It now goes to the next row's first field, or the previous one's, and the deletion
+  is announced. The confirmation also named a comment "Add Comment"; it now says "comment 3".
+- **The visual editor's selected row is shown by more than its colour, and Add says where it
+  inserts (WCAG 1.3.1, 1.4.1).** A bar marks the selected row, in forced colours too, and the Add
+  buttons say after which row the new line goes. A selected row hidden by the filter no longer
+  decides where the line goes, and adding while filtering clears the filter, so the new line is
+  in view.
+- **An empty table says why (WCAG 3.3.2).** The visual editor shows "This file has no entries", "No
+  property matches the filter", or which toggle shows the hidden comments and empty lines.
+- **Long values are no longer cut by text spacing or zoom (WCAG 1.4.12).** The visual editor's
+  fields grew only when their text changed; they now follow their content.
+- **The raw editor refuses a duplicate key in a .cfg file.** It was only a warning, so the file
+  saved and the second value replaced the first on reload. Save is now unavailable, and the
+  header lists the line and the line where the key first appears. Keys are compared regardless of
+  case, as in the visual editor.
+- **Unavailable buttons look unavailable again on older Jahia 8.2.** The Moonstone library served
+  by Jahia 8.2.3 marks a button's colour with classes rather than attributes, so an unavailable
+  Save showed in blue, and Save, Delete and Add Property kept their low-contrast colours. Both
+  forms are now matched.
+- **The raw editor says which file it edits, and what its buttons did (WCAG 2.4.6, 4.1.3).** Its
+  name includes the file name. Encrypt and Decrypt say they act on the value of the cursor's line,
+  Encrypt explains why it did nothing on a line without a value or with an encrypted one, and
+  both announce the line they changed, never the value. Inserting a property announces its line.
+- **The available-properties panel is a proper disclosure (WCAG 2.4.3, 4.1.2).** Add Property
+  says whether the panel is open and closes it too. Opening it moves the focus to its search
+  field, whose result count is announced, and Hide brings the focus back to Add Property. Each
+  card's button is named after its property. In a narrow window the panel goes under the editor
+  instead of squeezing it (WCAG 1.4.10).
+- **The raw editor no longer opens suggestions on its own.** A new empty line, or a space in YAML,
+  opened the property list, and the next Enter inserted a property instead of a new line. Typing
+  a letter or Ctrl+Space still suggests. Ctrl+click on a URL no longer opens a new window.
+- **Confirmations open on Cancel, and their X is named Close (WCAG 2.4.3, 2.4.6).** The dialogs
+  gave the focus to their first control, the X, which was also named Cancel like the footer
+  button. The X now comes last in the reading order, still drawn top right, and a destructive
+  confirmation is announced as an alert dialog. The review dialog opens on the changes rather
+  than on Show secrets.
+- **The Create dialog says what it needs and keeps what was typed (WCAG 3.3.2, 3.3.7, 4.1.2).**
+  The filename, the template, the factory and the instance identifier are marked as required.
+  The tabs are named and tied to their panel, and the filter's result count is announced.
+  Choosing a template or a factory no longer clears the name typed in Manual, and choosing a
+  factory no longer pulls the focus out of the list. The existing instances can be scrolled by
+  keyboard.
+- **Lists are lists, and deleting a row shows a trash can (WCAG 1.3.1, 3.2.4).** The existing
+  instances, the property picker and the raw editor's property cards are announced as lists with
+  their size. A row's delete button used the X that closes dialogs.
+- **The arrow keys no longer ask to discard unsaved changes at every press (WCAG 3.2.2, 2.4.7).**
+  The arrows, Home and End still open the file they reach, to page through the configurations.
+  With unsaved changes they now only move a ring through the list, and Enter or Space opens the
+  file it is on; a hint for screen readers says so. The row the keyboard is on shows its whole
+  name, on two lines if needed. Clicking the preview of a cut name no longer takes the focus out
+  of the list, which left the arrow keys doing nothing.
+- **Long names can be read in full (WCAG 1.4.13, 1.4.10).** The open file's name and path wrap
+  instead of being cut. In the file list, the preview of a cut name stays open while the pointer
+  moves onto it, a click on it opens the file, and Escape closes it. The path takes a row of its
+  own across the header, and the raw editor's property panel, when it sits under the editor in a
+  narrow window, keeps room for its properties.
+- **The page has a structure to navigate by (WCAG 1.3.1, 4.1.2, 4.1.3).** The file list and the
+  editor are regions with a heading each, and the open file's name is a heading. The header's
+  buttons are no longer announced as a toolbar they did not behave like. Filtering the list
+  announces how many files match, and says so on screen when none does.
+- **Unsaved changes are shown, and leaving the page asks first.** An "Unsaved Changes" label
+  appears beside the open file's name, the file is marked with an asterisk in the list, and the
+  change is announced once. Reloading or closing the page with unsaved changes now asks for
+  confirmation; moving to another page of the Jahia administration still does not.
+- **Mark as Default says why it is unavailable (WCAG 4.1.2, 3.3.2).** It was disabled with no
+  reason and could not be reached by keyboard. It now stays reachable, and its tooltip and its
+  description say that the file is already a module default, or that only a local configuration
+  can be marked as default.
+- **Labels and messages say what they do (WCAG 2.4.6, 3.3.2, 3.2.4).** The header's Cancel, which
+  reverts the file, is now Discard Changes, the word Cancel being kept for closing dialogs. One verb,
+  Import, replaces Upload in the tooltip, the notification and the rename dialog, and the menu
+  entry has the page's own name. The raw editor's Add Property, which opens the list of available
+  properties, is named after that list; its Hide button says what it hides. Toggle Comments and
+  Toggle Empty Lines are Show Comments and Show Empty Lines, on or off. In **New**, the tabs are
+  Empty File, From Metatype and Factory Instance, and "Created file" reads "File to create". The
+  visual editor's Security column is Encrypted. Deleting a file says that it cannot be undone and
+  suggests downloading it first; deleting a property asks with a Delete button rather than OK; the
+  error dialogs close with Close. A failed save says that the changes are still in the editor, a
+  failed import is reported as an import, and enabling or disabling a file says which it did.
+- **Known limitation:** secrets in the raw editor are masked on screen only. Monaco has no way to
+  hide them from screen readers, which still read them; the Show secrets tooltip now says so.
+
 - **A configuration whose extension is in upper case opens in the right editor.** The file list
   shows `Foo.CFG` and `Foo.YML`, but the interface and the server read the extension in lower case
   only. `Foo.CFG` opened in an old tree editor that showed the parser's internal structure, and
@@ -138,6 +266,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   checkbox, the eye, Visual / Raw Edit, Search in content and the raw editor's toolbar show
   Moonstone's tooltip, on hover and on keyboard focus, where they had a slow grey browser one or
   none. A tooltip no longer replaces a control's own description, such as why Save is refused.
+- **Changing the manager's own settings shows without a reload.** Saving
+  `org.jahia.modules.osgiconfigmanager.cfg` writes the file, and the server applies it only once
+  Felix FileInstall notices the change: about ten seconds later on macOS, where Java polls for file
+  changes. A reload meanwhile still showed the old setting, so turning on the visual formatting
+  controls took several reloads. After such a save the page now asks for the setting every second,
+  for up to twenty seconds, until the server reports the value the file sets.
 
 ### Changed
 

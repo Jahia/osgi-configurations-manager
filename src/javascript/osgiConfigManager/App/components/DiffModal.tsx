@@ -174,6 +174,9 @@ export const DiffModal: React.FC<DiffModalProps> = ({
                         role="region"
                         aria-label={t('modal.diff.changes')}
                         tabIndex={0}
+                        // The dialog opens on the changes, which are what it is for: with secrets in the
+                        // file it opened on "Show secrets", one Enter away from revealing them (WCAG 2.4.3).
+                        data-autofocus
                         style={{
                         fontFamily: 'monospace',
                         whiteSpace: 'pre-wrap',

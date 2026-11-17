@@ -147,7 +147,7 @@ describe('OSGi Configurations Manager - Config lifecycle', () => {
 
         cy.get('input[type="file"][accept=".yml,.cfg"]').selectFile('cypress/fixtures/osgi-upload.cfg', {force: true});
 
-        cy.assertToastContains(`Uploaded ${uploadedFile}`);
+        cy.assertToastContains(`Imported ${uploadedFile}`);
         cy.get('[data-cy="selected-file-name"]', {timeout: 30000}).should('contain', uploadedFile);
         cy.readOsgiFile(uploadedFile)
             .its('data.rawContent')
@@ -166,7 +166,7 @@ describe('OSGi Configurations Manager - Config lifecycle', () => {
         cy.confirmModal();
         cy.get('[data-cy="upload-file-input"]', {timeout: 30000}).selectFile('cypress/fixtures/osgi-upload.cfg', {force: true});
 
-        cy.assertToastContains(`Uploaded ${uploadedFile}`);
+        cy.assertToastContains(`Imported ${uploadedFile}`);
         cy.get('[data-cy="selected-file-name"]', {timeout: 30000}).should('contain', uploadedFile);
     });
 

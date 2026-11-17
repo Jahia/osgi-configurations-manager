@@ -9,7 +9,7 @@ import {
     Checkbox,
     Button,
     Tooltip,
-    Close,
+    Delete,
     Add,
     Typography,
     Comments,
@@ -23,9 +23,10 @@ import {
 } from '@jahia/moonstone';
 import { useTranslation } from 'react-i18next';
 import { CfgMetatypeInfoTooltip, CfgMetatypePropertyDialog } from './CfgMetatypePropertyDialog';
-import { getSuggestedPropertyValue } from '../utils/metatypeUtils';
+import { formatDefaultValue, getSuggestedPropertyValue } from '../utils/metatypeUtils';
+import { findKeyProblems } from '../utils/configUtils';
 import { secretKeyTester } from '../utils/secretMask';
-import {CHROME_TOKENS, FLOATING_TOOLTIP_STYLE, PANEL_ACTIONS_STYLE, VISUALLY_HIDDEN_STYLE} from './AppChrome';
+import {CHROME_TOKENS, FLOATING_TOOLTIP_STYLE, PANEL_ACTIONS_STYLE, scrollBehavior, VISUALLY_HIDDEN_STYLE} from './AppChrome';
 
 const MANAGER_SELF_PID = 'org.jahia.modules.osgiconfigmanager';
 const MANAGER_PASSPHRASE_KEY = 'cryptoSecret';
@@ -99,6 +100,48 @@ const cfgTextInputStyle = {
 // success (#6abb6d) was 2.35:1 on white; success_dark is 5.6:1 (WCAG 1.4.3).
 const cfgCommentColor = 'var(--color-success_dark)';
 
+// An error is said in words under the field, and drawn in a colour of at least 3:1 (WCAG 1.4.11).
+const cfgErrorColor = 'var(--color-danger_dark)';
+
+const VALUE_HINT_MAX_OPTIONS = 5;
+
+// What a value must look like, from the Metatype, said under the field: every type was edited as free
+// text with nothing to tell a Boolean or a number from a string (WCAG 3.3.2). Text stays free, for
+// lists and ${...} placeholders. Nothing for a string or a password, which take anything.
+export const valueHintFor = (property, t) => {
+    if (!property) {
+        return '';
+    }
+    let hint = '';
+    const options = Array.isArray(property.options) ? property.options.filter(option => option?.value) : [];
+    if (options.length > 0) {
+        const values = options.slice(0, VALUE_HINT_MAX_OPTIONS).map(option => option.value).join(', ');
+        const rest = options.length - VALUE_HINT_MAX_OPTIONS;
+        hint = t('editor.valueHint.options', {values: rest > 0 ? t('editor.valueHint.more', {values, count: rest}) : values});
+    } else {
+        const type = String(property.type || '').toLowerCase();
+        if (type === 'boolean') {
+            hint = t('editor.valueHint.boolean');
+        } else if (['integer', 'long', 'short', 'byte'].includes(type)) {
+            hint = t('editor.valueHint.wholeNumber');
+        } else if (['double', 'float'].includes(type)) {
+            hint = t('editor.valueHint.number');
+        } else if (['char', 'character'].includes(type)) {
+            hint = t('editor.valueHint.character');
+        }
+    }
+    if (hint && property.cardinality && Number(property.cardinality) !== 0) {
+        hint = `${hint} (${t('editor.valueHint.list')})`;
+    }
+    return hint;
+};
+
+// Metatype's required is true unless the author says otherwise, so most attributes are: only one
+// with no default leaves the user to find a value, and is marked.
+const isRequiredWithoutDefault = property => Boolean(property) && property.optional === false && !formatDefaultValue(property);
+
+const supportsFieldSizing = () => typeof CSS !== 'undefined' && typeof CSS.supports === 'function' && CSS.supports('field-sizing', 'content');
+
 const EditorToolbarButton = ({dataCy, tooltip, ...buttonProps}) => (
     <div data-cy={dataCy}>
         <WithTooltip label={tooltip}>
@@ -116,7 +159,8 @@ const CfgEditorFooter = ({
     onToggleEmptyLines,
     onAddProperty,
     onAddComment,
-    onAddEmptyLine
+    onAddEmptyLine,
+    insertDescriptionId
 }) => (
     <div
         data-cy="cfg-editor-footer"
@@ -139,6 +183,7 @@ const CfgEditorFooter = ({
                 icon={<Add/>}
                 variant="outlined"
                 color="accent"
+                aria-describedby={insertDescriptionId}
                 onClick={onAddProperty}
             />
             {visualFormattingControlsEnabled && (
@@ -150,6 +195,7 @@ const CfgEditorFooter = ({
                         icon={<Comments/>}
                         variant="outlined"
                         style={{color: cfgCommentColor, borderColor: cfgCommentColor}}
+                        aria-describedby={insertDescriptionId}
                         onClick={onAddComment}
                     />
                     <EditorToolbarButton
@@ -158,6 +204,7 @@ const CfgEditorFooter = ({
                         label={t('editor.button.addEmptyLine')}
                         icon={<AddCircleOutline/>}
                         variant="ghost"
+                        aria-describedby={insertDescriptionId}
                         onClick={onAddEmptyLine}
                     />
                 </>
@@ -214,7 +261,7 @@ const CfgEditorHeader = ({t}) => (
 
             <TableBodyCell component="th" scope="col" style={{...cfgTableHeaderCellStyle, ...CFG_COLUMN_WIDTHS.security, justifyContent: 'center'}}>
                 <Typography variant="caption" weight="bold" style={{color: CHROME_TOKENS.strongTextColor}}>
-                    {t('editor.header.security')}
+                    {t('editor.header.encrypted')}
                 </Typography>
             </TableBodyCell>
 
@@ -225,20 +272,49 @@ const CfgEditorHeader = ({t}) => (
     </thead>
 );
 
-// Internal Auto-Resizing Text Area Component
+// A one-line field that grows with its text. field-sizing: content lets the browser size it, so that
+// user text spacing or zoom never cuts it (WCAG 1.4.12); elsewhere it is sized from its scrollHeight,
+// again when its width changes, and scrolls rather than hides what still does not fit.
 const AutoResizeTextArea = ({ value, onChange, placeholder, style, onFocus, onBlur, inputRef, preventNewlines, ...props }) => {
     const textareaRef = useRef(null);
+    const [fieldSizing] = useState(supportsFieldSizing);
 
     const resize = () => {
-        if (textareaRef.current) {
-            textareaRef.current.style.height = 'auto';
-            textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+        const el = textareaRef.current;
+        if (el && !fieldSizing) {
+            el.style.height = 'auto';
+            // border-box: the borders on top of the content, or a scrollbar shows on every field.
+            el.style.height = el.scrollHeight + (el.offsetHeight - el.clientHeight) + 'px';
         }
     };
 
     useEffect(() => {
         resize();
     }, [value]);
+
+    useEffect(() => {
+        const el = textareaRef.current;
+        if (fieldSizing || !el || typeof ResizeObserver === 'undefined') {
+            return undefined;
+        }
+        // Only on a width change: setting the height would otherwise call the observer again.
+        let width = el.getBoundingClientRect().width;
+        let frame = null;
+        const observer = new ResizeObserver(entries => {
+            const nextWidth = entries[0]?.contentRect.width;
+            if (nextWidth === undefined || nextWidth === width) {
+                return;
+            }
+            width = nextWidth;
+            window.cancelAnimationFrame(frame);
+            frame = window.requestAnimationFrame(resize);
+        });
+        observer.observe(el);
+        return () => {
+            window.cancelAnimationFrame(frame);
+            observer.disconnect();
+        };
+    }, [fieldSizing]);
 
     useEffect(() => {
         if (inputRef && textareaRef.current) {
@@ -277,7 +353,8 @@ const AutoResizeTextArea = ({ value, onChange, placeholder, style, onFocus, onBl
             style={{
                 width: '100%',
                 resize: 'none',
-                overflow: 'hidden',
+                overflowY: 'auto',
+                fieldSizing: fieldSizing ? 'content' : undefined,
                 minHeight: '32px', // Standard input height
                 border: 'none',
                 background: 'transparent',
@@ -309,7 +386,9 @@ export const CfgEditor = ({
     showEmptyLines,
     handleToggleEmptyLines,
     setShowEmptyLines,
-    metatypeDefinition
+    metatypeDefinition,
+    showKeyProblems = false,
+    keyProblemsFocusRequest = 0
 }) => {
     const { t } = useTranslation('osgi-configurations-manager');
     const [selectedIndex, setSelectedIndex] = useState(null);
@@ -410,7 +489,7 @@ export const CfgEditor = ({
             const el = inputRefs.current[index]?.value;
             if (el) {
                 el.focus();
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.scrollIntoView({ behavior: scrollBehavior(), block: 'center' });
             }
         }, 100);
     };
@@ -436,12 +515,19 @@ export const CfgEditor = ({
         });
 
         if (existingIndex !== -1) {
+            if (filtering) {
+                setFilter('');
+            }
             setSelectedIndex(existingIndex);
             focusEntryValue(existingIndex);
             return;
         }
 
-        const insertIndex = selectedIndex !== null ? selectedIndex + 1 : (Array.isArray(entries) ? entries.length : 0);
+        const insertIndex = insertionIndex();
+        // A row added while filtering may not match the filter, and the focus would find nothing.
+        if (filtering) {
+            setFilter('');
+        }
         handleAddCfgEntry({
             type: 'property',
             key: propertyName,
@@ -489,6 +575,8 @@ export const CfgEditor = ({
         e.preventDefault();
         if (draggedIndex !== null && draggedIndex !== dropIndex) {
             handleReorder(draggedIndex, dropIndex);
+            // The selection follows the moved row, as with the arrow keys.
+            setSelectedIndex(dropIndex);
         }
         setDraggedIndex(null);
         setDragArmedIndex(null);
@@ -499,7 +587,7 @@ export const CfgEditor = ({
     };
 
     const handleAdd = (type, key, value) => {
-        const insertIndex = selectedIndex !== null ? selectedIndex + 1 : (Array.isArray(entries) ? entries.length : 0);
+        const insertIndex = insertionIndex();
 
         if (type === 'property') {
             if ((metatypeDefinition?.properties || []).length > 0) {
@@ -519,7 +607,10 @@ export const CfgEditor = ({
             return;
         }
 
-        // For comments and empty
+        // For comments and empty, which never match a filter.
+        if (filtering) {
+            setFilter('');
+        }
         handleAddCfgEntry({ type, key, value }, insertIndex);
         setSelectedIndex(insertIndex);
 
@@ -583,7 +674,7 @@ export const CfgEditor = ({
         const name = entryName(entries[index], index);
         handleReorder(index, target);
         setSelectedIndex(target);
-        setReorderAnnouncement(t('editor.aria.moved', {name, position: position + direction + 1, total: shownIndices.length}));
+        announce(t('editor.aria.moved', {name, position: position + direction + 1, total: shownIndices.length}));
         window.requestAnimationFrame(() => {
             document.querySelector(`[data-cy="${focusTarget}-${target}"]`)?.focus();
         });
@@ -592,6 +683,127 @@ export const CfgEditor = ({
     const filterCount = filtering
         ? (Array.isArray(entries) ? entries : []).filter(entry => matchesCfgFilter(entry, filter, isSecretKey)).length
         : null;
+
+    // The selection decides where Add inserts. One that is gone (deleted, or past the end) or hidden
+    // (filter, toggles) counts as none: Add went after a row the user could not see.
+    const selectedShown = selectedIndex !== null && shownIndices.includes(selectedIndex) ? selectedIndex : null;
+    function insertionIndex() {
+        return selectedShown !== null ? selectedShown + 1 : (Array.isArray(entries) ? entries.length : 0);
+    }
+    const insertDescriptionId = React.useId();
+    const insertDescription = selectedShown !== null
+        ? t('editor.insertPosition.after', {name: entryName(entries[selectedShown], selectedShown)})
+        : t('editor.insertPosition.end');
+
+    // Cleared first and set on the next frame: the same text twice (two "empty line 4 deleted") changed
+    // no node, and the second was not announced.
+    function announce(text) {
+        setReorderAnnouncement('');
+        window.requestAnimationFrame(() => setReorderAnnouncement(text));
+    }
+
+    // What the rows are after the last render, for the delete dialog's focus resolver, which runs on
+    // a later frame.
+    const latestRef = useRef({shown: shownIndices});
+    latestRef.current = {shown: shownIndices};
+
+    // After a confirmed delete, the focus goes to the row that took the deleted one's place, else the
+    // one before it, else Add Property, and the deletion is said: it went back to the Delete button
+    // of whichever row now had that index, or to <body> for the last row (WCAG 2.4.3, 4.1.3).
+    const requestDelete = index => {
+        const name = entryName(entries[index], index);
+        handleDeleteProperty([index], {
+            name,
+            returnFocus: () => {
+                const {shown} = latestRef.current;
+                setSelectedIndex(previous => {
+                    if (previous === null || previous === index) {
+                        return null;
+                    }
+                    return previous > index ? previous - 1 : previous;
+                });
+                const next = shown.find(shownIndex => shownIndex >= index);
+                const target = next !== undefined ? next : [...shown].reverse().find(shownIndex => shownIndex < index);
+                let element = null;
+                if (target !== undefined) {
+                    const row = document.querySelector(`[data-cy="cfg-row-${target}"]`);
+                    element = row?.querySelector('textarea, input') || row?.querySelector(`[data-cy="cfg-reorder-${target}"]`) || null;
+                }
+                element = element || document.querySelector('[data-cy="cfg-add-property"] button');
+                // After the focus move, so that the field is announced first.
+                window.setTimeout(() => announce(t('editor.aria.deleted', {name})), 0);
+                return element;
+            }
+        });
+    };
+
+    // Keys that cannot be saved, once a save was refused (see useOsgiConfigs): each faulty key field
+    // says what is wrong with it, and a duplicate names the other entries that use it.
+    const keyProblems = useMemo(() => (showKeyProblems ? findKeyProblems(entries) : {}), [showKeyProblems, entries]);
+    const keyProblemMessage = index => {
+        const problem = keyProblems[index];
+        if (problem === 'empty') {
+            return t('editor.validation.emptyKeyField');
+        }
+        if (problem === 'duplicate') {
+            const normalized = String(entries[index].key?.value ?? entries[index].key ?? '').trim().toLowerCase();
+            const positions = Object.keys(keyProblems)
+                .map(Number)
+                .filter(other => other !== index && keyProblems[other] === 'duplicate'
+                    && String(entries[other].key?.value ?? entries[other].key ?? '').trim().toLowerCase() === normalized)
+                .map(other => other + 1)
+                .join(', ');
+            return t('editor.validation.duplicateKeyField', {positions});
+        }
+        return '';
+    };
+
+    // A refused save brings the first faulty key into view and gives it the focus, clearing a filter
+    // that hides any of them.
+    useEffect(() => {
+        if (!keyProblemsFocusRequest) {
+            return;
+        }
+        const faulty = Object.keys(findKeyProblems(entries)).map(Number).sort((a, b) => a - b);
+        if (faulty.length === 0) {
+            return;
+        }
+        const focusFirst = () => {
+            const element = inputRefs.current[faulty[0]]?.key;
+            if (element && element.isConnected) {
+                element.focus();
+                element.scrollIntoView?.({block: 'center', behavior: scrollBehavior()});
+            }
+        };
+        if (filtering && faulty.some(index => !matchesCfgFilter(entries[index], filter, isSecretKey))) {
+            setFilter('');
+            window.requestAnimationFrame(() => window.requestAnimationFrame(focusFirst));
+        } else {
+            focusFirst();
+        }
+        // Only on a new request: typing in a key must not take the focus back.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [keyProblemsFocusRequest]);
+
+    const showRequiredLegend = shownIndices.some(index => {
+        const entry = entries[index];
+        return (entry.type?.value ?? entry.type) === 'property' && isRequiredWithoutDefault(propertyMap.get(entry.key?.value ?? entry.key));
+    });
+
+    // Said in the table when no row is shown, rather than an empty grid.
+    let emptyTableMessage = null;
+    if (shownIndices.length === 0) {
+        if (!Array.isArray(entries) || entries.length === 0) {
+            emptyTableMessage = t('editor.tableEmpty.noEntries');
+        } else if (filtering) {
+            emptyTableMessage = t('editor.tableEmpty.noMatch');
+        } else {
+            emptyTableMessage = t('editor.tableEmpty.allHidden', {
+                comments: t('editor.button.toggleComments'),
+                emptyLines: t('editor.button.toggleEmptyLines')
+            });
+        }
+    }
 
     return (
         // minHeight 0, not overflow hidden: the table scrolls in its own box, and a hidden overflow
@@ -636,6 +848,11 @@ export const CfgEditor = ({
                 </div>
             </div>
             <div role="status" data-cy="cfg-reorder-status" style={VISUALLY_HIDDEN_STYLE}>{reorderAnnouncement}</div>
+            {showRequiredLegend && (
+                <Typography variant="caption" data-cy="cfg-required-legend" style={{color: 'var(--color-gray_dark)'}}>
+                    {t('editor.required.legend')}
+                </Typography>
+            )}
 
             {/* The revealed-secret overlay closes when the focus moves: it could cover the next row's
                 field (WCAG 2.4.11). */}
@@ -662,7 +879,13 @@ export const CfgEditor = ({
                             const valueNode = entry.value;
                             const isEncrypted = valueNode?.encrypted;
                             const isMasked = Boolean(isEncrypted) || (type === 'property' && isSecretKey(key));
-                            const isSelected = selectedIndex === index;
+                            const isSelected = selectedShown === index;
+                            const keyProblem = keyProblemMessage(index);
+                            const keyErrorId = `cfg-key-error-${index}`;
+                            const propertyDefinition = type === 'property' ? propertyMap.get(key) : undefined;
+                            const valueHint = valueHintFor(propertyDefinition, t);
+                            const valueHintId = `cfg-value-hint-${index}`;
+                            const valueRequired = isRequiredWithoutDefault(propertyDefinition);
 
                             const commentValue = type === 'comment' && value.startsWith('#') ? value.substring(1).trimStart() : value;
                             const isSecretVisible = visibleSecrets[index];
@@ -682,6 +905,7 @@ export const CfgEditor = ({
                                     // Moonstone makes every row a Tab stop with nothing to do on it.
                                     tabIndex={undefined}
                                     data-cy={`cfg-row-${index}`}
+                                    aria-current={isSelected ? 'true' : undefined}
                                     style={rowStyle}
                                     className={draggedIndex === index ? "moonstone-drag" : ""}
                                     draggable={dragArmedIndex === index}
@@ -695,7 +919,10 @@ export const CfgEditor = ({
                                         off while filtering, since only part of the rows is shown. */}
                                     <TableBodyCell
                                         data-cy={`cfg-drag-zone-${index}`}
-                                        style={{ ...cfgRowIconCellStyle, ...CFG_COLUMN_WIDTHS.drag, cursor: filtering ? 'default' : 'grab' }}
+                                        data-selected={isSelected ? 'true' : undefined}
+                                        // The selected row has a bar as well as its tint, so that the selection is
+                                        // not shown by colour alone (WCAG 1.4.1); a border, kept in forced colours.
+                                        style={{ ...cfgRowIconCellStyle, ...CFG_COLUMN_WIDTHS.drag, cursor: filtering ? 'default' : 'grab', borderLeft: `3px solid ${isSelected ? 'var(--color-accent_dark_contrast)' : 'transparent'}` }}
                                         onMouseDown={() => { if (!filtering) setDragArmedIndex(index); }}
                                         onTouchStart={() => { if (!filtering) setDragArmedIndex(index); }}
                                     >
@@ -728,7 +955,8 @@ export const CfgEditor = ({
                                     </TableBodyCell>
 
                                     <TableBodyCell style={{ ...cfgRowIconCellStyle, ...CFG_COLUMN_WIDTHS.type }}>
-                                        {type === 'comment' && <Comments size="small" style={{ color: cfgCommentColor }} />}
+                                        {/* Decorative: the row's field is named as a comment. */}
+                                        {type === 'comment' && <Comments size="small" aria-hidden="true" focusable="false" style={{ color: cfgCommentColor }} />}
                                     </TableBodyCell>
 
                                     {type === 'comment' ? (
@@ -782,17 +1010,20 @@ export const CfgEditor = ({
                                     ) : (
                                         <>
                                             <TableBodyCell style={{ ...cfgRowBaseCellStyle, ...CFG_COLUMN_WIDTHS.property }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%', minWidth: 0 }}>
                                                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', width: '100%' }}>
                                                     <AutoResizeTextArea
                                                         inputRef={el => setInputRef(index, 'key', el)}
                                                         data-cy={`cfg-key-${index}`}
                                                         aria-label={t('editor.aria.key', {position: index + 1})}
+                                                        aria-invalid={keyProblem ? 'true' : undefined}
+                                                        aria-describedby={keyProblem ? keyErrorId : undefined}
                                                         value={key}
                                                         onChange={e => onUpdate(index, 'key', e.target.value)}
                                                         onFocus={() => handleInputFocus(index)}
                                                         preventNewlines={true}
                                                         placeholder={t('editor.placeholder.key')}
-                                                        style={cfgTextInputStyle}
+                                                        style={keyProblem ? {...cfgTextInputStyle, border: `2px solid ${cfgErrorColor}`} : cfgTextInputStyle}
                                                     />
                                                     {propertyMap.get(key) && (
                                                         <Tooltip label={<CfgMetatypeInfoTooltip property={propertyMap.get(key)} />}>
@@ -828,14 +1059,25 @@ export const CfgEditor = ({
                                                         </Tooltip>
                                                     )}
                                                 </div>
+                                                {keyProblem && (
+                                                    <Typography id={keyErrorId} data-cy={`cfg-key-error-${index}`} variant="caption" style={{color: cfgErrorColor}}>
+                                                        {keyProblem}
+                                                    </Typography>
+                                                )}
+                                                </div>
                                             </TableBodyCell>
 
                                             <TableBodyCell data-cy={`cfg-value-cell-${index}`} style={{ ...cfgRowBaseCellStyle, ...CFG_COLUMN_WIDTHS.value }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%', minWidth: 0 }}>
                                                 <div
-                                                    style={{ display: 'flex', alignItems: 'flex-start', width: '100%', position: 'relative' }}
+                                                    style={{ display: 'flex', alignItems: 'flex-start', gap: '4px', width: '100%', position: 'relative' }}
                                                     onMouseEnter={(e) => (isMasked && isSecretVisible) ? handleMouseEnter(e, value) : null}
                                                     onMouseLeave={() => setOverlay(null)}
                                                 >
+                                                    {/* The mark sits by the value it is about, which carries aria-required. */}
+                                                    {valueRequired && (
+                                                        <span aria-hidden="true" data-cy={`cfg-required-${index}`} style={{color: cfgErrorColor, fontWeight: 700, lineHeight: '32px', flexShrink: 0}}>*</span>
+                                                    )}
                                                     {isMasked ? (
                                                         <div
                                                             style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '4px' }}
@@ -854,6 +1096,8 @@ export const CfgEditor = ({
                                                                 onFocus={() => handleInputFocus(index)}
                                                                 placeholder={t('editor.placeholder.value')}
                                                                 aria-label={t('editor.aria.value', {name})}
+                                                                aria-required={valueRequired ? 'true' : undefined}
+                                                                aria-describedby={valueHint ? valueHintId : undefined}
                                                                 // Keeps the browser from filling in the admin's saved password.
                                                                 autoComplete="new-password"
                                                                 spellCheck={false}
@@ -881,10 +1125,18 @@ export const CfgEditor = ({
                                                             // preventNewlines={true} // Allow newlines for values!
                                                             placeholder={t('editor.placeholder.value')}
                                                             aria-label={t('editor.aria.value', {name})}
+                                                            aria-required={valueRequired ? 'true' : undefined}
+                                                            aria-describedby={valueHint ? valueHintId : undefined}
                                                             style={cfgTextInputStyle}
                                                         />
                                                     )}
 
+                                                </div>
+                                                {valueHint && (
+                                                    <Typography id={valueHintId} data-cy={`cfg-value-hint-${index}`} variant="caption" style={{color: 'var(--color-gray_dark)'}}>
+                                                        {valueHint}
+                                                    </Typography>
+                                                )}
                                                 </div>
                                             </TableBodyCell>
 
@@ -944,13 +1196,14 @@ export const CfgEditor = ({
                                         <WithTooltip label={t('editor.aria.delete', {name})}>
                                             <Button
                                                 data-cy={`cfg-delete-${index}`}
-                                                icon={<Close />}
+                                                // A trash can: the X also closes the dialogs (WCAG 3.2.4).
+                                                icon={<Delete />}
                                                 variant="ghost"
                                                 color="danger"
                                                 aria-label={t('editor.aria.delete', {name})}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    handleDeleteProperty([index]);
+                                                    requestDelete(index);
                                                 }}
                                             />
                                         </WithTooltip>
@@ -959,6 +1212,16 @@ export const CfgEditor = ({
                                 </TableRow>
                             );
                         })}
+                        {emptyTableMessage && (
+                            <TableRow tabIndex={undefined} data-cy="cfg-table-empty">
+                                {/* headers="": a screen reader otherwise reads the six column headers first. */}
+                                <TableBodyCell colSpan={6} headers="" style={{...cfgRowBaseCellStyle, justifyContent: 'center', padding: '16px'}}>
+                                    <Typography variant="body" style={{color: 'var(--color-gray_dark)', whiteSpace: 'normal'}}>
+                                        {emptyTableMessage}
+                                    </Typography>
+                                </TableBodyCell>
+                            </TableRow>
+                        )}
                     </TableBody>
                 </Table>
             </div>
@@ -972,7 +1235,10 @@ export const CfgEditor = ({
                 onAddProperty={() => handleAdd('property', '', '')}
                 onAddComment={() => handleAdd('comment', undefined, '# ')}
                 onAddEmptyLine={() => handleAdd('empty', undefined, '')}
+                insertDescriptionId={insertDescriptionId}
             />
+            {/* hidden, not visually hidden: read through aria-describedby only, not as stray text. */}
+            <span id={insertDescriptionId} hidden>{insertDescription}</span>
             <CfgMetatypePropertyDialog
                 open={isMetatypeDialogOpen}
                 properties={availableMetatypeProperties}
