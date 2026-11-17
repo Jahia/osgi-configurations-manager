@@ -1,0 +1,10 @@
+# For the oldest supported Jahia, 8.2.2.x (run with JAHIA_IMAGE=jahia/jahia-ee:8.2.2.3).
+# That release ships jcontent 3.2.0, and the module requires jcontent 3.5.0 or later: the
+# Moonstone library an older jcontent shares is too old for the UI (React error #130).
+# jcontent 3.5.0 is the minimum, so it is the version tested here; it needs app-shell 2.7 and
+# graphql-dxm-provider 3.5, which 8.2.2.3 already has (3.3.0 and 3.7.0).
+- addMavenRepository: 'https://devtools.jahia.com/nexus/content/groups/public/@id=Public'
+- installOrUpgradeBundle: 'mvn:org.jahia.modules/jcontent/3.5.0'
+  autoStart: true
+  uninstallPreviousVersion: true
+- include: 'provisioning.yml'

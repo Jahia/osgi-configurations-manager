@@ -24,7 +24,11 @@ jsErrorsLogger.enable();
 // Define allowed JS warnings to ignore them in the logs
 jsErrorsLogger.setAllowedJsWarnings([
     'Unsatisfied version',
-    'No satisfying version'
+    'No satisfying version',
+    // Jahia 8.2.2.x: its own admin UI bundles (app-shell, jahia-administration, jahia-dashboard,
+    // jahia-ui-root, jcontent) each declare a GraphQL fragment named SiteInfo, and graphql-tag warns
+    // on every page. The module declares no such fragment.
+    'fragment with name SiteInfo already exists'
 ]);
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires

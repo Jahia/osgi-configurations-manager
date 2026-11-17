@@ -69,6 +69,21 @@ source set-env.sh
 | `JAHIA_LICENSE_FILE` | Path to a Jahia EE licence XML. Both `run-e2e-*.sh` wrappers fall back to a hardcoded path that only exists on the original author's machine, so set this. A 30-day demo licence is enough. |
 | `JAHIA_IMAGE` | Jahia image to run. The CI workflow uses the public `jahia/jahia-ee:8.2.3.2`; override it to test against another version. |
 
+## Running on the oldest supported Jahia (8.2.2.x)
+
+The module supports Jahia 8.2.2.3 and later. Jahia 8.2.2.x ships jcontent 3.2.0 while the module
+requires 3.5.0, so use the manifest that upgrades it:
+
+```bash
+export JAHIA_IMAGE=jahia/jahia-ee:8.2.2.3
+export MANIFEST=provisioning-manifest-jahia-8.2.2.yml
+```
+
+If another Jahia already listens on port 8080, give the container another host port with a compose
+override (`ports: !override ['127.0.0.1:18083:8080']`, passed through `COMPOSE_FILE`) and run
+`env.run.sh` with `JAHIA_URL` and `JAHIA_PROCESSING_URL` set to `http://localhost:18083`: the
+Cypress `baseUrl` follows `JAHIA_URL`.
+
 The suite needs a licence allowing **4 concurrent users** — `root` plus the three scoped users the
 authorization specs provision. A licence capped below that fails specs 08 and 09 with what looks like
 an unrelated UI error, so check this first if those two are the only ones failing.
