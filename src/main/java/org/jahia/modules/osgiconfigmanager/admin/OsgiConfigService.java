@@ -525,10 +525,12 @@ public class OsgiConfigService {
 
     /**
      * The file name is authorized, but the PID it resolves to is what the lookup reports on, and the
-     * two can disagree: a wildcard rule is matched on the file name, so {@code org.acme.secret-x.cfg}
-     * passes {@code org.acme.secret.*} while configuring the factory {@code org.acme.secret}. The
-     * resolved PID and factory PID are refused, as an unauthorized read, when the file filter would
-     * refuse their own file, the manager's own PID included (root keeps that one, as for reads).
+     * two can disagree: Configuration Admin answers with the PID it loaded the file under, which the
+     * name does not have to spell. (The filter now refuses by itself the factory file of a PID a
+     * wildcard rule hides, {@code org.acme.secret-x.cfg} under {@code org.acme.secret.*}; this check
+     * stays as the one made on the resolved PID.) The resolved PID and factory PID are refused, as
+     * an unauthorized read, when the file filter would refuse their own file, the manager's own PID
+     * included (root keeps that one, as for reads).
      *
      * <p>Under a white list the file itself was granted by name, and the white list stays exact on
      * purpose: the factory PID of a granted instance is not refused for being absent from it. Only
@@ -1259,6 +1261,11 @@ public class OsgiConfigService {
         if (trimmedFilename.contains("/") || trimmedFilename.contains("\\") || trimmedFilename.contains("..")) {
             throw new IOException(INVALID_FILENAME_MESSAGE + filename);
         }
+        // A line break took the name out of a wildcard blacklist entry ('*' stopped at it) and into
+        // the logs as a line of its own. FileInstall loads no such file, so none is a configuration.
+        if (trimmedFilename.chars().anyMatch(OsgiConfigService::isControlOrLineSeparator)) {
+            throw new IOException(INVALID_FILENAME_MESSAGE + filename);
+        }
 
         try {
             Path candidatePath = Path.of(trimmedFilename).normalize();
@@ -1274,6 +1281,11 @@ public class OsgiConfigService {
         }
 
         return trimmedFilename;
+    }
+
+    /** C0, DEL and C1 controls, plus the Unicode line and paragraph separators. */
+    private static boolean isControlOrLineSeparator(int character) {
+        return Character.isISOControl(character) || character == 0x2028 || character == 0x2029;
     }
 
     private boolean configPathExists(String filename) {

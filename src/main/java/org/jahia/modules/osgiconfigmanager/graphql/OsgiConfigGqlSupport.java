@@ -42,7 +42,9 @@ final class OsgiConfigGqlSupport {
     // Absolute unix paths of >=2 segments (e.g. /opt/karaf/etc/x.cfg), whatever characters a segment
     // uses (non-ASCII included), and Windows paths (C:\...).
     private static final Pattern ABSOLUTE_PATH = Pattern.compile("(?:/[^/\\s\"'<>]+){2,}|[A-Za-z]:\\\\[^\\s\"]+");
-    private static final Pattern CONTROL_CHARACTERS = Pattern.compile("\\p{Cntrl}");
+    // \p{Cc} is C0, DEL and C1 (\p{Cntrl} alone stops at ASCII and leaves NEL), plus the two
+    // Unicode separators a log viewer may also break a line on.
+    private static final Pattern CONTROL_CHARACTERS = Pattern.compile("[\\p{Cc}\\u2028\\u2029]");
 
     private OsgiConfigGqlSupport() {
     }
@@ -139,11 +141,12 @@ final class OsgiConfigGqlSupport {
             return new OsgiConfigGqlException(OsgiConfigGqlException.CONFLICT, sanitizePath(e.getMessage()));
         }
         if (e instanceof ConfigAccessDeniedException) {
-            LOGGER.warn("[AUDIT] Access denied: {}", e.getMessage());
+            // The message quotes the name the caller sent: see auditValue.
+            LOGGER.warn("[AUDIT] Access denied: {}", auditValue(e.getMessage()));
             return new OsgiConfigGqlException(OsgiConfigGqlException.FORBIDDEN, sanitizePath(e.getMessage()));
         }
         if (e instanceof IOException && !(e instanceof JsonProcessingException)) {
-            LOGGER.warn("[AUDIT] Request rejected: {}", e.getMessage());
+            LOGGER.warn("[AUDIT] Request rejected: {}", auditValue(e.getMessage()));
             return new OsgiConfigGqlException(OsgiConfigGqlException.BAD_REQUEST, sanitizePath(e.getMessage()));
         }
         LOGGER.error("[AUDIT] Error in osgiConfigManager GraphQL API", e);

@@ -19,6 +19,16 @@ import java.util.regex.Pattern;
  */
 final class ConfigFileFilter {
 
+    /**
+     * Both lists refuse a name carrying a line break. Without {@code DOTALL}, {@code *} stops at a
+     * line terminator, so {@code org.apache.*} let through {@code org.apache.felix\nx.cfg}: a
+     * blacklist pattern must match across them. A whitelist pattern must not, since matching is
+     * what grants access there. {@code validateFilename} refuses such a name before the filter is
+     * asked; this keeps the filter right on its own.
+     */
+    private static final int BLACKLIST_WILDCARD_FLAGS = Pattern.CASE_INSENSITIVE | Pattern.DOTALL;
+    private static final int WHITELIST_WILDCARD_FLAGS = Pattern.CASE_INSENSITIVE;
+
     private final String selfConfigPid;
 
     // Deeply immutable snapshot → a volatile reference is sufficient for safe publication (S3077 N/A).
@@ -60,10 +70,12 @@ final class ConfigFileFilter {
         List<Pattern> newWhitelistPatterns = new ArrayList<>();
 
         if (properties != null && properties.containsKey("filteredFiles")) {
-            addConfiguredFilenames(newBlacklist, newBlacklistPatterns, (String) properties.get("filteredFiles"));
+            addConfiguredFilenames(newBlacklist, newBlacklistPatterns, (String) properties.get("filteredFiles"),
+                    BLACKLIST_WILDCARD_FLAGS);
         }
         if (properties != null && properties.containsKey("allowedFiles")) {
-            addConfiguredFilenames(newWhitelist, newWhitelistPatterns, (String) properties.get("allowedFiles"));
+            addConfiguredFilenames(newWhitelist, newWhitelistPatterns, (String) properties.get("allowedFiles"),
+                    WHITELIST_WILDCARD_FLAGS);
         }
         boolean newVisualFormattingControlsEnabled =
                 getBooleanProperty(properties, "visualFormattingControlsEnabled", false);
@@ -116,6 +128,12 @@ final class ConfigFileFilter {
      * every admitted extension of the requested stem. Without this, a delegated administrator saved
      * the {@code .yml} spelling of a blacklisted configuration and reconfigured its PID (sibling of
      * SEC-525). The whitelist keeps exact names: widening it would grant access, not refuse it.
+     *
+     * <p>A wildcard entry is tried on the factory PID as well. FileInstall reads
+     * {@code <pid>-<name>.cfg} as a factory configuration of {@code <pid>}, the part before the first
+     * separator. Only exact entries went through {@link #isConfigurationFileOf}, so
+     * {@code org.acme.secret.*} refused {@code org.acme.secret.cfg} and let
+     * {@code org.acme.secret-x.cfg} create an instance of the PID it was written to hide.
      */
     private boolean matchesBlacklist(String filename, FilterConfig fc) {
         if (matchesConfiguredFilename(filename, fc.blacklist, fc.blacklistPatterns)) {
@@ -127,13 +145,33 @@ final class ConfigFileFilter {
             }
         }
         String stem = configurationStem(filename);
+        return matchesAnySpelling(stem, fc.blacklistPatterns)
+                || matchesAnySpelling(factoryStem(stem, '-'), fc.blacklistPatterns)
+                || matchesAnySpelling(factoryStem(stem, '~'), fc.blacklistPatterns);
+    }
+
+    /** Whether a pattern matches {@code stem} under one of the admitted extensions. */
+    private static boolean matchesAnySpelling(String stem, List<Pattern> patterns) {
+        if (stem == null) {
+            return false;
+        }
         for (String extension : OsgiConfigService.SUPPORTED_CONFIG_EXTENSIONS) {
             String spelling = stem + extension;
-            if (fc.blacklistPatterns.stream().anyMatch(pattern -> pattern.matcher(spelling).matches())) {
+            if (patterns.stream().anyMatch(pattern -> pattern.matcher(spelling).matches())) {
                 return true;
             }
         }
         return false;
+    }
+
+    /**
+     * The stem before its first {@code separator}: the PID a factory file configures. Both
+     * separators are tried, so the result does not depend on which one the installer looks for
+     * first in a name carrying both. Null when the stem is not a factory form.
+     */
+    private static String factoryStem(String stem, char separator) {
+        int cut = stem.indexOf(separator);
+        return cut > 0 ? stem.substring(0, cut) : null;
     }
 
     /** The file name without its longest admitted extension, lower-cased: the PID it configures. */
@@ -194,26 +232,27 @@ final class ConfigFileFilter {
         return stem.equals(target) || stem.startsWith(target + "-") || stem.startsWith(target + "~");
     }
 
-    private void addConfiguredFilenames(Set<String> target, List<Pattern> patterns, String csv) {
+    private void addConfiguredFilenames(Set<String> target, List<Pattern> patterns, String csv, int wildcardFlags) {
         if (csv == null || csv.trim().isEmpty()) {
             return;
         }
         for (String entry : csv.split(",")) {
-            addConfigNameAndVariant(target, patterns, entry.trim());
+            addConfigNameAndVariant(target, patterns, entry.trim(), wildcardFlags);
         }
     }
 
-    private void addConfigNameAndVariant(Set<String> target, List<Pattern> patterns, String filename) {
+    private void addConfigNameAndVariant(Set<String> target, List<Pattern> patterns, String filename, int wildcardFlags) {
         if (filename == null || filename.isEmpty()) {
             return;
         }
 
         if (filename.contains("*")) {
-            patterns.add(buildWildcardPattern(filename));
+            patterns.add(buildWildcardPattern(filename, wildcardFlags));
             if (filename.endsWith(OsgiConfigService.DISABLED_SUFFIX)) {
-                patterns.add(buildWildcardPattern(filename.substring(0, filename.length() - OsgiConfigService.DISABLED_SUFFIX.length())));
+                patterns.add(buildWildcardPattern(
+                        filename.substring(0, filename.length() - OsgiConfigService.DISABLED_SUFFIX.length()), wildcardFlags));
             } else {
-                patterns.add(buildWildcardPattern(filename + OsgiConfigService.DISABLED_SUFFIX));
+                patterns.add(buildWildcardPattern(filename + OsgiConfigService.DISABLED_SUFFIX, wildcardFlags));
             }
             return;
         }
@@ -226,7 +265,7 @@ final class ConfigFileFilter {
         }
     }
 
-    private Pattern buildWildcardPattern(String wildcard) {
+    private Pattern buildWildcardPattern(String wildcard, int flags) {
         StringBuilder regex = new StringBuilder("^");
         for (char c : wildcard.toCharArray()) {
             if (c == '*') {
@@ -241,7 +280,7 @@ final class ConfigFileFilter {
         // were made case-insensitive, but wildcards were left case-sensitive, so "org.apache.*"
         // still let "ORG.APACHE.felix.cfg" through on a case-insensitive filesystem (macOS,
         // Windows), where that name resolves to the very file the pattern was meant to hide.
-        return Pattern.compile(regex.toString(), Pattern.CASE_INSENSITIVE);
+        return Pattern.compile(regex.toString(), flags);
     }
 
     private boolean matchesConfiguredFilename(String filename, Set<String> exactMatches, List<Pattern> wildcardPatterns) {

@@ -22,6 +22,24 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **A wildcard blacklist entry hides the factory files of the configurations it matches.** With
+  `filteredFiles = org.acme.secret.*`, `org.acme.secret.cfg` was refused but
+  `org.acme.secret-x.cfg` and `org.acme.secret~x.cfg` were not, and Karaf reads those as factory
+  configurations of `org.acme.secret`. A delegated administrator could therefore create a
+  configuration of a PID the rule was written to hide, and give a component of that PID a second
+  instance with values of their choice (same class as SEC-525). Only exact entries covered the
+  factory forms. A wildcard entry is now also tried on the factory PID of the requested name, the
+  part before its first `-` or `~`, under every admitted extension. `allowedFiles` is unchanged
+  and still matches exact names. A rule such as `jmx.*` now also hides `jmx-<name>.cfg`, the
+  factory files of the PID `jmx`.
+- **A file name can no longer contain a control character.** A name with a line break passed a
+  wildcard blacklist entry, because `*` stopped at the line break: with `filteredFiles =
+  org.apache.*`, a delegated administrator could create
+  `org.apache.felix.eventadmin.impl.EventAdmin-x<line break>y.cfg`. Karaf does not load such a
+  file, so the effect was an oddly named file in `karaf/etc` and forged lines in the log, where a
+  refused name was written as received. Control characters and Unicode line separators are now refused in every file name,
+  blacklist wildcards match across line breaks, and the reason of a refused request is logged
+  with its control characters replaced.
 - **Notifications no longer replace each other, and an error is heard while a dialog is open.**
   A notification replaced the one before it, so a save's confirmation could vanish under the
   warning that followed it. Up to three now stay on screen, each with its own Close button, and an
