@@ -23,7 +23,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   encrypts them again with the target's secret, bound to the target file, so they decrypt on an
   instance with another secret. The import first shows what it would do, file by file: new file
   or replacement, refusals (an import writes each file as a save would), secrets left in clear,
-  values the source could not decrypt. It also compares the Jahia version and, per file, the
+  values the source could not decrypt. An `ENC(...)` on a comment line, such as the templates'
+  "keep it encrypted (ENC(...))" hint, is not a value: it is copied as written, never reported. It also compares the Jahia version and, per file, the
   versions of the bundles that use the configuration (or the one describing it) with the target,
   and lists keys the target's version does not declare. These notes never block. The manager's
   own configuration is never exported nor imported. API: `exportArchive`, `previewArchiveImport`,

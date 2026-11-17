@@ -669,11 +669,18 @@ final class ConfigArchive {
 
     // ---------------------------------------------------------------- helpers
 
+    /**
+     * The encrypted values of a file, comment lines left out as the migration leaves them: a comment
+     * is never delivered, and the templates' "keep it encrypted (ENC(...))" hints are not values.
+     * Counted, each hint was reported as a value the instance could not decrypt.
+     */
     static Set<String> envelopesIn(String content) {
         Set<String> envelopes = new LinkedHashSet<>();
         Matcher matcher = ENVELOPE.matcher(content);
         while (matcher.find()) {
-            envelopes.add(matcher.group());
+            if (!EnvelopeMigration.inComment(content, matcher.start())) {
+                envelopes.add(matcher.group());
+            }
         }
         return envelopes;
     }
