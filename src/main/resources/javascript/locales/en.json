@@ -20,7 +20,12 @@
         "unsaved": "Unsaved Changes",
         "loadingFiles": "Loading configuration files…",
         "loadingFile": "Loading file…",
-        "saving": "Saving…"
+        "saving": "Saving…",
+        "noFileMatches": "No file matches the filter",
+        "fileCount": "Files: {{count}}",
+        "fileListHint": "Arrow keys open each file; with unsaved changes they only move, and Enter opens",
+        "fileUnsaved": "unsaved changes",
+        "unsavedAnnouncement": "{{name}} has unsaved changes"
     },
     "notification": {
         "saveSuccess": "Configuration saved successfully",
@@ -342,7 +347,9 @@
         "showSecrets": "Show the values of the secrets of this file. They are masked again when another file is opened. Masking is visual only: screen readers still read the values.",
         "hideSecrets": "Mask the values of the secrets",
         "tabMovesFocus": "When on, Tab moves the focus out of the editor instead of indenting. Ctrl+M toggles it too (Ctrl+Shift+M on macOS).",
-        "hideMetatypeProperties": "Close the list of available properties"
+        "hideMetatypeProperties": "Close the list of available properties",
+        "markAsDefaultAlready": "Unavailable: this configuration is already a module default",
+        "markAsDefaultModule": "Unavailable: only a local configuration (User) can be marked as default"
     },
     "sidebar": {
         "on": "On",

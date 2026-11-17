@@ -20,7 +20,12 @@
         "unsaved": "Modifiche non salvate",
         "loadingFiles": "Caricamento dei file di configurazione…",
         "loadingFile": "Caricamento del file…",
-        "saving": "Salvataggio…"
+        "saving": "Salvataggio…",
+        "noFileMatches": "Nessun file corrisponde al filtro",
+        "fileCount": "File: {{count}}",
+        "fileListHint": "Le frecce aprono ogni file; con modifiche non salvate si spostano soltanto, e Invio apre",
+        "fileUnsaved": "modifiche non salvate",
+        "unsavedAnnouncement": "{{name}} ha modifiche non salvate"
     },
     "notification": {
         "saveSuccess": "Configurazione salvata con successo",
@@ -321,7 +326,9 @@
         "showSecrets": "Mostra i valori dei segreti di questo file. Vengono nascosti di nuovo all'apertura di un altro file. Il mascheramento è solo visivo: gli screen reader leggono comunque i valori.",
         "hideSecrets": "Nascondi i valori dei segreti",
         "tabMovesFocus": "Se attivo, Tab sposta il focus fuori dall'editor invece di indentare. Anche Ctrl+M lo attiva o disattiva (Ctrl+Maiusc+M su macOS).",
-        "hideMetatypeProperties": "Chiudi l'elenco delle proprietà disponibili"
+        "hideMetatypeProperties": "Chiudi l'elenco delle proprietà disponibili",
+        "markAsDefaultAlready": "Non disponibile: questa configurazione è già una configurazione predefinita del modulo",
+        "markAsDefaultModule": "Non disponibile: solo una configurazione locale (Utente) può essere contrassegnata come predefinita"
     },
     "sidebar": {
         "on": "On",

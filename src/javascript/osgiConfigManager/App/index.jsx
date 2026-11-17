@@ -26,8 +26,8 @@ import { useTranslation } from 'react-i18next';
 import { ToastProvider } from './hooks/useToast';
 import { configFileKind } from './utils/configIdentity';
 
-// A load is announced only once it has lasted this long: every arrow key in the file list and every
-// deep-search keystroke loads, and would speak over the file name or the typing.
+// A load is announced only once it has lasted this long: opening files in a row and every
+// deep-search keystroke load, and would speak over the file name or the typing.
 const LOAD_ANNOUNCE_DELAY_MS = 1000;
 
 // What the editor pane's status region says: a save at once, as it follows an explicit action, a
@@ -109,6 +109,24 @@ const AppContent = () => {
     const paneStatus = usePaneStatus(t, {isSaving, loadingFile, loadingFiles});
     const isConfigFile = Boolean(selectedKind);
     const canMarkAsDefault = Boolean(isConfigFile && selectedConfigState === 'USER');
+    // One id for the editor region's name, on whichever heading is shown: the open file's name or
+    // the empty state.
+    const editorTitleId = React.useId();
+
+    // Leaving the page (reload, closing the tab, signing in again) lost unsaved edits without a
+    // word: the in-app actions ask first, the browser now does too. Only while there is something to
+    // lose, and removed with the module. Route changes inside the Jahia admin are not covered.
+    React.useEffect(() => {
+        if (!hasUnsaved) {
+            return undefined;
+        }
+        const onBeforeUnload = event => {
+            event.preventDefault();
+            event.returnValue = '';
+        };
+        window.addEventListener('beforeunload', onBeforeUnload);
+        return () => window.removeEventListener('beforeunload', onBeforeUnload);
+    }, [hasUnsaved]);
 
     const handleDownloadSelectedFile = React.useCallback(file => {
         if (!file?.name) {
@@ -246,23 +264,27 @@ const AppContent = () => {
                             searchInContent={searchInContent}
                             setSearchInContent={setSearchInContent}
                             loadingFiles={loadingFiles}
+                            hasUnsaved={hasUnsaved}
                         />
 
                         {/* RIGHT PANE: Editor */}
-                        <Paper style={{ ...PANEL_STYLE, ...EDITOR_PANE_FLEX, height: '100%', overflow: 'hidden', marginTop: 0 }}>
+                        {/* A region named by its heading (WCAG 1.3.1); role is explicit as the Paper of
+                            older Moonstone renders a div. */}
+                        <Paper role="region" aria-labelledby={editorTitleId} style={{ ...PANEL_STYLE, ...EDITOR_PANE_FLEX, height: '100%', overflow: 'hidden', marginTop: 0 }}>
                             {/* Outside both branches below, so that it exists before its first text: a
                                 region mounted together with its text is not announced (WCAG 4.1.3). No
                                 aria-busy around it, which makes screen readers hold back live updates. */}
                             <div data-cy="editor-pane-status" role="status" style={VISUALLY_HIDDEN_STYLE}>{paneStatus}</div>
                             {!selectedFile ? (
                                 <div style={EMPTY_STATE_STYLE}>
-                                    <Typography variant="heading">{t('app.selectConfig')}</Typography>
+                                    <Typography id={editorTitleId} component="h2" variant="heading" style={{margin: 0}}>{t('app.selectConfig')}</Typography>
                                     {loadingFiles && <InlineLoader label={t('app.loadingFiles')} />}
                                 </div>
                             ) : (
                                 <>
                                     <SelectedFileHeader
                                         selectedFile={selectedFile}
+                                        titleId={editorTitleId}
                                         selectedConfigState={selectedConfigState}
                                         hasUnsaved={hasUnsaved}
                                         isRawMode={isRawMode}
@@ -302,6 +324,7 @@ const AppContent = () => {
                                         <SelectedFileToolbar
                                             selectedFile={selectedFile}
                                             canMarkAsDefault={canMarkAsDefault}
+                                            configState={selectedConfigState}
                                             isRawMode={isRawMode}
                                             onToggleFile={handleToggleFileClick}
                                             onMarkAsDefault={handleMarkAsDefaultClick}
@@ -428,6 +451,16 @@ const App = () => (
                     outline-offset: -2px;
                     box-shadow: inset 0 0 0 4px var(--color-white);
                 }
+                /* The active option, which Enter opens: the focus stays on the list (aria-activedescendant),
+                   so the browser draws no ring on it (WCAG 2.4.7). Its own ring, inside the row: accent_dark
+                   with a white inner edge, white on the open file, which is filled with accent_dark. */
+                .osgi-file-list .moonstone-TableRow[data-active="true"] {
+                    outline: 2px solid var(--color-accent_dark);
+                    outline-offset: -4px;
+                }
+                .osgi-file-list .moonstone-TableRow[data-active="true"][aria-selected="true"] {
+                    outline-color: var(--color-white);
+                }
                 /* The selected file was white on Moonstone's accent, 2.94:1 (WCAG 1.4.3): accent_dark,
                    5.2:1, hovered or not. In forced colours, where backgrounds go, the system's own
                    selection colours. */
@@ -444,6 +477,12 @@ const App = () => (
                     .osgi-file-list .moonstone-TableRow.moonstone-TableRow-highlighted * {
                         color: HighlightText !important;
                         border-color: HighlightText !important;
+                    }
+                    .osgi-file-list .moonstone-TableRow[data-active="true"] {
+                        outline-color: CanvasText;
+                    }
+                    .osgi-file-list .moonstone-TableRow[data-active="true"][aria-selected="true"] {
+                        outline-color: HighlightText;
                     }
                     /* The visual editor's selected row: its bar, in the system's selection colour. */
                     .osgi-cfg-table [data-selected="true"] {

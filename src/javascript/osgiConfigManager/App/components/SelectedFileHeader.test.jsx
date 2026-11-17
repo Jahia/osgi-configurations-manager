@@ -55,7 +55,7 @@ describe('SelectedFileHeader blocked save', () => {
     // Typing passes through invalid states: the reason waits until they last.
     it('says nothing while the content is only briefly invalid', () => {
         const {rerender} = renderHeader({isYamlValid: false, validationErrors: errors});
-        const status = screen.getByRole('status');
+        const status = document.querySelector('[data-cy="save-blocked-reason"] [role="status"]');
         expect(status.textContent).toBe('');
 
         rerender(
@@ -168,3 +168,48 @@ describe('SelectedFileHeader unavailable buttons', () => {
         expect(onCancel).not.toHaveBeenCalled();
     });
 });
+
+describe('SelectedFileHeader title and unsaved changes', () => {
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => jest.useRealTimers());
+
+    it('makes the file name a level 2 heading with the given id, and shows the whole path', () => {
+        renderHeader({titleId: 'editor-title', hasUnsaved: false});
+
+        const heading = screen.getByRole('heading', {level: 2, name: 'org.example.yml'});
+        expect(heading.id).toBe('editor-title');
+        expect(screen.getByText('/etc/org.example.yml')).toBeInTheDocument();
+        expect(document.querySelector('[data-cy="unsaved-indicator"]')).toBeNull();
+    });
+
+    it('shows the unsaved chip outside the heading and announces it once it lasts, once', () => {
+        const {rerender} = renderHeader({hasUnsaved: false});
+        const status = document.querySelector('[data-cy="unsaved-status"]');
+        const props = {selectedFile: {name: 'org.example.yml', path: '/etc/org.example.yml'}, selectedConfigState: 'USER', isRawMode: true, isYamlValid: true, validationErrors: [], onSave: jest.fn(), onCancel: jest.fn()};
+
+        rerender(<SelectedFileHeader {...props} hasUnsaved/>);
+        expect(screen.getByText('app.unsaved')).toBeInTheDocument();
+        expect(screen.getByRole('heading', {level: 2}).textContent).toBe('org.example.yml');
+        act(() => jest.advanceTimersByTime(999));
+        expect(status.textContent).toBe('');
+        act(() => jest.advanceTimersByTime(1));
+        expect(status.textContent).toContain('app.unsavedAnnouncement');
+        act(() => jest.advanceTimersByTime(5000));
+        expect(status.textContent).toBe('');
+
+        // Typing back and forth: not announced again.
+        rerender(<SelectedFileHeader {...props} hasUnsaved={false}/>);
+        act(() => jest.advanceTimersByTime(500));
+        rerender(<SelectedFileHeader {...props} hasUnsaved/>);
+        act(() => jest.advanceTimersByTime(2000));
+        expect(status.textContent).toBe('');
+
+        // Clean for a while (a save), then edited again: announced again.
+        rerender(<SelectedFileHeader {...props} hasUnsaved={false}/>);
+        act(() => jest.advanceTimersByTime(2000));
+        rerender(<SelectedFileHeader {...props} hasUnsaved/>);
+        act(() => jest.advanceTimersByTime(1000));
+        expect(status.textContent).toContain('app.unsavedAnnouncement');
+    });
+});
+

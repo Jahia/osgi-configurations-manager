@@ -20,7 +20,12 @@
         "unsaved": "Alterações não salvas",
         "loadingFiles": "Carregando arquivos de configuração…",
         "loadingFile": "Carregando arquivo…",
-        "saving": "Salvando…"
+        "saving": "Salvando…",
+        "noFileMatches": "Nenhum arquivo corresponde ao filtro",
+        "fileCount": "Arquivos: {{count}}",
+        "fileListHint": "As setas abrem cada arquivo; com alterações não salvas apenas se movem, e Enter abre",
+        "fileUnsaved": "alterações não salvas",
+        "unsavedAnnouncement": "{{name}} tem alterações não salvas"
     },
     "notification": {
         "saveSuccess": "Configuração salva com sucesso",
@@ -321,7 +326,9 @@
         "showSecrets": "Mostrar os valores dos segredos deste arquivo. Eles voltam a ser ocultados ao abrir outro arquivo. O mascaramento é apenas visual: os leitores de tela continuam a ler os valores.",
         "hideSecrets": "Ocultar os valores dos segredos",
         "tabMovesFocus": "Ativado, Tab move o foco para fora do editor em vez de indentar. Ctrl+M também alterna (Ctrl+Shift+M no macOS).",
-        "hideMetatypeProperties": "Fechar a lista de propriedades disponíveis"
+        "hideMetatypeProperties": "Fechar a lista de propriedades disponíveis",
+        "markAsDefaultAlready": "Indisponível: esta configuração já é uma configuração padrão de módulo",
+        "markAsDefaultModule": "Indisponível: apenas uma configuração local (Utilizador) pode ser marcada como padrão"
     },
     "sidebar": {
         "on": "Ligado",

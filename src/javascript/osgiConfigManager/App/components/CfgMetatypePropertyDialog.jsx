@@ -234,7 +234,7 @@ export const CfgMetatypePropertyDialog = ({
                         flexDirection: 'column',
                         gap: '8px'
                     }}>
-                        <Typography variant="subheading" weight="bold">{t('editor.metatype.cfgPicker.customTitle')}</Typography>
+                        <Typography component="h3" variant="subheading" weight="bold" style={{margin: 0}}>{t('editor.metatype.cfgPicker.customTitle')}</Typography>
                         {/* Mounted before the message, so it is announced; tied to the field above. */}
                         <div role="status">
                             {trimmedQuery && customAlreadyExists && (

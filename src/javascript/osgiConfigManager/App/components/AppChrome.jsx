@@ -89,7 +89,9 @@ export const FLOATING_TOOLTIP_STYLE = {
     color: CHROME_TOKENS.tooltipTextColor,
     borderRadius: '4px',
     zIndex: 1000000,
-    whiteSpace: 'nowrap',
+    // Wraps rather than running off the screen at 320px (WCAG 1.4.10).
+    maxWidth: 'calc(100vw - 32px)',
+    overflowWrap: 'anywhere',
     fontSize: '0.875rem',
     boxShadow: '0 2px 5px var(--color-dark20)',
     pointerEvents: 'none'
@@ -207,22 +209,51 @@ export const StatusBanner = ({tone = 'info', message, dataCy}) => {
     );
 };
 
+const PREVIEW_HIDE_DELAY_MS = 150;
+
+/**
+ * A text cut with an ellipsis, whose full text a mouse user sees in a preview on hover.
+ *
+ * The preview meets WCAG 1.4.13: it can be hovered (the pointer may move onto it without it
+ * closing), and Escape dismisses it wherever the focus is, until the pointer leaves. A click on it
+ * is a click on the text it covers. It is aria-hidden: the text itself holds the full string.
+ * With `wrap`, the text wraps instead of being cut, and there is no preview: the file list does it
+ * for the row the keyboard is on, which a hover preview cannot serve.
+ */
 export const OverflowPreviewText = ({
     text,
     dataCy,
     showPreview = true,
+    wrap = false,
     typographyProps = {},
     textStyle = {},
     wrapperStyle = {}
 }) => {
     const textRef = React.useRef(null);
+    const wrapperRef = React.useRef(null);
+    const hideTimerRef = React.useRef(null);
+    const dismissedRef = React.useRef(false);
     const [previewPosition, setPreviewPosition] = React.useState(null);
 
-    const hidePreview = React.useCallback(() => setPreviewPosition(null), []);
+    const cancelHide = React.useCallback(() => {
+        window.clearTimeout(hideTimerRef.current);
+    }, []);
+    const hidePreview = React.useCallback(() => {
+        cancelHide();
+        setPreviewPosition(null);
+    }, [cancelHide]);
+    // The pointer crosses from the text onto the preview: leaving one must not close it at once.
+    const hidePreviewSoon = React.useCallback(() => {
+        cancelHide();
+        hideTimerRef.current = window.setTimeout(() => {
+            dismissedRef.current = false;
+            setPreviewPosition(null);
+        }, PREVIEW_HIDE_DELAY_MS);
+    }, [cancelHide]);
 
     const showPreviewIfNeeded = React.useCallback(event => {
-        if (!showPreview) {
-            hidePreview();
+        cancelHide();
+        if (!showPreview || wrap || dismissedRef.current) {
             return;
         }
 
@@ -238,35 +269,56 @@ export const OverflowPreviewText = ({
         }
 
         const rect = element.getBoundingClientRect();
+        // Over the text it completes, its own padding aside.
         setPreviewPosition({
-            top: rect.top,
-            left: rect.left + 20
+            top: rect.top - 4,
+            left: rect.left - 8
         });
-    }, [hidePreview, showPreview]);
+    }, [cancelHide, hidePreview, showPreview, wrap]);
 
     React.useEffect(() => {
         if (!previewPosition) {
             return undefined;
         }
 
+        const onKeyDown = event => {
+            // Not stopped: the editor and the dialogs still get their Escape.
+            if (event.key === 'Escape') {
+                dismissedRef.current = true;
+                hidePreview();
+            }
+        };
         window.addEventListener('scroll', hidePreview, true);
-        return () => window.removeEventListener('scroll', hidePreview, true);
+        document.addEventListener('keydown', onKeyDown, true);
+        return () => {
+            window.removeEventListener('scroll', hidePreview, true);
+            document.removeEventListener('keydown', onKeyDown, true);
+        };
     }, [hidePreview, previewPosition]);
+
+    React.useEffect(() => () => window.clearTimeout(hideTimerRef.current), []);
+
+    const wrapStyle = wrap ? {whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'break-word'} : {overflow: 'hidden', textOverflow: 'ellipsis'};
 
     return (
         <div
+            ref={wrapperRef}
             data-cy={dataCy}
             onMouseEnter={showPreviewIfNeeded}
-            onMouseLeave={hidePreview}
+            onMouseLeave={() => {
+                if (!previewPosition) {
+                    dismissedRef.current = false;
+                }
+                hidePreviewSoon();
+            }}
             style={{position: 'relative', minWidth: 0, ...wrapperStyle}}
         >
             <Typography
                 {...typographyProps}
-                isNowrap
+                isNowrap={!wrap}
                 ref={textRef}
                 style={{
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
+                    ...wrapStyle,
                     ...textStyle
                 }}
             >
@@ -275,10 +327,26 @@ export const OverflowPreviewText = ({
             {previewPosition && createPortal(
                 <div
                     data-cy="floating-text-preview"
+                    aria-hidden="true"
                     style={{
                         ...FLOATING_TOOLTIP_STYLE,
+                        pointerEvents: 'auto',
+                        cursor: 'pointer',
                         top: previewPosition.top,
                         left: previewPosition.left
+                    }}
+                    onMouseEnter={cancelHide}
+                    onMouseLeave={hidePreviewSoon}
+                    // The preview lives under body: a press on it took the focus out of the list, and
+                    // the arrow keys then did nothing. It keeps the focus, and the click gives it to the
+                    // list as a click on the row itself would.
+                    onMouseDown={event => event.preventDefault()}
+                    onClick={event => {
+                        // React passes a portal's events up to the row too: it would open the file twice.
+                        event.stopPropagation();
+                        hidePreview();
+                        wrapperRef.current?.click();
+                        wrapperRef.current?.closest('[tabindex]')?.focus({preventScroll: true});
                     }}
                 >
                     {text}

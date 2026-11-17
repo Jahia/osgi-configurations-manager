@@ -20,7 +20,12 @@
         "unsaved": "Modifications non enregistrées",
         "loadingFiles": "Chargement des fichiers de configuration…",
         "loadingFile": "Chargement du fichier…",
-        "saving": "Enregistrement…"
+        "saving": "Enregistrement…",
+        "noFileMatches": "Aucun fichier ne correspond au filtre",
+        "fileCount": "Fichiers : {{count}}",
+        "fileListHint": "Les flèches ouvrent chaque fichier ; avec des modifications non enregistrées, elles ne font que déplacer, et Entrée ouvre",
+        "fileUnsaved": "modifications non enregistrées",
+        "unsavedAnnouncement": "{{name}} a des modifications non enregistrées"
     },
     "notification": {
         "saveSuccess": "Configuration enregistrée avec succès",
@@ -342,7 +347,9 @@
         "showSecrets": "Afficher les valeurs des secrets de ce fichier. Elles sont de nouveau masquées à l'ouverture d'un autre fichier. Le masquage est seulement visuel : les lecteurs d'écran lisent toujours les valeurs.",
         "hideSecrets": "Masquer les valeurs des secrets",
         "tabMovesFocus": "Activé, Tab sort de l'éditeur au lieu d'indenter. Ctrl+M bascule aussi ce mode (Ctrl+Maj+M sur macOS).",
-        "hideMetatypeProperties": "Fermer la liste des propriétés disponibles"
+        "hideMetatypeProperties": "Fermer la liste des propriétés disponibles",
+        "markAsDefaultAlready": "Indisponible : cette configuration est déjà une configuration par défaut de module",
+        "markAsDefaultModule": "Indisponible : seule une configuration locale (Utilisateur) peut être marquée par défaut"
     },
     "sidebar": {
         "on": "On",

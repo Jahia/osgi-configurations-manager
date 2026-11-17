@@ -87,8 +87,10 @@ const RAW_EDITOR_CANVAS_STYLE = {
 // content's height, and the editor, absolutely positioned in its canvas, collapsed to nothing.
 const RAW_EDITOR_STACK_BELOW_PX = 720;
 
-const RAW_EDITOR_STACKED_MAIN_PANEL_STYLE = { flex: '1 1 55%', minHeight: '300px' };
-const RAW_EDITOR_STACKED_PANEL_STYLE = { flex: '1 1 45%', width: 'auto', minHeight: 0 };
+// Stacked, the editor and the panel share the height: with the editor's 300px kept whole, a short
+// window left the panel no room for a single property.
+const RAW_EDITOR_STACKED_MAIN_PANEL_STYLE = { flex: '1 1 55%', minHeight: '180px' };
+const RAW_EDITOR_STACKED_PANEL_STYLE = { flex: '1 1 45%', width: 'auto', minHeight: '140px' };
 
 const RAW_EDITOR_PANEL_STYLE = {
     flex: '0 0 340px',

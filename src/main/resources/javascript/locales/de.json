@@ -20,7 +20,12 @@
         "unsaved": "Ungespeicherte Änderungen",
         "loadingFiles": "Konfigurationsdateien werden geladen…",
         "loadingFile": "Datei wird geladen…",
-        "saving": "Wird gespeichert…"
+        "saving": "Wird gespeichert…",
+        "noFileMatches": "Keine Datei entspricht dem Filter",
+        "fileCount": "Dateien: {{count}}",
+        "fileListHint": "Die Pfeiltasten öffnen jede Datei; bei nicht gespeicherten Änderungen bewegen sie nur, und die Eingabetaste öffnet",
+        "fileUnsaved": "nicht gespeicherte Änderungen",
+        "unsavedAnnouncement": "{{name}} hat nicht gespeicherte Änderungen"
     },
     "notification": {
         "saveSuccess": "Konfiguration erfolgreich gespeichert",
@@ -321,7 +326,9 @@
         "showSecrets": "Die Werte der Geheimnisse dieser Datei anzeigen. Beim Öffnen einer anderen Datei werden sie wieder maskiert. Die Maskierung ist nur visuell: Screenreader lesen die Werte weiterhin vor.",
         "hideSecrets": "Die Werte der Geheimnisse maskieren",
         "tabMovesFocus": "Wenn aktiviert, verschiebt Tab den Fokus aus dem Editor, statt einzurücken. Auch Strg+M schaltet um (Ctrl+Umschalt+M unter macOS).",
-        "hideMetatypeProperties": "Liste der verfügbaren Eigenschaften schließen"
+        "hideMetatypeProperties": "Liste der verfügbaren Eigenschaften schließen",
+        "markAsDefaultAlready": "Nicht verfügbar: Diese Konfiguration ist bereits eine Modul-Standardkonfiguration",
+        "markAsDefaultModule": "Nicht verfügbar: Nur eine lokale Konfiguration (Benutzer) kann als Standard markiert werden"
     },
     "sidebar": {
         "on": "Ein",

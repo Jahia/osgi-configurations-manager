@@ -100,6 +100,29 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Lists are lists, and deleting a row shows a trash can (WCAG 1.3.1, 3.2.4).** The existing
   instances, the property picker and the raw editor's property cards are announced as lists with
   their size. A row's delete button used the X that closes dialogs.
+- **The arrow keys no longer ask to discard unsaved changes at every press (WCAG 3.2.2, 2.4.7).**
+  The arrows, Home and End still open the file they reach, to page through the configurations.
+  With unsaved changes they now only move a ring through the list, and Enter or Space opens the
+  file it is on; a hint for screen readers says so. The row the keyboard is on shows its whole
+  name, on two lines if needed. Clicking the preview of a cut name no longer takes the focus out
+  of the list, which left the arrow keys doing nothing.
+- **Long names can be read in full (WCAG 1.4.13, 1.4.10).** The open file's name and path wrap
+  instead of being cut. In the file list, the preview of a cut name stays open while the pointer
+  moves onto it, a click on it opens the file, and Escape closes it. The path takes a row of its
+  own across the header, and the raw editor's property panel, when it sits under the editor in a
+  narrow window, keeps room for its properties.
+- **The page has a structure to navigate by (WCAG 1.3.1, 4.1.2, 4.1.3).** The file list and the
+  editor are regions with a heading each, and the open file's name is a heading. The header's
+  buttons are no longer announced as a toolbar they did not behave like. Filtering the list
+  announces how many files match, and says so on screen when none does.
+- **Unsaved changes are shown, and leaving the page asks first.** An "Unsaved Changes" label
+  appears beside the open file's name, the file is marked with an asterisk in the list, and the
+  change is announced once. Reloading or closing the page with unsaved changes now asks for
+  confirmation; moving to another page of the Jahia administration still does not.
+- **Mark as Default says why it is unavailable (WCAG 4.1.2, 3.3.2).** It was disabled with no
+  reason and could not be reached by keyboard. It now stays reachable, and its tooltip and its
+  description say that the file is already a module default, or that only a local configuration
+  can be marked as default.
 - **Known limitation:** secrets in the raw editor are masked on screen only. Monaco has no way to
   hide them from screen readers, which still read them; the Show secrets tooltip now says so.
 
