@@ -54,8 +54,10 @@ jobs:
           # ghcr.io/jahia/jahia-ee-dev is a private package: anonymous pull returns 403, and
           # GITHUB_TOKEN only reaches packages that grant this repository access, which it
           # does not — so that route needed an org-level grant or a long-lived PAT.
-          # Pinned to the same version as the jahia-modules parent in pom.xml (8.2.3.2), and
-          # a release rather than a moving -SNAPSHOT, so a run is reproducible.
+          # A release rather than a moving -SNAPSHOT, so a run is reproducible. The module
+          # supports 8.2.2.3 and later (the jahia-modules parent in pom.xml); the oldest one is
+          # tested locally with JAHIA_IMAGE=jahia/jahia-ee:8.2.2.3 and
+          # MANIFEST=provisioning-manifest-jahia-8.2.2.yml (see tests/README.md).
           JAHIA_IMAGE: jahia/jahia-ee:8.2.3.2
           SUPER_USER_PASSWORD: root1234
         run: |

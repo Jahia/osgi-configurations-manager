@@ -7,6 +7,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- **The module installs on Jahia 8.2.2.3 and later.** It required 8.2.3.2 only because it was
+  built against that release; nothing in it needs 8.2.3. It is now built against 8.2.2.3, so the
+  build fails if the code starts using a newer API, and the Cypress suite passes on 8.2.2.3 and
+  8.2.3.2. jcontent 3.5.0 or later is still required: Jahia 8.2.2.x ships 3.2.0, so upgrade
+  jcontent first. See Requirements in the README.
+
 ### Added
 
 - **Export and import several configurations at once, secrets included.** **Export** seals the
