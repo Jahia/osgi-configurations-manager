@@ -308,5 +308,31 @@
             "warning": "Warning:",
             "info": "Information:"
         }
+    },
+    "bundleUsage": {
+        "title": "Used by",
+        "loading": "Looking for the bundles that use this configuration…",
+        "empty": "No bundle uses this configuration",
+        "error": "Could not list the bundles that use this configuration.",
+        "version": "version {{version}}",
+        "componentNamed": "{{kind}} {{name}}",
+        "componentWithStates": "{{kind}} {{name}} ({{states}})",
+        "kind": {
+            "bound": "bound to it",
+            "component": "component",
+            "managedService": "managed service",
+            "managedServiceFactory": "managed service factory",
+            "metatype": "metatype",
+            "other": "other use"
+        },
+        "state": {
+            "active": "active",
+            "satisfied": "satisfied",
+            "unsatisfiedReference": "missing a service",
+            "unsatisfiedConfiguration": "waiting for its configuration",
+            "failedActivation": "failed to start",
+            "disabled": "disabled",
+            "unknown": "unknown state"
+        }
     }
 }

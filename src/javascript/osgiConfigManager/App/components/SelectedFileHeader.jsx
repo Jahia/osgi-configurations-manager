@@ -5,6 +5,7 @@ import {
 } from '@jahia/moonstone';
 import {useTranslation} from 'react-i18next';
 import {ConfigStateBadge} from './ConfigStateBadge';
+import {BundleUsage} from './BundleUsage';
 import {ActionButton} from './ActionButton';
 import {configFileKind} from '../utils/configIdentity';
 import {
@@ -29,6 +30,7 @@ export const SelectedFileHeader = ({
     isRawMode,
     isYamlValid,
     validationErrors = [],
+    isLoadingFile = false,
     onSave,
     onCancel
 }) => {
@@ -76,6 +78,7 @@ export const SelectedFileHeader = ({
                         showTooltip={!['MODULE', 'MODULE_DEFAULT'].includes(selectedConfigState)}
                     />
                 </div>
+                <BundleUsage fileName={selectedFile.name} isLoadingFile={isLoadingFile}/>
             </div>
 
             <div style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', flexShrink: 0}}>

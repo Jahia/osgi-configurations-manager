@@ -7,6 +7,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **The open configuration shows which bundles use it.** Under the file name, a "Used by" line
+  lists each bundle with its version and how it uses the configuration: the bundle Configuration
+  Admin bound it to, the Declarative Services components that take it (with their state: active,
+  missing a service, failed to start...), the ManagedService or ManagedServiceFactory registered
+  for it, and the bundle declaring its Metatype. A factory instance (`<pid>-<name>`,
+  `<pid>~<name>`) is matched on its factory PID. When nothing uses it, the line says so. The list
+  is read-only and follows the same access rule as reading the file; the API field is
+  `bundleUsage(name)`. Before, the Module and Default badges only reflected the file's leading
+  comment and never named a module.
+
 ### Fixed
 
 - **A configuration whose extension is in upper case opens in the right editor.** The file list

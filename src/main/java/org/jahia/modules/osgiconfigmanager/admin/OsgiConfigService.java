@@ -8,7 +8,9 @@ import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.cm.ConfigurationAdmin;
 import org.osgi.service.cm.ManagedServiceFactory;
+import org.osgi.service.component.runtime.ServiceComponentRuntime;
 import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.AttributeDefinition;
 import org.osgi.service.metatype.MetaTypeInformation;
@@ -472,6 +474,46 @@ public class OsgiConfigService {
             result.put(KEY_PROPERTIES, readYamlProperties(filePath));
         }
         return result;
+    }
+
+    /**
+     * The bundles that use the configuration of {@code filename}: bound to it, Declarative Services
+     * components taking it, ManagedService(Factory) registrations, and the Metatype provider.
+     * Read-only, and behind the same authorization as {@link #readFile(String, Locale, boolean)}.
+     * See {@link ConfigurationUsageLookup} for the entries' shape.
+     */
+    public List<Map<String, Object>> findBundleUsage(String filename, boolean isRootUser) throws IOException {
+        String safeFilename = validateFilename(filename);
+        ensureFilenameAllowed(safeFilename, isRootUser, "Access");
+
+        Path filePath = resolveConfigPath(safeFilename);
+        if (!Files.exists(filePath)) {
+            throw new ConfigNotFoundException("File not found: " + safeFilename);
+        }
+
+        BundleContext bundleContext = getBundleContext();
+        if (bundleContext == null) {
+            return Collections.emptyList();
+        }
+        // Looked up per call rather than referenced: a reference would tie this component's
+        // lifecycle, which carries the encryption secret, to services only this read needs.
+        ServiceReference<ConfigurationAdmin> configurationAdminReference = bundleContext.getServiceReference(ConfigurationAdmin.class);
+        ServiceReference<ServiceComponentRuntime> runtimeReference = bundleContext.getServiceReference(ServiceComponentRuntime.class);
+        try {
+            ConfigurationAdmin configurationAdmin = configurationAdminReference == null ? null
+                    : bundleContext.getService(configurationAdminReference);
+            ServiceComponentRuntime runtime = runtimeReference == null ? null
+                    : bundleContext.getService(runtimeReference);
+            return new ConfigurationUsageLookup(bundleContext, configurationAdmin, runtime, metaTypeService)
+                    .find(safeFilename, normalizeConfigFilename(safeFilename));
+        } finally {
+            if (configurationAdminReference != null) {
+                bundleContext.ungetService(configurationAdminReference);
+            }
+            if (runtimeReference != null) {
+                bundleContext.ungetService(runtimeReference);
+            }
+        }
     }
 
     private String getConfigurationPid(String filename) {

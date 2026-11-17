@@ -79,6 +79,24 @@ public class OsgiConfigManagerQuery {
         }
     }
 
+    /**
+     * JSON rather than GraphQL types, like {@link #availableMetatypes()}: Jahia's API scope grants
+     * this module's types by name, and its file is a default configuration that an upgrade does
+     * not rewrite, so a new type would answer "Permission denied" on every existing instance.
+     */
+    @GraphQLField
+    @GraphQLName("bundleUsage")
+    @GraphQLDescription("The bundles that use the configuration of one file, as a JSON array sorted by symbolic name:"
+            + " symbolicName, name, version, and usages (kind BOUND, COMPONENT, MANAGED_SERVICE,"
+            + " MANAGED_SERVICE_FACTORY or METATYPE; detail, the component name or PID; states, for a component)")
+    public String bundleUsage(@GraphQLName("name") @GraphQLNonNull String name) {
+        try {
+            return toJson(service.findBundleUsage(name, caller.isRoot()));
+        } catch (Exception e) {
+            throw OsgiConfigGqlSupport.translate(e);
+        }
+    }
+
     @GraphQLField
     @GraphQLName("availableMetatypes")
     @GraphQLDescription("Metatype definitions a new file can be created from, as a JSON array")

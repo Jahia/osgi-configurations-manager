@@ -8,6 +8,11 @@ jest.mock('react-i18next', () => ({
     })
 }));
 
+// The header lists the bundles using the file; that lookup has its own tests (BundleUsage.test.jsx).
+jest.mock('../api/osgiService', () => ({
+    osgiService: {getBundleUsage: jest.fn(() => new Promise(() => {}))}
+}));
+
 const renderHeader = (props = {}) => render(
     <SelectedFileHeader
         selectedFile={{name: 'org.example.yml', path: '/etc/org.example.yml'}}
@@ -55,7 +60,8 @@ describe('SelectedFileHeader blocked save', () => {
     // Typing passes through invalid states: the reason waits until they last.
     it('says nothing while the content is only briefly invalid', () => {
         const {rerender} = renderHeader({isYamlValid: false, validationErrors: errors});
-        const status = screen.getByRole('status');
+        // The other status in the header is the bundle lookup's.
+        const status = document.querySelector('[data-cy="save-blocked-reason"] [role="status"]');
         expect(status.textContent).toBe('');
 
         rerender(

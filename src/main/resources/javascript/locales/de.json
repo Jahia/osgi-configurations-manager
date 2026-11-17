@@ -308,5 +308,31 @@
             "warning": "Warnung:",
             "info": "Information:"
         }
+    },
+    "bundleUsage": {
+        "title": "Verwendet von",
+        "loading": "Bundles, die diese Konfiguration verwenden, werden gesucht…",
+        "empty": "Kein Bundle verwendet diese Konfiguration",
+        "error": "Die Bundles, die diese Konfiguration verwenden, konnten nicht aufgelistet werden.",
+        "version": "Version {{version}}",
+        "componentNamed": "{{kind}} {{name}}",
+        "componentWithStates": "{{kind}} {{name}} ({{states}})",
+        "kind": {
+            "bound": "daran gebunden",
+            "component": "Komponente",
+            "managedService": "Managed Service",
+            "managedServiceFactory": "Managed Service Factory",
+            "metatype": "Metatype",
+            "other": "andere Verwendung"
+        },
+        "state": {
+            "active": "aktiv",
+            "satisfied": "erfüllt",
+            "unsatisfiedReference": "Dienst fehlt",
+            "unsatisfiedConfiguration": "wartet auf ihre Konfiguration",
+            "failedActivation": "Start fehlgeschlagen",
+            "disabled": "deaktiviert",
+            "unknown": "unbekannter Zustand"
+        }
     }
 }
