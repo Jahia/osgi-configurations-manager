@@ -19,7 +19,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   versions of the bundles that use the configuration (or the one describing it) with the target,
   and lists keys the target's version does not declare. These notes never block. The manager's
   own configuration is never exported nor imported. API: `exportArchive`, `previewArchiveImport`,
-  `importArchive`.
+  `importArchive`. An archive is read as untrusted input: each listed secret is taken once, names
+  are normalized and the same file twice is refused, only bundles the target ties to a file are
+  compared, and export applies the size limits of import.
 
 - **The open configuration shows which bundles use it.** Under the file name, a "Used by" line
   lists each bundle with its version and how it uses the configuration: the bundle Configuration

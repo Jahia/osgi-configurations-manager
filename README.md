@@ -348,11 +348,18 @@ of at least 12 characters. **Import** accepts that archive as well as a single `
   confirm.
 - **Versions.** The archive records the Jahia version and, for each file, the bundles that use its
   configuration with their versions (or, when none does, the bundle describing it). The preview
-  compares them with the target: same version, older, newer, or not installed, plus the other
-  versions installed. When the versions differ and the target describes the configuration, it
+  compares them with the target: same version, older, newer, or no bundle of that name using the
+  configuration there, plus the other versions installed. Only a bundle the target itself ties to
+  the configuration is compared: the preview does not tell the version of any bundle an archive
+  names. When the versions differ and the target describes the configuration, it
   also lists the keys that description does not declare. These notes inform: none of them blocks
   the import.
-- **Limits.** 500 files per archive, 5 MiB per file, 32 MiB per archive.
+- **Limits.** 500 files per archive, 5 MiB per file, 32 MiB per archive and 64 MiB of content
+  once expanded. Export applies the same limits as import, so an archive that was exported can be
+  imported; larger selections go in several archives.
+- **Only import an archive you trust.** Its password protects its content; it does not say who
+  made it. Anyone can build an archive with a password of their choice, and the preview lists the
+  files without showing their content. Importing one writes configuration as its author chose.
 
 The API operations are the mutations `exportArchive(names, password)`,
 `previewArchiveImport(archive, password)` and `importArchive(archive, password, names)`, under

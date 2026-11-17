@@ -65,7 +65,10 @@ final class ConfigArchive {
     static final String ABSENT = "ABSENT";
     static final String UNKNOWN = "UNKNOWN";
 
+    private static final String TOO_LARGE_TO_EXPORT =
+            "The selected files are too large for one archive: export them in several archives";
     private static final Logger LOGGER = LoggerFactory.getLogger(ConfigArchive.class);
+    private static final Pattern LOG_UNSAFE = Pattern.compile("[\\p{Cntrl}\\u2028\\u2029]");
     private static final ObjectMapper MAPPER = new ObjectMapper();
     /** An encrypted value as the manager writes it: no space and no parenthesis inside. */
     private static final Pattern ENVELOPE = Pattern.compile("ENC\\(([^()\\s]+)\\)");
@@ -96,8 +99,14 @@ final class ConfigArchive {
 
         List<Map<String, Object>> files = new ArrayList<>();
         List<Map<String, Object>> warnings = new ArrayList<>();
+        Set<String> exported = new HashSet<>();
+        long totalBytes = 0;
         for (String name : requested) {
             String safeName = service.validateFilename(name);
+            // The same rule as when an archive is opened: an export must never make one an import refuses.
+            if (!exported.add(fileKey(safeName))) {
+                throw new IOException("The file " + safeName + " is selected more than once");
+            }
             if (ConfigFileFilter.isConfigurationFileOf(OsgiConfigService.SELF_CONFIG_PID, safeName)) {
                 throw new ConfigAccessDeniedException("Export denied: " + safeName
                         + " is the manager's own configuration, which holds the encryption secret");
@@ -107,8 +116,14 @@ final class ConfigArchive {
             if (!Files.exists(path)) {
                 throw new ConfigNotFoundException("File not found: " + safeName);
             }
-            if (Files.size(path) > OsgiConfigService.MAX_RAW_CONTENT_BYTES) {
+            long size = Files.size(path);
+            if (size > OsgiConfigService.MAX_RAW_CONTENT_BYTES) {
                 throw new IOException("Export denied: " + safeName + " exceeds the maximum allowed size");
+            }
+            // Before reading it: 500 files of 5 MiB would otherwise all be in memory before any limit applies.
+            totalBytes += size;
+            if (totalBytes > ConfigArchiveCodec.MAX_PAYLOAD_BYTES) {
+                throw new IOException(TOO_LARGE_TO_EXPORT);
             }
             String content = Files.readString(path, StandardCharsets.UTF_8);
 
@@ -149,7 +164,15 @@ final class ConfigArchive {
         payload.put("jahiaVersion", jahiaVersion());
         payload.put("files", files);
 
-        byte[] sealed = ConfigArchiveCodec.seal(MAPPER.writeValueAsBytes(payload), password);
+        // The limits an import applies, so that an archive that was exported can always be imported.
+        byte[] json = MAPPER.writeValueAsBytes(payload);
+        if (json.length > ConfigArchiveCodec.MAX_PAYLOAD_BYTES) {
+            throw new IOException(TOO_LARGE_TO_EXPORT);
+        }
+        byte[] sealed = ConfigArchiveCodec.seal(json, password);
+        if (sealed.length > MAX_ARCHIVE_BYTES) {
+            throw new IOException(TOO_LARGE_TO_EXPORT);
+        }
         LOGGER.info("[AUDIT] Exported {} configuration file(s) into an archive", files.size());
 
         Map<String, Object> result = new LinkedHashMap<>();
@@ -263,8 +286,11 @@ final class ConfigArchive {
                 reference = "NONE";
                 referenceBundles = List.of();
             }
+            Set<String> usedHere = bundlesUsingHere(file.name, isRootUser);
+            BundleContext context = service.getBundleContext();
+            Bundle[] installed = context == null ? null : context.getBundles();
             for (Map<String, Object> bundle : referenceBundles) {
-                comparisons.add(compareBundle(bundle));
+                comparisons.add(compareBundle(bundle, installed, usedHere));
             }
         }
         entry.put("reference", reference);
@@ -313,7 +339,29 @@ final class ConfigArchive {
         return null;
     }
 
-    private Map<String, Object> compareBundle(Map<String, Object> archived) {
+    /**
+     * The symbolic names of the bundles this instance ties to the file's configuration: those the
+     * bundleUsage query would name to this caller. Empty when the caller may not know them.
+     */
+    private Set<String> bundlesUsingHere(String filename, boolean isRootUser) {
+        Set<String> names = new HashSet<>();
+        try {
+            for (Map<String, Object> entry : service.bundleUsageOfName(filename, isRootUser)) {
+                names.add(String.valueOf(entry.get("symbolicName")));
+            }
+        } catch (IOException | RuntimeException e) {
+            LOGGER.debug("No bundle usage for the import preview of {}", logValue(filename), e);
+        }
+        return names;
+    }
+
+    /**
+     * Compares one bundle the archive names with this instance. Only a bundle this instance itself
+     * ties to the configuration is looked up: the archive is the caller's, and comparing any name it
+     * lists told the installed version of any bundle. Another name answers ABSENT, which then
+     * means "no bundle of that name uses this configuration here", installed or not.
+     */
+    static Map<String, Object> compareBundle(Map<String, Object> archived, Bundle[] bundles, Set<String> usedHere) {
         String symbolicName = String.valueOf(archived.get("symbolicName"));
         String archivedVersion = String.valueOf(archived.get("version"));
         Map<String, Object> comparison = new LinkedHashMap<>();
@@ -322,9 +370,7 @@ final class ConfigArchive {
         comparison.put("archiveVersion", archivedVersion);
 
         List<Bundle> installed = new ArrayList<>();
-        BundleContext context = service.getBundleContext();
-        Bundle[] bundles = context == null ? null : context.getBundles();
-        if (bundles != null) {
+        if (bundles != null && usedHere.contains(symbolicName)) {
             for (Bundle bundle : bundles) {
                 if (symbolicName.equals(bundle.getSymbolicName())) {
                     installed.add(bundle);
@@ -439,13 +485,13 @@ final class ConfigArchive {
                 }
                 service.saveFile(file.name, Map.of("rawContent", content), isRootUser);
                 imported.add(file.name);
-                LOGGER.info("[AUDIT] Imported {} from an archive", file.name);
+                LOGGER.info("[AUDIT] Imported {} from an archive", logValue(file.name));
             } catch (IOException | RuntimeException e) {
                 Map<String, String> failure = new LinkedHashMap<>();
                 failure.put("name", name);
                 failure.put("error", clientMessage(e));
                 failed.add(failure);
-                LOGGER.warn("[AUDIT] Import of {} from an archive failed: {}", name, e.getMessage());
+                LOGGER.warn("[AUDIT] Import of {} from an archive failed: {}", logValue(name), logValue(e.getMessage()));
             }
         }
         Map<String, Object> result = new LinkedHashMap<>();
@@ -460,10 +506,25 @@ final class ConfigArchive {
      * replaced: only the manager's own reasons are passed on.
      */
     static String clientMessage(Exception e) {
-        if (e instanceof IOException && !(e instanceof java.nio.file.FileSystemException) && e.getMessage() != null) {
-            return e.getMessage();
-        }
-        return "The file could not be written";
+        boolean own = e.getClass() == IOException.class || e instanceof ConfigAccessDeniedException
+                || e instanceof ConfigNotFoundException || e instanceof ConfigConflictException;
+        return own && e.getMessage() != null ? e.getMessage() : "The file could not be written";
+    }
+
+    /**
+     * A caller's value in a log line: the names an import asks for are not validated yet, and a line
+     * break in one wrote a whole forged [AUDIT] line. As OsgiConfigGqlSupport.auditValue does.
+     */
+    static String logValue(String value) {
+        return value == null ? null : LOG_UNSAFE.matcher(value).replaceAll("_");
+    }
+
+    /**
+     * What makes two names one file: the name as a save takes it (trimmed), whatever its case, since
+     * a case-insensitive disk holds only one of them.
+     */
+    static String fileKey(String name) {
+        return name.trim().toLowerCase(Locale.ROOT);
     }
 
     // ---------------------------------------------------------------- reading an archive
@@ -507,9 +568,15 @@ final class ConfigArchive {
         if (archive == null || archive.isBlank()) {
             throw new IOException("No archive was given");
         }
+        // Before anything is done with it, with room for line breaks: the rest works on copies.
+        int maxChars = (MAX_ARCHIVE_BYTES / 3 + 1) * 4;
+        String tooLarge = "The archive is larger than " + (MAX_ARCHIVE_BYTES / (1024 * 1024)) + " MiB";
+        if (archive.length() > maxChars + maxChars / 8) {
+            throw new IOException(tooLarge);
+        }
         String compact = archive.replaceAll("\\s", "");
-        if (compact.length() > (MAX_ARCHIVE_BYTES / 3 + 1) * 4) {
-            throw new IOException("The archive is larger than " + (MAX_ARCHIVE_BYTES / (1024 * 1024)) + " MiB");
+        if (compact.length() > maxChars) {
+            throw new IOException(tooLarge);
         }
         byte[] bytes;
         try {
@@ -547,22 +614,27 @@ final class ConfigArchive {
             if (!(map.get("name") instanceof String) || !(map.get("content") instanceof String)) {
                 throw new ConfigArchiveCodec.ArchiveException("The archive is damaged");
             }
-            file.name = (String) map.get("name");
+            // The name as a save takes it: bound untrimmed, the secrets of "a.cfg " were encrypted
+            // for another configuration than the file a.cfg they were written to.
+            file.name = ((String) map.get("name")).trim();
             file.content = (String) map.get("content");
-            if (!seen.add(file.name)) {
-                throw new ConfigArchiveCodec.ArchiveException("The archive is damaged");
+            // Two entries for one file: the preview showed both, and the last one written won.
+            if (!seen.add(fileKey(file.name))) {
+                throw new ConfigArchiveCodec.ArchiveException("The archive holds the same file more than once");
             }
             if (file.content.getBytes(StandardCharsets.UTF_8).length > OsgiConfigService.MAX_RAW_CONTENT_BYTES) {
                 throw new ConfigArchiveCodec.ArchiveException("The archive holds a file larger than the maximum allowed size");
             }
             if (map.get("secrets") instanceof List) {
+                // Only an envelope that is in the file, and once: a listed value must not plant text
+                // elsewhere, and each entry costs a key derivation on import. The file is scanned
+                // once, not per entry, and a list of a million entries is a million set lookups.
+                Set<String> present = envelopesIn(file.content);
                 for (Object secret : (List<?>) map.get("secrets")) {
                     if (secret instanceof Map) {
                         Object envelope = ((Map<?, ?>) secret).get("envelope");
                         Object value = ((Map<?, ?>) secret).get("value");
-                        // Only an envelope that is in the file: a listed value must not plant text elsewhere.
-                        if (envelope instanceof String && value instanceof String
-                                && ENVELOPE.matcher((String) envelope).matches() && file.content.contains((String) envelope)) {
+                        if (envelope instanceof String && value instanceof String && present.remove(envelope)) {
                             file.secrets.add(new Secret((String) envelope, (String) value));
                         }
                     }

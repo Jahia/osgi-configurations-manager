@@ -490,6 +490,17 @@ public class OsgiConfigService {
         if (!Files.exists(filePath)) {
             throw new ConfigNotFoundException("File not found: " + safeFilename);
         }
+        return bundleUsageOfName(safeFilename, isRootUser);
+    }
+
+    /**
+     * {@link #findBundleUsage} for a file that may not exist yet, for the import preview of the
+     * export archive: the bundles that would use the configuration this name stands for. The name
+     * and the PID it resolves to are authorized as for an existing file.
+     */
+    List<Map<String, Object>> bundleUsageOfName(String filename, boolean isRootUser) throws IOException {
+        String safeFilename = validateFilename(filename);
+        ensureFilenameAllowed(safeFilename, isRootUser, "Access");
 
         BundleContext bundleContext = getBundleContext();
         if (bundleContext == null) {

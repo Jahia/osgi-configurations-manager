@@ -292,6 +292,127 @@ class ConfigArchiveTest {
         assertFalse(Files.exists(target.getParent().resolve("escape.cfg")));
     }
 
+    // ------------------------------------------------------------ security review of #194
+
+    private static String sealed(Object payload) throws Exception {
+        return Base64.getEncoder().encodeToString(
+                ConfigArchiveCodec.seal(MAPPER.writeValueAsString(payload).getBytes(StandardCharsets.UTF_8), PASSWORD));
+    }
+
+    @Test
+    @DisplayName("an envelope listed a thousand times is encrypted once: each entry cost a key derivation")
+    void listedSecretsAreTakenOnce(@TempDir Path target) throws Exception {
+        List<Map<String, String>> secrets = new java.util.ArrayList<>();
+        for (int i = 0; i < 1000; i++) {
+            secrets.add(Map.of("envelope", "ENC(abc)", "value", "v" + i));
+        }
+        String archive = sealed(Map.of("format", 1, "files", List.of(Map.of(
+                "name", "org.example.cfg", "content", "k = ENC(abc)\nj = ENC(abc)\n", "secrets", secrets))));
+
+        CryptoEngine.configureSecret("target-instance-secret".toCharArray());
+        OsgiConfigService to = serviceIn(target, Map.of());
+        Map<?, ?> file = (Map<?, ?>) ((List<?>) to.previewArchiveImport(archive, PASSWORD, false).get("files")).get(0);
+        assertEquals(1, file.get("secrets"));
+
+        long start = System.nanoTime();
+        to.importArchive(archive, PASSWORD, List.of("org.example.cfg"), false);
+        // A thousand derivations took minutes; one, with the archive's own, a few seconds at most.
+        assertTrue((System.nanoTime() - start) / 1_000_000 < 30_000);
+        String imported = read(target, "org.example.cfg");
+        String envelope = imported.substring(imported.indexOf("ENC("), imported.indexOf(')') + 1);
+        assertEquals("k = " + envelope + "\nj = " + envelope + "\n", imported, "every occurrence gets the one new envelope");
+        assertEquals("v0", to.decryptIn(envelope, "org.example.cfg"), "the first listed value is the one kept");
+    }
+
+    @Test
+    @DisplayName("a name padded with spaces is imported under its trimmed name, and its secret decrypts there")
+    void paddedNameIsNormalized(@TempDir Path target) throws Exception {
+        String archive = sealed(Map.of("format", 1, "files", List.of(Map.of(
+                "name", "org.example.cfg ", "content", "p = ENC(abc)\n",
+                "secrets", List.of(Map.of("envelope", "ENC(abc)", "value", "padded-secret"))))));
+
+        CryptoEngine.configureSecret("target-instance-secret".toCharArray());
+        OsgiConfigService to = serviceIn(target, Map.of());
+        Map<?, ?> file = (Map<?, ?>) ((List<?>) to.previewArchiveImport(archive, PASSWORD, false).get("files")).get(0);
+        assertEquals("org.example.cfg", file.get("name"));
+        assertEquals(List.of("org.example.cfg"), to.importArchive(archive, PASSWORD, List.of("org.example.cfg"), false).get("imported"));
+
+        String imported = read(target, "org.example.cfg");
+        String envelope = imported.substring(imported.indexOf("ENC("), imported.lastIndexOf(')') + 1);
+        assertEquals("padded-secret", to.decryptIn(envelope, "org.example.cfg"),
+                "bound to the untrimmed name, the value decrypted nowhere");
+    }
+
+    @Test
+    @DisplayName("two entries that are one file, by padding or by case, make the archive refused")
+    void refusesTheSameFileTwice(@TempDir Path target) throws Exception {
+        OsgiConfigService to = serviceIn(target, Map.of());
+        for (String twin : List.of("org.example.cfg ", "ORG.EXAMPLE.CFG")) {
+            String archive = sealed(Map.of("format", 1, "files", List.of(
+                    Map.of("name", "org.example.cfg", "content", "first = 1\n"),
+                    Map.of("name", twin, "content", "second = 2\n"))));
+            IOException refused = assertThrows(ConfigArchiveCodec.ArchiveException.class,
+                    () -> to.previewArchiveImport(archive, PASSWORD, false));
+            assertEquals("The archive holds the same file more than once", refused.getMessage());
+            assertThrows(ConfigArchiveCodec.ArchiveException.class,
+                    () -> to.importArchive(archive, PASSWORD, List.of("org.example.cfg", twin), false));
+        }
+        assertFalse(Files.exists(target.resolve("org.example.cfg")));
+    }
+
+    @Test
+    @DisplayName("an export never selects one file twice, nor makes an archive an import would refuse")
+    void exportAppliesTheImportLimits(@TempDir Path source) throws IOException {
+        OsgiConfigService from = serviceIn(source, Map.of());
+        write(source, "org.a.cfg", "a = 1\n");
+        IOException twice = assertThrows(IOException.class,
+                () -> from.exportArchive(List.of("org.a.cfg", "ORG.A.CFG"), PASSWORD, false));
+        assertEquals("The file ORG.A.CFG is selected more than once", twice.getMessage());
+
+        // 13 files of 5 MiB: each is allowed, together they pass what an import accepts once expanded.
+        byte[] big = new byte[OsgiConfigService.MAX_RAW_CONTENT_BYTES - 16];
+        java.util.Arrays.fill(big, (byte) 'x');
+        List<String> names = new java.util.ArrayList<>();
+        for (int i = 0; i < 13; i++) {
+            Files.write(source.resolve("org.big-" + i + ".cfg"), big);
+            names.add("org.big-" + i + ".cfg");
+        }
+        IOException tooLarge = assertThrows(IOException.class, () -> from.exportArchive(names, PASSWORD, false));
+        assertTrue(tooLarge.getMessage().startsWith("The selected files are too large for one archive"));
+        // 12 fit, and what was exported can be previewed.
+        String archive = (String) from.exportArchive(names.subList(0, 12), PASSWORD, false).get("archive");
+        assertEquals(12, ((List<?>) from.previewArchiveImport(archive, PASSWORD, false).get("files")).size());
+    }
+
+    @Test
+    @DisplayName("a name with a line break cannot write a log line of its own")
+    void logValuesHaveNoLineBreaks() {
+        assertEquals("nothing_2026-11-17 [AUDIT] User: root | Action: delete",
+                ConfigArchive.logValue("nothing\n2026-11-17 [AUDIT] User: root | Action: delete"));
+        assertEquals("a__b_c", ConfigArchive.logValue("a\r\nb\u2028c"));
+        assertEquals("org.example.cfg", ConfigArchive.logValue("org.example.cfg"));
+    }
+
+    @Test
+    @DisplayName("the preview compares only a bundle this instance ties to the file, not any name the archive lists")
+    void comparesOnlyBundlesUsedHere() {
+        org.osgi.framework.Bundle framework = org.mockito.Mockito.mock(org.osgi.framework.Bundle.class);
+        org.mockito.Mockito.when(framework.getSymbolicName()).thenReturn("org.apache.felix.framework");
+        org.mockito.Mockito.when(framework.getVersion()).thenReturn(Version.parseVersion("6.0.5"));
+        org.mockito.Mockito.when(framework.getState()).thenReturn(org.osgi.framework.Bundle.ACTIVE);
+        org.osgi.framework.Bundle[] installed = {framework};
+        Map<String, Object> listed = Map.of("symbolicName", "org.apache.felix.framework", "version", "0.0.1");
+
+        // Installed, but not tied to the file: its version was told to whoever crafted the archive.
+        Map<String, Object> notUsedHere = ConfigArchive.compareBundle(listed, installed, java.util.Set.of());
+        assertEquals(ConfigArchive.ABSENT, notUsedHere.get("comparison"));
+        assertFalse(notUsedHere.containsKey("targetVersion"));
+
+        Map<String, Object> usedHere = ConfigArchive.compareBundle(listed, installed, java.util.Set.of("org.apache.felix.framework"));
+        assertEquals(ConfigArchive.NEWER, usedHere.get("comparison"));
+        assertEquals("6.0.5", usedHere.get("targetVersion"));
+    }
+
     @Test
     @DisplayName("a failed file never tells the client a server path")
     void failureMessagesHidePaths() {
@@ -300,6 +421,10 @@ class ConfigArchiveTest {
         assertEquals("The file could not be written", ConfigArchive.clientMessage(new IllegalStateException("Encryption failed")));
         assertEquals("Import denied: org.a.cfg (NOT_PERMITTED)",
                 ConfigArchive.clientMessage(new ConfigAccessDeniedException("Import denied: org.a.cfg (NOT_PERMITTED)")));
+        assertEquals("Not in the archive", ConfigArchive.clientMessage(new IOException("Not in the archive")));
+        // Another IOException of the JDK: its message is not the manager's, so it is not passed on.
+        assertEquals("The file could not be written",
+                ConfigArchive.clientMessage(new java.nio.charset.MalformedInputException(1)));
     }
 
     // ------------------------------------------------------------ comparisons

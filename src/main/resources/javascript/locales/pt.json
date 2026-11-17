@@ -444,7 +444,7 @@
             "versionOlder": "Arquivo: {{archiveVersion}}. Instalada aqui: {{targetVersion}}, mais antiga do que o arquivo.",
             "versionNewer": "Arquivo: {{archiveVersion}}. Instalada aqui: {{targetVersion}}, mais recente do que o arquivo.",
             "versionDifferent": "Arquivo: {{archiveVersion}}. Instalada aqui: {{targetVersion}}.",
-            "versionAbsent": "Arquivo: {{archiveVersion}}. Não instalado aqui.",
+            "versionAbsent": "Arquivo: {{archiveVersion}}. Nenhum bundle com esse nome usa nem descreve esta configuração aqui.",
             "usedBy": "Usado pelo bundle",
             "describedBy": "Definições descritas pelo bundle",
             "notRunning": "Este bundle está instalado aqui mas não está em execução.",
