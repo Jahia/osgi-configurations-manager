@@ -10,3 +10,4 @@ nyc_output
 results/
 run-artifacts
 .yarn/
+cypress/downloads

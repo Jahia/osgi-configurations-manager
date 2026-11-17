@@ -70,6 +70,57 @@ export interface OsgiBundleUsage {
     }>;
 }
 
+/** What an export answers: the sealed archive (base64) and the files whose values stay encrypted in it. */
+export interface OsgiArchiveExport {
+    archive: string;
+    fileName: string;
+    files: number;
+    warnings: { name: string; undecryptable: number }[];
+}
+
+export type OsgiVersionComparison = 'SAME' | 'OLDER' | 'NEWER' | 'DIFFERENT' | 'ABSENT' | 'UNKNOWN';
+
+/** One bundle of a file, as recorded in the archive and found on this instance. */
+export interface OsgiArchiveBundleComparison {
+    symbolicName: string;
+    name?: string | null;
+    archiveVersion: string;
+    targetVersion?: string;
+    targetActive?: boolean;
+    comparison: OsgiVersionComparison;
+    otherVersions: string[];
+}
+
+export type OsgiArchiveRefusal = 'INVALID_NAME' | 'MANAGER_CONFIGURATION' | 'NOT_PERMITTED';
+
+/** What importing one file of the archive would do here. */
+export interface OsgiArchiveFilePreview {
+    name: string;
+    allowed: boolean;
+    refusal?: OsgiArchiveRefusal;
+    action?: 'CREATE' | 'OVERWRITE';
+    sameConfiguration?: string[];
+    secrets?: number;
+    undecryptable?: number;
+    /** USERS: the bundles that use it; METATYPE: none does, the one describing it; NONE: no bundle; UNKNOWN: not recorded. */
+    reference?: 'USERS' | 'METATYPE' | 'NONE' | 'UNKNOWN';
+    bundles?: OsgiArchiveBundleComparison[];
+    unknownKeys?: string[];
+    metatypeChecked?: boolean;
+    clearSecrets?: string[];
+}
+
+export interface OsgiArchivePreview {
+    exportedAt?: string | null;
+    jahia: { archiveVersion?: string | null; targetVersion?: string | null; comparison: OsgiVersionComparison };
+    files: OsgiArchiveFilePreview[];
+}
+
+export interface OsgiArchiveImportResult {
+    imported: string[];
+    failed: { name: string; error: string }[];
+}
+
 export interface OsgiUiConfig {
     visualFormattingControlsEnabled?: boolean;
 }
@@ -200,6 +251,26 @@ export const osgiService = {
         // does not rewrite that file, so a new type would be refused on existing instances.
         const { bundleUsage } = await query('bundleUsage(name: $name)', '($name: String!)', { name: filename });
         return parseJson(bundleUsage) ?? [];
+    },
+
+    /** Seals the files into one archive with the password. The password never leaves this request. */
+    exportArchive: async (names: string[], password: string): Promise<OsgiArchiveExport> => {
+        const { exportArchive } = await mutation('exportArchive(names: $names, password: $password)',
+            '($names: [String!]!, $password: String!)', { names, password });
+        return parseJson(exportArchive);
+    },
+
+    /** What importing the archive would do here. Writes nothing. */
+    previewArchiveImport: async (archive: string, password: string): Promise<OsgiArchivePreview> => {
+        const { previewArchiveImport } = await mutation('previewArchiveImport(archive: $archive, password: $password)',
+            '($archive: String!, $password: String!)', { archive, password });
+        return parseJson(previewArchiveImport);
+    },
+
+    importArchive: async (archive: string, password: string, names: string[]): Promise<OsgiArchiveImportResult> => {
+        const { importArchive } = await mutation('importArchive(archive: $archive, password: $password, names: $names)',
+            '($archive: String!, $password: String!, $names: [String!]!)', { archive, password, names });
+        return parseJson(importArchive);
     },
 
     getAvailableMetatypes: async (): Promise<OsgiServiceResponse> => {

@@ -91,6 +91,16 @@ a change appears to require relaxing one, that comment is the thing to read firs
   (and English) from hashed chunks over what Jahia fetched from `javascript/locales/<lng>.json`, a
   URL a CDN may keep across versions. A new label only needs its key in every locale file; do not
   drop the bundled load, or the next release shows keys again behind a stale CDN (1.2.1).
+- **The export archive decrypts only what a read may, and re-encrypts everything it imports.**
+  `ConfigArchive` authorizes each exported file as a read, decrypts its `ENC(...)` values with that
+  file's binding, and seals them under the archive password; on import, each listed envelope is
+  replaced by one from `encryptBound` for the target file, and only an envelope that occurs in the
+  archived file's text may be replaced, once: each costs a key derivation, and a list of a million
+  entries pinned a request for days. An archive is the caller's input: its names are normalized
+  and logged through `logValue`, and the preview compares only bundles this instance itself ties
+  to the file, or it tells the installed version of any bundle the archive names. The manager's own configuration is never exported nor
+  imported (it holds `cryptoSecret`). A wrong password and a damaged archive give one message, and
+  a per-file import error never passes a file system message (a path) to the client.
 - **The decryption probe reports shapes, never values.** The `pluginProbe` query says `plaintext` or
   `encrypted` per key; echoing a value would turn the probe into a decryption oracle.
 - **`ConfigFileFilter` publishes one immutable snapshot behind a `volatile` reference.** This

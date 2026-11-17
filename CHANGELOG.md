@@ -9,6 +9,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Export and import several configurations at once, secrets included.** **Export** seals the
+  chosen files into one `.ocmx` archive protected by a password (AES-256-GCM, key derived with
+  PBKDF2-HMAC-SHA256). The encrypted values are in it in clear under that password, and **Import**
+  encrypts them again with the target's secret, bound to the target file, so they decrypt on an
+  instance with another secret. The import first shows what it would do, file by file: new file
+  or replacement, refusals (an import writes each file as a save would), secrets left in clear,
+  values the source could not decrypt. It also compares the Jahia version and, per file, the
+  versions of the bundles that use the configuration (or the one describing it) with the target,
+  and lists keys the target's version does not declare. These notes never block. The manager's
+  own configuration is never exported nor imported. API: `exportArchive`, `previewArchiveImport`,
+  `importArchive`. An archive is read as untrusted input: each listed secret is taken once, names
+  are normalized and the same file twice is refused, only bundles the target ties to a file are
+  compared, and export applies the size limits of import.
+
 - **The open configuration shows which bundles use it.** Under the file name, a "Used by" line
   lists each bundle with its version and how it uses the configuration: the bundle Configuration
   Admin bound it to, the Declarative Services components that take it (with their state: active,

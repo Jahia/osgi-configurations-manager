@@ -26,7 +26,8 @@
         "fileCount": "Files: {{count}}",
         "fileListHint": "Arrow keys open each file; with unsaved changes they only move, and Enter opens",
         "fileUnsaved": "unsaved changes",
-        "unsavedAnnouncement": "{{name}} has unsaved changes"
+        "unsavedAnnouncement": "{{name}} has unsaved changes",
+        "export": "Export"
     },
     "notification": {
         "saveSuccess": "Configuration saved successfully",
@@ -129,7 +130,7 @@
             "invalidYaml": "The YAML content is invalid. Please fix syntax errors before saving.",
             "propertyExists": "Property '{{name}}' already exists.",
             "invalidExtension": "Filename must end with .cfg, .yml, .cfg.disabled or .yml.disabled",
-            "invalidExtensionUpload": "Only .cfg and .yml files can be imported.",
+            "invalidExtensionUpload": "Only .cfg, .yml and .ocmx (export archive) files can be imported.",
             "duplicateKeys": "Duplicate keys found: {{keys}}"
         },
         "conflict": {
@@ -320,7 +321,7 @@
     },
     "tooltip": {
         "downloadFile": "Download current file (Raw Data)",
-        "uploadFile": "Import a configuration file (.yml, .cfg)",
+        "uploadFile": "Import a configuration file (.cfg, .yml) or an export archive (.ocmx)",
         "refreshFiles": "Reload the configuration list",
         "save": "Save changes",
         "discardChanges": "Discard your edits and reload the saved version",
@@ -350,7 +351,8 @@
         "tabMovesFocus": "When on, Tab moves the focus out of the editor instead of indenting. Ctrl+M toggles it too (Ctrl+Shift+M on macOS).",
         "hideMetatypeProperties": "Close the list of available properties",
         "markAsDefaultAlready": "Unavailable: this configuration is already a module default",
-        "markAsDefaultModule": "Unavailable: only a local configuration (User) can be marked as default"
+        "markAsDefaultModule": "Unavailable: only a local configuration (User) can be marked as default",
+        "exportArchive": "Export several files into one password-protected archive"
     },
     "sidebar": {
         "on": "On",
@@ -388,5 +390,83 @@
             "disabled": "disabled",
             "unknown": "unknown state"
         }
+    },
+    "archive": {
+        "export": {
+            "title": "Export configurations",
+            "intro": "Choose the files to export. They are saved in one archive protected by a password. Encrypted values are decrypted in the archive: anyone with the password can read them. Keep the password safe. The manager’s own configuration is never exported.",
+            "filterLabel": "Filter files",
+            "listLabel": "Files to export",
+            "selectShown": "Select all shown",
+            "clearSelection": "Clear selection",
+            "noMatch": "No file matches the filter.",
+            "disabledFile": "(disabled)",
+            "errorNoSelection": "Choose at least one file.",
+            "confirm": "Export",
+            "exporting": "Exporting…",
+            "error": "Error exporting: {{error}}",
+            "success": "Exported {{count}} file(s) into {{fileName}}",
+            "undecryptable": "{{name}}: {{count}} encrypted value(s) could not be decrypted here. They stay encrypted in the archive and will not decrypt on another instance.",
+            "listCount": "Shown: {{shown}}. Selected: {{count}} of {{total}}."
+        },
+        "password": {
+            "label": "Password",
+            "confirmLabel": "Repeat the password",
+            "hint": "At least {{count}} characters. It is needed to import the archive and cannot be recovered.",
+            "errorTooShort": "The password needs at least {{count}} characters.",
+            "errorMismatch": "The passwords do not match. Type the same password in both fields.",
+            "errorEmpty": "Enter the password of this archive."
+        },
+        "import": {
+            "title": "Import an archive",
+            "intro": "Archive: {{fileName}}. Enter the password it was exported with to see what it contains. Nothing is written before you confirm.",
+            "check": "Show contents",
+            "checking": "Checking the archive…",
+            "listLabel": "Files to import",
+            "selectAll": "Select all",
+            "errorNoSelection": "Choose at least one file.",
+            "confirm": "Import selected files ({{count}})",
+            "importing": "Importing…",
+            "error": "Error importing: {{error}}",
+            "success": "Imported {{count}} file(s) from the archive",
+            "resultSummary": "Files imported: {{count}}",
+            "resultFailed": "Files not imported: {{count}}",
+            "reviewTitle": "Review before importing",
+            "resultTitle": "Import result",
+            "done": "Done",
+            "toEncrypt": "Secrets stored in readable form, to encrypt now in the editor:"
+        },
+        "preview": {
+            "jahia": "Jahia:",
+            "jahiaUnknown": "The Jahia version of the archive or of this instance is unknown.",
+            "informational": "These notes are for information. They do not stop the import.",
+            "versionSame": "Archive: {{archiveVersion}}. Installed here: the same version.",
+            "versionOlder": "Archive: {{archiveVersion}}. Installed here: {{targetVersion}}, older than the archive.",
+            "versionNewer": "Archive: {{archiveVersion}}. Installed here: {{targetVersion}}, newer than the archive.",
+            "versionDifferent": "Archive: {{archiveVersion}}. Installed here: {{targetVersion}}.",
+            "versionAbsent": "Archive: {{archiveVersion}}. No bundle of that name uses or describes this configuration here.",
+            "usedBy": "Used by the bundle",
+            "describedBy": "Settings described by the bundle",
+            "notRunning": "This bundle is installed here but not running.",
+            "otherVersions": "Also installed: {{versions}}.",
+            "ownerless": "No bundle used this configuration on the server it comes from.",
+            "bundlesUnknown": "The archive does not say which bundles use this configuration.",
+            "unknownKeys": "Settings the version installed here does not know: {{keys}}. They will probably be ignored.",
+            "keysNotChecked": "The versions differ, and the settings could not be checked: this server has no description of them.",
+            "sameConfiguration": "Another file here, {{files}}, configures the same thing. Both would apply.",
+            "secrets": "Encrypted values that will be encrypted again with this server’s key: {{count}}.",
+            "undecryptable": "Encrypted values the original server could not read, and that cannot be read here either: {{count}}. Enter them again after the import.",
+            "clearSecrets": "Secrets stored in readable form: {{keys}}. Encrypt them after the import.",
+            "creates": "New file.",
+            "replaces": "Overwrites the file of the same name here: its current content is lost.",
+            "refusedName": "Cannot be imported: the file name is not valid.",
+            "refusedManager": "Cannot be imported: the manager’s own configuration is never imported.",
+            "refusedPermission": "Cannot be imported: you are not permitted to write this file here.",
+            "summaryFiles": "Files in the archive: {{count}}",
+            "summaryNew": "New: {{count}}",
+            "summaryOverwrite": "Will overwrite a file here: {{count}}",
+            "summaryRefused": "Cannot be imported: {{count}}"
+        },
+        "required": "(required)"
     }
 }

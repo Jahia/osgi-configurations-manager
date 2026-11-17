@@ -490,6 +490,17 @@ public class OsgiConfigService {
         if (!Files.exists(filePath)) {
             throw new ConfigNotFoundException("File not found: " + safeFilename);
         }
+        return bundleUsageOfName(safeFilename, isRootUser);
+    }
+
+    /**
+     * {@link #findBundleUsage} for a file that may not exist yet, for the import preview of the
+     * export archive: the bundles that would use the configuration this name stands for. The name
+     * and the PID it resolves to are authorized as for an existing file.
+     */
+    List<Map<String, Object>> bundleUsageOfName(String filename, boolean isRootUser) throws IOException {
+        String safeFilename = validateFilename(filename);
+        ensureFilenameAllowed(safeFilename, isRootUser, "Access");
 
         BundleContext bundleContext = getBundleContext();
         if (bundleContext == null) {
@@ -551,6 +562,25 @@ public class OsgiConfigService {
                 throw new ConfigAccessDeniedException("Access denied: " + filename + " is blacklisted or reserved.");
             }
         }
+    }
+
+    /**
+     * Seals the given files into one archive with {@code password}: each file as stored, its
+     * {@code ENC(...)} values in clear beside it, and the bundles that use it. See {@link ConfigArchive}.
+     * Each file is authorized as a read; the manager's own configuration is refused.
+     */
+    public Map<String, Object> exportArchive(List<String> names, char[] password, boolean isRootUser) throws IOException {
+        return new ConfigArchive(this).export(names, password, isRootUser);
+    }
+
+    /** What importing the archive would do here, file by file, with the version comparison. Writes nothing. */
+    public Map<String, Object> previewArchiveImport(String archive, char[] password, boolean isRootUser) throws IOException {
+        return new ConfigArchive(this).preview(archive, password, isRootUser);
+    }
+
+    /** Writes the chosen files of the archive, each authorized as a save, its secrets encrypted for it here. */
+    public Map<String, Object> importArchive(String archive, char[] password, List<String> names, boolean isRootUser) throws IOException {
+        return new ConfigArchive(this).importFiles(archive, password, names, isRootUser);
     }
 
     private String getConfigurationPid(String filename) {
@@ -787,7 +817,7 @@ public class OsgiConfigService {
         return objectClassDefinition != null ? toMetaTypeMap(pid, objectClassDefinition) : null;
     }
 
-    private BundleContext getBundleContext() {
+    BundleContext getBundleContext() {
         Bundle bundle = FrameworkUtil.getBundle(OsgiConfigService.class);
         return bundle != null ? bundle.getBundleContext() : null;
     }
@@ -1438,6 +1468,24 @@ public class OsgiConfigService {
 
     boolean isFilenameAllowed(String filename, boolean isRootUser) {
         return fileFilter.isFilenameAllowed(filename, isRootUser);
+    }
+
+    /** {@link #ensureFilenameAllowed}, for the export archive, which authorizes each file as a read or a save does. */
+    void ensureArchiveFileAllowed(String filename, boolean isRootUser, String action) throws IOException {
+        ensureFilenameAllowed(filename, isRootUser, action);
+    }
+
+    /**
+     * The Metatype describing a file's configuration on this instance, singleton or factory, or null.
+     * For the export archive's import preview: the keys the target knows and its Password attributes.
+     */
+    ObjectClassDefinition metatypeForFile(String filename) {
+        String pid = resolveMetatypePid(filename, Locale.ENGLISH);
+        if (pid == null || pid.isEmpty()) {
+            return null;
+        }
+        ObjectClassDefinition definition = findObjectClassDefinition(pid, Locale.ENGLISH);
+        return definition != null ? definition : findFactoryObjectClassDefinition(pid, Locale.ENGLISH);
     }
 
     boolean hasWhitelistedFactoryCandidate(String factoryPid) {

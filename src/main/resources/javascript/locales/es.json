@@ -26,7 +26,8 @@
         "fileCount": "Archivos: {{count}}",
         "fileListHint": "Las flechas abren cada archivo; con cambios sin guardar solo se mueven, e Intro abre",
         "fileUnsaved": "cambios sin guardar",
-        "unsavedAnnouncement": "{{name}} tiene cambios sin guardar"
+        "unsavedAnnouncement": "{{name}} tiene cambios sin guardar",
+        "export": "Exportar"
     },
     "notification": {
         "saveSuccess": "Configuración guardada con éxito",
@@ -123,7 +124,7 @@
             "invalidYaml": "El contenido YAML no es válido. Por favor, corrija los errores de sintaxis antes de guardar.",
             "propertyExists": "La propiedad '{{name}}' ya existe.",
             "invalidExtension": "El nombre del archivo debe terminar en .cfg, .yml, .cfg.disabled o .yml.disabled",
-            "invalidExtensionUpload": "Solo se pueden importar archivos .cfg y .yml.",
+            "invalidExtensionUpload": "Solo se pueden importar archivos .cfg, .yml y .ocmx (archivo de exportación).",
             "duplicateKeys": "Se encontraron claves duplicadas: {{keys}}",
             "markAsDefault": "Error al marcar el archivo como configuración predeterminada: {{error}}"
         },
@@ -299,7 +300,7 @@
     },
     "tooltip": {
         "downloadFile": "Descargar archivo actual (Datos sin procesar)",
-        "uploadFile": "Importar un archivo de configuración (.yml, .cfg)",
+        "uploadFile": "Importar un archivo de configuración (.cfg, .yml) o un archivo de exportación (.ocmx)",
         "refreshFiles": "Recargar la lista de configuraciones",
         "save": "Guardar cambios",
         "discardChanges": "Descartar tus cambios y volver a cargar la versión guardada",
@@ -329,7 +330,8 @@
         "tabMovesFocus": "Activado, Tab mueve el foco fuera del editor en lugar de sangrar. Ctrl+M también lo alterna (Ctrl+Mayús+M en macOS).",
         "hideMetatypeProperties": "Cerrar la lista de propiedades disponibles",
         "markAsDefaultAlready": "No disponible: esta configuración ya es una configuración predeterminada de módulo",
-        "markAsDefaultModule": "No disponible: solo una configuración local (Usuario) puede marcarse como predeterminada"
+        "markAsDefaultModule": "No disponible: solo una configuración local (Usuario) puede marcarse como predeterminada",
+        "exportArchive": "Exportar varios archivos en un archivo comprimido protegido por contraseña"
     },
     "sidebar": {
         "on": "On",
@@ -388,5 +390,83 @@
             "disabled": "desactivado",
             "unknown": "estado desconocido"
         }
+    },
+    "archive": {
+        "export": {
+            "title": "Exportar configuraciones",
+            "intro": "Elija los archivos que desea exportar. Se guardan en un archivo comprimido protegido por contraseña. Los valores cifrados están descifrados en él: cualquiera que tenga la contraseña puede leerlos. Guarde la contraseña en un lugar seguro. La configuración del propio gestor nunca se exporta.",
+            "filterLabel": "Filtrar archivos",
+            "listLabel": "Archivos que exportar",
+            "selectShown": "Seleccionar todos los mostrados",
+            "clearSelection": "Borrar la selección",
+            "noMatch": "Ningún archivo coincide con el filtro.",
+            "disabledFile": "(desactivado)",
+            "errorNoSelection": "Elija al menos un archivo.",
+            "confirm": "Exportar",
+            "exporting": "Exportando…",
+            "error": "Error al exportar: {{error}}",
+            "success": "{{count}} archivo(s) exportado(s) en {{fileName}}",
+            "undecryptable": "{{name}}: {{count}} valor(es) cifrado(s) no se han podido descifrar aquí. Siguen cifrados en el archivo comprimido y no se descifrarán en otra instancia.",
+            "listCount": "Mostrados: {{shown}}. Seleccionados: {{count}} de {{total}}."
+        },
+        "password": {
+            "label": "Contraseña",
+            "confirmLabel": "Repita la contraseña",
+            "hint": "Al menos {{count}} caracteres. Se necesita para importar el archivo y no se puede recuperar.",
+            "errorTooShort": "La contraseña necesita al menos {{count}} caracteres.",
+            "errorMismatch": "Las contraseñas no coinciden. Escriba la misma en ambos campos.",
+            "errorEmpty": "Introduzca la contraseña de este archivo."
+        },
+        "import": {
+            "title": "Importar un archivo comprimido",
+            "intro": "Archivo: {{fileName}}. Introduzca la contraseña elegida al exportar para ver lo que contiene. No se escribe nada antes de que confirme.",
+            "check": "Mostrar el contenido",
+            "checking": "Comprobando el archivo…",
+            "listLabel": "Archivos que importar",
+            "selectAll": "Seleccionar todo",
+            "errorNoSelection": "Elija al menos un archivo.",
+            "confirm": "Importar los archivos seleccionados ({{count}})",
+            "importing": "Importando…",
+            "error": "Error al importar: {{error}}",
+            "success": "{{count}} archivo(s) importado(s) del archivo comprimido",
+            "resultSummary": "Archivos importados: {{count}}",
+            "resultFailed": "Archivos no importados: {{count}}",
+            "reviewTitle": "Revisar antes de importar",
+            "resultTitle": "Resultado de la importación",
+            "done": "Hecho",
+            "toEncrypt": "Secretos guardados de forma legible, que hay que cifrar ahora en el editor:"
+        },
+        "preview": {
+            "jahia": "Jahia:",
+            "jahiaUnknown": "Se desconoce la versión de Jahia del archivo o de esta instancia.",
+            "informational": "Estas notas son informativas. No impiden la importación.",
+            "versionSame": "Archivo: {{archiveVersion}}. Instalada aquí: la misma versión.",
+            "versionOlder": "Archivo: {{archiveVersion}}. Instalada aquí: {{targetVersion}}, más antigua que el archivo.",
+            "versionNewer": "Archivo: {{archiveVersion}}. Instalada aquí: {{targetVersion}}, más reciente que el archivo.",
+            "versionDifferent": "Archivo: {{archiveVersion}}. Instalada aquí: {{targetVersion}}.",
+            "versionAbsent": "Archivo: {{archiveVersion}}. Ningún bundle con ese nombre usa ni describe esta configuración aquí.",
+            "usedBy": "Usado por el bundle",
+            "describedBy": "Ajustes descritos por el bundle",
+            "notRunning": "Este bundle está instalado aquí pero no se ejecuta.",
+            "otherVersions": "También instalado: {{versions}}.",
+            "ownerless": "Ningún bundle usaba esta configuración en el servidor de origen.",
+            "bundlesUnknown": "El archivo no indica qué bundles usan esta configuración.",
+            "unknownKeys": "Ajustes que la versión instalada aquí no conoce: {{keys}}. Probablemente se ignorarán.",
+            "keysNotChecked": "Las versiones difieren y no se han podido comprobar los ajustes: este servidor no tiene descripción de ellos.",
+            "sameConfiguration": "Otro archivo aquí, {{files}}, configura lo mismo. Ambos se aplicarían.",
+            "secrets": "Valores cifrados que se volverán a cifrar con la clave de este servidor: {{count}}.",
+            "undecryptable": "Valores cifrados que el servidor de origen no pudo leer y que tampoco se podrán leer aquí: {{count}}. Introdúzcalos de nuevo después de la importación.",
+            "clearSecrets": "Secretos guardados de forma legible: {{keys}}. Cífrelos después de la importación.",
+            "creates": "Archivo nuevo.",
+            "replaces": "Sobrescribe el archivo del mismo nombre aquí: su contenido actual se pierde.",
+            "refusedName": "No se puede importar: el nombre del archivo no es válido.",
+            "refusedManager": "No se puede importar: la configuración del propio gestor nunca se importa.",
+            "refusedPermission": "No se puede importar: no tiene permiso para escribir este archivo aquí.",
+            "summaryFiles": "Archivos en el archivo comprimido: {{count}}",
+            "summaryNew": "Nuevos: {{count}}",
+            "summaryOverwrite": "Sobrescribirán un archivo aquí: {{count}}",
+            "summaryRefused": "No importables: {{count}}"
+        },
+        "required": "(obligatorio)"
     }
 }

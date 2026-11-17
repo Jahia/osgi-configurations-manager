@@ -90,17 +90,24 @@ final class ConfigFileCodec {
     }
 
     static Object readYamlProperties(Path filePath) throws IOException {
+        try (InputStream in = Files.newInputStream(filePath)) {
+            return safeYaml().load(in);
+        }
+    }
+
+    /** The same safe loader for text that is not on disk, such as a file inside an export archive. */
+    static Object parseYaml(String content) {
+        return safeYaml().load(content);
+    }
+
+    private static Yaml safeYaml() {
         LoaderOptions loaderOptions = new LoaderOptions();
-        Yaml yaml = new Yaml(new SafeConstructor(loaderOptions) {
+        return new Yaml(new SafeConstructor(loaderOptions) {
             @Override
             protected Map<Object, Object> createDefaultMap(int initSize) {
                 return new LinkedHashMap<>(initSize);
             }
         });
-
-        try (InputStream in = Files.newInputStream(filePath)) {
-            return yaml.load(in);
-        }
     }
 
     static void writeRawContent(Path filePath, String raw) throws IOException {
