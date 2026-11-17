@@ -8,6 +8,7 @@ import { useToast } from './useToast';
 import { useProperties } from './useProperties';
 import { configFileKind } from '../utils/configIdentity';
 import { errorText } from '../utils/errorText';
+import { expectedVisualFormattingFlag } from '../utils/managerSettings';
 
 /** An error marker of the raw editor, which blocks Save. */
 export interface ValidationError {
@@ -62,6 +63,10 @@ export const detectConfigStateFromRawContent = (content: string): 'MODULE' | 'MO
     return 'USER';
 };
 
+
+/** How often, and how long, the page asks for the options after saving the manager's file. */
+const UI_CONFIG_WAIT_INTERVAL_MS = 1000;
+const UI_CONFIG_WAIT_ATTEMPTS = 20;
 
 export const useOsgiConfigs = () => {
     const { t } = useTranslation('osgi-configurations-manager');
@@ -137,6 +142,39 @@ export const useOsgiConfigs = () => {
 
     const [searchInContent, setSearchInContent] = useState<boolean>(false);
     const [visualFormattingControlsEnabled, setVisualFormattingControlsEnabled] = useState<boolean>(false);
+
+    // Saving the manager's own configuration writes the file; the server applies it only once Felix
+    // FileInstall notices the change, up to about ten seconds later on macOS. Reloading meanwhile
+    // showed the old setting, and it took several reloads. The page asks again until the server
+    // reports the value the saved file sets, so the change shows without a reload. The generation
+    // stops a wait that a newer save or the unmount made pointless.
+    const uiConfigWaitRef = useRef(0);
+    useEffect(() => () => {
+        uiConfigWaitRef.current += 1;
+    }, []);
+
+    const waitForVisualFormattingFlag = useCallback(async (expected: boolean) => {
+        uiConfigWaitRef.current += 1;
+        const generation = uiConfigWaitRef.current;
+        for (let attempt = 0; attempt < UI_CONFIG_WAIT_ATTEMPTS; attempt++) {
+            if (attempt > 0) {
+                await new Promise(resolve => window.setTimeout(resolve, UI_CONFIG_WAIT_INTERVAL_MS));
+            }
+            let uiConfig;
+            try {
+                uiConfig = await osgiService.getUiConfig();
+            } catch {
+                uiConfig = undefined;
+            }
+            if (generation !== uiConfigWaitRef.current) {
+                return;
+            }
+            if (uiConfig && Boolean(uiConfig.visualFormattingControlsEnabled) === expected) {
+                setVisualFormattingControlsEnabled(expected);
+                return;
+            }
+        }
+    }, []);
 
     const fetchFiles = useCallback(async (query: string = '', deep: boolean = false) => {
         setLoadingFiles(true);
@@ -476,6 +514,11 @@ export const useOsgiConfigs = () => {
             await fetchFiles();
             await fetchFileContent(selectedFile.name);
 
+            const expectedFlag = expectedVisualFormattingFlag(selectedFile.name, finalContent || '');
+            if (expectedFlag !== null) {
+                void waitForVisualFormattingFlag(expectedFlag);
+            }
+
         } catch (e: any) {
             loadingFileRef.current = false;
             setLoadingFile(false);
@@ -485,7 +528,7 @@ export const useOsgiConfigs = () => {
             savingRef.current = false;
             setIsSaving(false);
         }
-    }, [isRawMode, rawContent, selectedFile, isYamlValid, properties, originalRawContent, t, success, toastError, dismissToast, clearKeyProblems, resetProperties, encryptRecursive, fetchFiles, fetchFileContent]);
+    }, [isRawMode, rawContent, selectedFile, isYamlValid, properties, originalRawContent, t, success, toastError, dismissToast, clearKeyProblems, resetProperties, encryptRecursive, fetchFiles, fetchFileContent, waitForVisualFormattingFlag]);
 
     handleSaveRef.current = handleSave;
 

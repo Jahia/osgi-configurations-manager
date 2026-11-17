@@ -266,6 +266,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   checkbox, the eye, Visual / Raw Edit, Search in content and the raw editor's toolbar show
   Moonstone's tooltip, on hover and on keyboard focus, where they had a slow grey browser one or
   none. A tooltip no longer replaces a control's own description, such as why Save is refused.
+- **Changing the manager's own settings shows without a reload.** Saving
+  `org.jahia.modules.osgiconfigmanager.cfg` writes the file, and the server applies it only once
+  Felix FileInstall notices the change: about ten seconds later on macOS, where Java polls for file
+  changes. A reload meanwhile still showed the old setting, so turning on the visual formatting
+  controls took several reloads. After such a save the page now asks for the setting every second,
+  for up to twenty seconds, until the server reports the value the file sets.
 
 ### Changed
 
