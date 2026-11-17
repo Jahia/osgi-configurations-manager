@@ -383,6 +383,16 @@ stored value: the file holds it in clear text, and **Download** gives the file a
 `ENC(...)` protects the stored value, for a module that reads it through Configuration Admin while
 this manager runs.
 
+## Requirements
+
+- **Jahia 8.2.2.3 or later** in the 8.2 line. The suite is run on 8.2.2.3 and 8.2.3.2.
+- **jcontent 3.5.0 or later.** Jahia 8.2.2.x ships jcontent 3.2.0, so upgrade jcontent first
+  (from the Jahia store); jcontent 3.5.0 to 3.8.x only need Jahia 8.2.1. The module declares
+  this dependency, so Jahia does not start it while an older jcontent is installed: the user
+  interface needs the Moonstone library a recent jcontent provides, and an older one crashed it
+  (React error #130).
+- **graphql-dxm-provider**, the version Jahia ships is enough: 3.7.0 on 8.2.2.3 is tested.
+
 ## Installation
 
 1.  Build the module:

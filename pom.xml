@@ -14,10 +14,13 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <!-- The parent sets Jahia-Required-Version (${jahia.version}) and the core API the module compiles
+         against. 8.2.2.3 is the oldest Jahia this module supports: compiling against it makes the
+         build fail if code starts using an API added later. -->
     <parent>
         <groupId>org.jahia.modules</groupId>
         <artifactId>jahia-modules</artifactId>
-        <version>8.2.3.2</version>
+        <version>8.2.2.3</version>
         <relativePath />
     </parent>
 
@@ -202,13 +205,19 @@
                     <instructions>
                         <_dsannotations>*</_dsannotations>
                         <Export-Package>org.jahia.modules.osgiconfigmanager.admin</Export-Package>
+                        <!-- The Jahia core packages carry an explicit range because the 8.2.2.x core jar
+                             has no Export-Package header, so bnd cannot infer one from it; Jahia
+                             exports them at runtime with its own version. -->
                         <Import-Package>
                             graphql.annotations.annotationTypes;version="[7.2,99)",
                             graphql.schema;version="[13.0,99)",
                             org.jahia.modules.graphql.provider.dxm;version="[2.6,4)",
                             org.jahia.modules.graphql.provider.dxm.security;version="[2.6,4)",
                             org.jahia.modules.graphql.provider.dxm.util;version="[2.6,4)",
-                            org.jahia.defaults.config.spring,
+                            org.jahia.osgi;version="[8.2,9)",
+                            org.jahia.services.content;version="[8.2,9)",
+                            org.jahia.services.usermanager;version="[8.2,9)",
+                            org.jahia.defaults.config.spring;version="[8.2,9)",
                             org.springframework.context.annotation,
                             org.springframework.web.servlet,
                             org.springframework.web.servlet.mvc.method.annotation,
