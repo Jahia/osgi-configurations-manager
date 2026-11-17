@@ -18,6 +18,9 @@ import { FileSidebar } from './components/FileSidebar';
 import { CfgEditor } from './components/CfgEditor';
 import { MonacoEditor } from './components/MonacoEditor';
 import { ModalDialog } from './components/Dialogs';
+import { ExportArchiveDialog, ImportArchiveDialog } from './components/ArchiveDialogs';
+import { useArchiveActions } from './hooks/useArchiveActions';
+import { isArchiveFile } from './utils/archiveFile';
 import { DiffModal } from './components/DiffModal';
 import { SelectedFileHeader } from './components/SelectedFileHeader';
 import { SelectedFileToolbar } from './components/SelectedFileToolbar';
@@ -224,14 +227,24 @@ const AppContent = () => {
         });
     }, [hasUnsaved, openUploadPicker, setModalConfig, t]);
 
+    const archive = useArchiveActions({
+        // The list and the open file show what the import wrote.
+        onImported: () => handleRefreshFiles()
+    });
+
+    // One Import for both: a configuration file, or an export archive, told apart by its extension.
     const handleUploadFileChange = React.useCallback(event => {
         const file = event.target.files?.[0];
         if (file) {
-            void handleUploadFile(file);
+            if (isArchiveFile(file.name)) {
+                void archive.openArchive(file);
+            } else {
+                void handleUploadFile(file);
+            }
         }
 
         event.target.value = null;
-    }, [handleUploadFile]);
+    }, [archive, handleUploadFile]);
 
     const handleRefreshClick = React.useCallback(() => {
         runWithUnsavedConfirmation(() => {
@@ -248,6 +261,7 @@ const AppContent = () => {
                         onCreate={handleOpenCreateDialogClick}
                         onUploadClick={handleUploadClick}
                         onUploadFileChange={handleUploadFileChange}
+                        onExport={() => void archive.openExport()}
                         onRefresh={handleRefreshClick}
                         uploadInputRef={uploadInputRef}
                     />
@@ -398,6 +412,18 @@ const AppContent = () => {
                 config={modalConfig}
                 onClose={() => setModalConfig(null)}
             />
+            <ExportArchiveDialog
+                isOpen={Boolean(archive.exportFiles)}
+                files={archive.exportFiles || []}
+                onClose={archive.closeExport}
+                onExport={archive.exportArchive}
+            />
+            <ImportArchiveDialog
+                archive={archive.archiveToImport}
+                onClose={archive.closeImport}
+                onPreview={archive.previewImport}
+                onImport={archive.importArchive}
+            />
             <DiffModal
                 isOpen={diffConfig.isOpen}
                 onClose={() => setDiffConfig(prev => ({ ...prev, isOpen: false }))}
@@ -422,8 +448,8 @@ const App = () => (
                 /* Prefers-reduced-motion: no slide-in, no transition, a still spinner (its label says
                    it is loading). !important, as most of these are inline styles. */
                 @media (prefers-reduced-motion: reduce) {
-                    :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"], [data-cy="toast-host"]),
-                    :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"], [data-cy="toast-host"]) * {
+                    :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"], [data-cy="archive-export-dialog"], [data-cy="archive-import-dialog"], [data-cy="toast-host"]),
+                    :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"], [data-cy="archive-export-dialog"], [data-cy="archive-import-dialog"], [data-cy="toast-host"]) * {
                         animation: none !important;
                         transition: none !important;
                     }
@@ -497,34 +523,34 @@ const App = () => (
                    Jahia 8.2 (8.2.3.2) only in classes (moonstone-button_accent for a filled accent
                    button, moonstone-button_outlined_accent, moonstone-button_ghost...), so both are
                    matched. */
-                :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"])
+                :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"], [data-cy="archive-export-dialog"], [data-cy="archive-import-dialog"])
                     .moonstone-button.moonstone-button:is([data-variant="default"][data-color="accent"], .moonstone-button_accent):not(:disabled):not([aria-disabled="true"]) {
                     background-color: var(--color-accent_dark);
                     border-color: var(--color-accent_dark);
                     color: var(--color-white);
                 }
-                :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"])
+                :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"], [data-cy="archive-export-dialog"], [data-cy="archive-import-dialog"])
                     .moonstone-button.moonstone-button:is([data-variant="default"][data-color="accent"], .moonstone-button_accent):not(:disabled):not([aria-disabled="true"]):is(:hover, :active) {
                     background-color: var(--color-accent_dark_contrast);
                     border-color: var(--color-accent_dark_contrast);
                 }
-                :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"])
+                :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"], [data-cy="archive-export-dialog"], [data-cy="archive-import-dialog"])
                     .moonstone-button.moonstone-button:is([data-variant="default"][data-color="danger"], .moonstone-button_danger):not(:disabled):not([aria-disabled="true"]) {
                     background-color: var(--color-danger_dark);
                     border-color: var(--color-danger_dark);
                     color: var(--color-white);
                 }
-                :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"])
+                :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"], [data-cy="archive-export-dialog"], [data-cy="archive-import-dialog"])
                     .moonstone-button.moonstone-button:is([data-variant="default"][data-color="danger"], .moonstone-button_danger):not(:disabled):not([aria-disabled="true"]):is(:hover, :active) {
                     background-color: color-mix(in srgb, var(--color-danger_dark) 80%, black);
                     border-color: color-mix(in srgb, var(--color-danger_dark) 80%, black);
                 }
-                :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"])
+                :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"], [data-cy="archive-export-dialog"], [data-cy="archive-import-dialog"])
                     .moonstone-button.moonstone-button:is([data-variant="outlined"][data-color="accent"], .moonstone-button_outlined_accent):not(:disabled):not([aria-disabled="true"]) {
                     color: var(--color-accent_dark);
                     border-color: var(--color-accent_dark);
                 }
-                :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"])
+                :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"], [data-cy="archive-export-dialog"], [data-cy="archive-import-dialog"])
                     .moonstone-button.moonstone-button:is([data-variant="outlined"][data-color="accent"], .moonstone-button_outlined_accent):not(:disabled):not([aria-disabled="true"]):is(:hover, :active) {
                     background-color: var(--color-accent_light_plain20);
                 }
@@ -540,13 +566,13 @@ const App = () => (
                    own parts and dialogs use accent_dark, 5.2:1. Only the colour changes, so the states
                    where Moonstone hides the ring keep it hidden. Doubled classes outweigh Moonstone's
                    variant rules, (0,4,0) in 2.19 and 2.21. */
-                :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"])
+                :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"], [data-cy="archive-export-dialog"], [data-cy="archive-import-dialog"])
                     :is(.moonstone-button.moonstone-button, .moonstone-tabItem.moonstone-tabItem, .moonstone-checkbox_input.moonstone-checkbox_input,
                         .moonstone-checkboxItem.moonstone-checkboxItem, .moonstone-dropdown.moonstone-dropdown, .moonstone-textarea.moonstone-textarea):focus-visible:not(:disabled) {
                     outline-color: var(--color-accent_dark);
                 }
                 /* Inputs ring their bordered wrapper. */
-                :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"])
+                :is([data-cy="osgi-config-manager"], [data-cy="app-header"], [data-cy="modal-dialog"], [data-cy="diff-modal"], [data-cy="cfg-metatype-property-dialog"], [data-cy="archive-export-dialog"], [data-cy="archive-import-dialog"])
                     .moonstone-baseInput.moonstone-baseInput:has(input:focus-visible) {
                     outline-color: var(--color-accent_dark);
                 }

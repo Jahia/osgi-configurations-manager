@@ -9,6 +9,10 @@ import org.jahia.modules.osgiconfigmanager.admin.PreferenceKeys;
 import org.jahia.modules.osgiconfigmanager.admin.UserPreferenceService;
 
 import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * State-changing and secret-touching operations. Only reachable through
@@ -18,6 +22,8 @@ import java.util.Collections;
 @GraphQLName("OsgiConfigManagerMutation")
 @GraphQLDescription("OSGi Configurations Manager mutations")
 public class OsgiConfigManagerMutation {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final OsgiConfigService service;
     private final GqlCaller caller;
@@ -50,6 +56,42 @@ public class OsgiConfigManagerMutation {
             service.saveFile(name, Collections.singletonMap("rawContent", rawContent), caller.isRoot());
             return Boolean.TRUE;
         });
+    }
+
+    /*
+     * The archive operations answer JSON rather than GraphQL types, like the bundleUsage query:
+     * Jahia's API scope grants this module's types by name in a default configuration that an
+     * upgrade does not rewrite, so a new type would be refused on every existing instance. They are
+     * mutations although export and preview write nothing: a mutation is POST-only and passes the
+     * CSRF checks, and these calls carry a password.
+     */
+
+    @GraphQLField
+    @GraphQLName("exportArchive")
+    @GraphQLDescription("Seal files into a password-protected archive. JSON: archive (base64), fileName, files, warnings")
+    public String exportArchive(@GraphQLName("names") @GraphQLNonNull List<String> names,
+                                @GraphQLName("password") @GraphQLNonNull String password) {
+        return audited("exportArchive", String.join(",", names), () ->
+                MAPPER.writeValueAsString(service.exportArchive(names, password.toCharArray(), caller.isRoot())));
+    }
+
+    @GraphQLField
+    @GraphQLName("previewArchiveImport")
+    @GraphQLDescription("What importing an archive would do, file by file, without writing. JSON")
+    public String previewArchiveImport(@GraphQLName("archive") @GraphQLNonNull String archive,
+                                       @GraphQLName("password") @GraphQLNonNull String password) {
+        return audited("previewArchiveImport", "<archive>", () ->
+                MAPPER.writeValueAsString(service.previewArchiveImport(archive, password.toCharArray(), caller.isRoot())));
+    }
+
+    @GraphQLField
+    @GraphQLName("importArchive")
+    @GraphQLDescription("Write the chosen files of an archive. JSON: imported, failed")
+    public String importArchive(@GraphQLName("archive") @GraphQLNonNull String archive,
+                                @GraphQLName("password") @GraphQLNonNull String password,
+                                @GraphQLName("names") @GraphQLNonNull List<String> names) {
+        return audited("importArchive", String.join(",", names), () ->
+                MAPPER.writeValueAsString(service.importArchive(archive, password.toCharArray(), names, caller.isRoot())));
     }
 
     @GraphQLField

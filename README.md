@@ -16,6 +16,8 @@ A Jahia module to manage OSGi configurations directly from the Jahia Administrat
         -   When a white list is defined, it takes precedence over the black list.
         -   The manager's own configuration file is only visible and editable for the `root` user.
 
+-   **Export and import between instances**: see [Moving configurations between instances](#moving-configurations-between-instances).
+
 -   **Configuration Editing**:
     -   **Visual Editor**: Structured view for `.cfg` files.
         -   Supports adding, modifying, and deleting properties.
@@ -323,6 +325,39 @@ than failing the page, and the plugin delivers it as stored.
 > error, ignores it and keeps the generated per-instance secret. Protect the file with its
 > permissions, as for any other Karaf configuration holding credentials.
 
+### Moving configurations between instances
+
+**Export** seals several configuration files into one archive (`.ocmx`) protected by a password
+of at least 12 characters. **Import** accepts that archive as well as a single `.cfg` or `.yml`.
+
+- **Secrets travel under the archive's password.** Each file keeps its text as stored, and the
+  archive lists every `ENC(...)` value of it with the value in clear. On import, each of those
+  values is encrypted again with the target's own secret and bound to the target file, so it
+  decrypts there although the two instances have different secrets. The whole archive is sealed
+  with AES-256-GCM under a key derived from the password (PBKDF2-HMAC-SHA256): without the
+  password it reveals nothing, and a changed byte makes it unreadable. Treat the password like the
+  secrets it protects.
+- **What is not carried.** The manager's own configuration is never exported nor imported: it
+  holds `cryptoSecret`. A value the exporting instance cannot decrypt (copied from another
+  instance, for example) is exported as it is, with a warning; it will not decrypt on the target
+  either. A secret stored in clear stays in clear, and the import names it so you can encrypt it.
+- **The import shows what it will do before writing anything.** After the password, a preview
+  lists each file: new or replacing a file of the same name, other files of the same
+  configuration already there, and why a file cannot be imported (its name, or your rights: an
+  import writes each file as a save would). Nothing is written until you choose the files and
+  confirm.
+- **Versions.** The archive records the Jahia version and, for each file, the bundles that use its
+  configuration with their versions (or, when none does, the bundle describing it). The preview
+  compares them with the target: same version, older, newer, or not installed, plus the other
+  versions installed. When the versions differ and the target describes the configuration, it
+  also lists the keys that description does not declare. These notes inform: none of them blocks
+  the import.
+- **Limits.** 500 files per archive, 5 MiB per file, 32 MiB per archive.
+
+The API operations are the mutations `exportArchive(names, password)`,
+`previewArchiveImport(archive, password)` and `importArchive(archive, password, names)`, under
+`osgiConfigManager`, with the archive as base64.
+
 ### Encrypted values belong to their configuration
 
 Since 1.2.0 an encrypted value is bound to the configuration it was encrypted for. Its envelope,
@@ -463,7 +498,7 @@ curl -H "Authorization: APIToken $TOKEN" -H 'Content-Type: application/json' -H 
 ## Usage
 
 1.  Navigate to **Jahia Administration** > **Server** > **OSGi Configurations Manager**.
-2.  Use the global header actions to **New**, **Import** or **Refresh** the configuration list.
+2.  Use the global header actions to **New**, **Import**, **Export** or **Refresh** the configuration list. **Import** takes a `.cfg` or `.yml` file, or an `.ocmx` archive made by **Export**.
 3.  Select a configuration file from the sidebar to edit it.
 4.  Use **New** to:
     - create a file manually,

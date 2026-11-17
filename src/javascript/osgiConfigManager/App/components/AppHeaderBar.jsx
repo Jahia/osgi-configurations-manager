@@ -3,6 +3,7 @@ import {
     Separator,
     Typography,
     AddCircle,
+    CloudDownload,
     CloudUpload,
     Replay
 } from '@jahia/moonstone';
@@ -14,6 +15,7 @@ export const AppHeaderBar = ({
     onCreate,
     onUploadClick,
     onUploadFileChange,
+    onExport,
     onRefresh,
     uploadInputRef
 }) => {
@@ -34,7 +36,7 @@ export const AppHeaderBar = ({
 
             <Separator spacing="none" size="full"/>
 
-            {/* No role="toolbar": three independent buttons, each a Tab stop, without the arrow-key model
+            {/* No role="toolbar": independent buttons, each a Tab stop, without the arrow-key model
                 that role promises (WCAG 4.1.2). */}
             <div className="flexRow_between alignCenter moonstone-header_toolbar">
                 <div className="flexRow alignCenter flexFluid moonstone-header_actions">
@@ -54,6 +56,16 @@ export const AppHeaderBar = ({
                         onClick={onUploadClick}
                     />
 
+                    {/* An icon the Moonstone of Jahia 8.2.3 already serves (the file Download's): the
+                        library comes from Jahia, not from this module. */}
+                    <ActionButton
+                        dataCy="export-archive-button"
+                        tooltip={t('tooltip.exportArchive')}
+                        icon={<CloudDownload/>}
+                        label={t('app.export')}
+                        onClick={onExport}
+                    />
+
                     <ActionButton
                         dataCy="refresh-files-button"
                         tooltip={t('tooltip.refreshFiles')}
@@ -69,7 +81,7 @@ export const AppHeaderBar = ({
                 type="file"
                 ref={uploadInputRef}
                 style={{display: 'none'}}
-                accept=".yml,.cfg"
+                accept=".yml,.cfg,.ocmx"
                 onChange={onUploadFileChange}
             />
         </header>

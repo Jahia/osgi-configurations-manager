@@ -145,7 +145,8 @@ describe('OSGi Configurations Manager - Config lifecycle', () => {
     it('uploads a cfg file and persists its content', () => {
         cy.openOsgiConfigManager();
 
-        cy.get('input[type="file"][accept=".yml,.cfg"]').selectFile('cypress/fixtures/osgi-upload.cfg', {force: true});
+        // By its data-cy, not its accept list, which grew with the export archive (.ocmx).
+        cy.get('[data-cy="upload-file-input"]').selectFile('cypress/fixtures/osgi-upload.cfg', {force: true});
 
         cy.assertToastContains(`Imported ${uploadedFile}`);
         cy.get('[data-cy="selected-file-name"]', {timeout: 30000}).should('contain', uploadedFile);
