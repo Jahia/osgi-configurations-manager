@@ -78,14 +78,20 @@ A Jahia module to manage OSGi configurations directly from the Jahia Administrat
         -   Distinguish `MODULE`, `MODULE_DEFAULT`, and `USER` configurations in the UI.
         -   Show a dedicated warning when editing module-managed files whose changes may be overwritten.
         -   Allow marking eligible user-managed files as `MODULE_DEFAULT` directly from the UI.
+        -   **Used by**: the open configuration lists the bundles that use it, with their version
+            and how (Configuration Admin binding, Declarative Services components and their state,
+            ManagedService or ManagedServiceFactory, Metatype). Factory instances are matched on
+            their factory PID.
 
 -   **User Experience**:
     -   Built with **Jahia Moonstone** design system for a native look and feel.
     -   **Internationalization (i18n)**: Fully translated in English 🇬🇧, French 🇫🇷, German 🇩🇪, Italian 🇮🇹, Spanish 🇪🇸, and Portuguese 🇵🇹.
     -   Responsive layout with sticky headers and optimized scrolling.
     -   Unsaved changes protection (confirmation modals) across file switching, create, import, refresh, disable and mark-as-default flows.
-    -   Accessible dialogs: both modals are exposed as dialogs to assistive technology, with focus
-        moved into the dialog and returned on close.
+    -   **Accessibility**: the interface targets WCAG 2.2 AA. Every action works from the keyboard
+        with a visible focus, dialogs move the focus in and give it back on close, and status
+        changes are announced to screen readers. A few limits come from Moonstone components
+        themselves.
 
 ## Configuration
 

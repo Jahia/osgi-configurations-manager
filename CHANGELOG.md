@@ -7,13 +7,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Changed
-
-- **The module installs on Jahia 8.2.2.3 and later.** It required 8.2.3.2 only because it was
-  built against that release; nothing in it needs 8.2.3. It is now built against 8.2.2.3, so the
-  build fails if the code starts using a newer API, and the Cypress suite passes on 8.2.2.3 and
-  8.2.3.2. jcontent 3.5.0 or later is still required: Jahia 8.2.2.x ships 3.2.0, so upgrade
-  jcontent first. See Requirements in the README.
+## [1.3.0] - 2026-11-17
 
 ### Added
 
@@ -42,6 +36,26 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   is read-only and follows the same access rule as reading the file; the API field is
   `bundleUsage(name)`. Before, the Module and Default badges only reflected the file's leading
   comment and never named a module.
+
+### Changed
+
+- **The module installs on Jahia 8.2.2.3 and later.** It required 8.2.3.2 only because it was
+  built against that release; nothing in it needs 8.2.3. It is now built against 8.2.2.3, so the
+  build fails if the code starts using a newer API, and the Cypress suite passes on 8.2.2.3 and
+  8.2.3.2. jcontent 3.5.0 or later is still required: Jahia 8.2.2.x ships 3.2.0, so upgrade
+  jcontent first. See Requirements in the README.
+
+- **The raw editor runs on Monaco 0.57** (from 0.52, held since #60). `monaco-yaml` 5.5.1, still
+  its latest release, depends on `monaco-worker-manager` 2.0.1, which no longer works with Monaco
+  0.55+: its worker imports a path the new exports map does not resolve, which failed the build,
+  and it calls `monaco.editor.createWebWorker` with options that call no longer takes, which would
+  have silently dropped YAML validation, hover and completion. The module now carries a corrected
+  copy of that package (`src/javascript/vendor/monaco-worker-manager`), and webpack resolves the
+  package to it. The `monaco-editor` hold in `.github/dependabot.yml` is lifted. `tsconfig.json`
+  now excludes the build output, which since this version contains the TypeScript compiler and
+  made every second build fail. The editor keeps taking keyboard input through its hidden textarea
+  (`editContext: false`), as up to 0.52, rather than the experimental EditContext API Monaco now
+  uses in Chromium.
 
 ### Fixed
 
@@ -326,20 +340,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   changes. A reload meanwhile still showed the old setting, so turning on the visual formatting
   controls took several reloads. After such a save the page now asks for the setting every second,
   for up to twenty seconds, until the server reports the value the file sets.
-
-### Changed
-
-- **The raw editor runs on Monaco 0.57** (from 0.52, held since #60). `monaco-yaml` 5.5.1, still
-  its latest release, depends on `monaco-worker-manager` 2.0.1, which no longer works with Monaco
-  0.55+: its worker imports a path the new exports map does not resolve, which failed the build,
-  and it calls `monaco.editor.createWebWorker` with options that call no longer takes, which would
-  have silently dropped YAML validation, hover and completion. The module now carries a corrected
-  copy of that package (`src/javascript/vendor/monaco-worker-manager`), and webpack resolves the
-  package to it. The `monaco-editor` hold in `.github/dependabot.yml` is lifted. `tsconfig.json`
-  now excludes the build output, which since this version contains the TypeScript compiler and
-  made every second build fail. The editor keeps taking keyboard input through its hidden textarea
-  (`editContext: false`), as up to 0.52, rather than the experimental EditContext API Monaco now
-  uses in Chromium.
 
 ## [1.2.1] - 2026-09-29
 
