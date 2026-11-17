@@ -14,7 +14,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Admin bound it to, the Declarative Services components that take it (with their state: active,
   missing a service, failed to start...), the ManagedService or ManagedServiceFactory registered
   for it, and the bundle declaring its Metatype. A factory instance (`<pid>-<name>`,
-  `<pid>~<name>`) is matched on its factory PID. When nothing uses it, the line says so. The list
+  `<pid>~<name>`) is matched on its factory PID. When no bundle is detected, the line says so without claiming
+  that none uses it: a bundle can still read a configuration in ways the manager cannot see. The list
   is read-only and follows the same access rule as reading the file; the API field is
   `bundleUsage(name)`. Before, the Module and Default badges only reflected the file's leading
   comment and never named a module.

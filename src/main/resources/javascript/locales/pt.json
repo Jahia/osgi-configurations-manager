@@ -312,7 +312,7 @@
     "bundleUsage": {
         "title": "Utilizada por",
         "loading": "A procurar os bundles que utilizam esta configuração…",
-        "empty": "Nenhum bundle utiliza esta configuração",
+        "empty": "Nenhum bundle detetado. Um bundle pode ainda assim ler esta configuração de uma forma que o gestor não deteta.",
         "error": "Não foi possível listar os bundles que utilizam esta configuração.",
         "version": "versão {{version}}",
         "componentNamed": "{{kind}} {{name}}",
