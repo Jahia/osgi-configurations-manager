@@ -25,6 +25,10 @@ const STATE_KEYS = {
 const TEXT_STYLE = {color: CHROME_TOKENS.subtleTextColor, overflowWrap: 'anywhere'};
 const LIST_STYLE = {margin: '4px 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '2px'};
 
+// React escapes the text it renders: i18next escaping on top turned a component name such as
+// a.B&C/D into a.B&amp;C&#x2F;D on screen.
+const RAW = {escapeValue: false};
+
 const describeUsage = (t, usage) => {
     const kind = t(KIND_KEYS[usage.kind] || 'bundleUsage.kind.other');
     if (usage.kind !== 'COMPONENT') {
@@ -32,8 +36,8 @@ const describeUsage = (t, usage) => {
     }
     const states = (usage.states || []).map(state => t(STATE_KEYS[state] || 'bundleUsage.state.unknown')).join(', ');
     return states
-        ? t('bundleUsage.componentWithStates', {kind, name: usage.detail, states})
-        : t('bundleUsage.componentNamed', {kind, name: usage.detail});
+        ? t('bundleUsage.componentWithStates', {kind, name: usage.detail, states, interpolation: RAW})
+        : t('bundleUsage.componentNamed', {kind, name: usage.detail, interpolation: RAW});
 };
 
 /**
@@ -93,7 +97,7 @@ export const BundleUsage = ({fileName, isLoadingFile = false}) => {
                             <Typography variant="caption" style={TEXT_STYLE}>
                                 <strong style={{color: CHROME_TOKENS.strongTextColor}}>{bundle.name}</strong>
                                 {bundle.name !== bundle.symbolicName && ` (${bundle.symbolicName})`}
-                                {' '}{t('bundleUsage.version', {version: bundle.version})}
+                                {' '}{t('bundleUsage.version', {version: bundle.version, interpolation: RAW})}
                                 {' — '}{bundle.usages.map(usage => describeUsage(t, usage)).join(', ')}
                             </Typography>
                         </li>
