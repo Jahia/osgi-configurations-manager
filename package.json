@@ -35,7 +35,7 @@
         "style-loader": "^4.0.0"
     },
     "devDependencies": {
-        "@babel/core": "^8.0.10",
+        "@babel/core": "^8.1.2",
         "@babel/preset-env": "^8.0.7",
         "@babel/preset-react": "^8.0.1",
         "@jahia/webpack-config": "^1.0.0",
@@ -47,8 +47,8 @@
         "@types/minimatch": "^6.0.0",
         "@types/react": "^19.2.18",
         "@types/react-dom": "^19.2.5",
-        "@typescript-eslint/eslint-plugin": "^8.72.1",
-        "@typescript-eslint/parser": "^8.72.1",
+        "@typescript-eslint/eslint-plugin": "^8.72.2",
+        "@typescript-eslint/parser": "^8.72.2",
         "babel-jest": "^30.5.2",
         "babel-loader": "^10.1.1",
         "clean-webpack-plugin": "^4.0.0",
