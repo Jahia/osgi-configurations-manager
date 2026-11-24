@@ -4,6 +4,14 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 const ModuleFederationPlugin = require("webpack/lib/container/ModuleFederationPlugin");
 const getModuleFederationConfig = require('@jahia/webpack-config/getModuleFederationConfig');
 const packageJson = require('./package.json');
+const {CycloneDxWebpackPlugin} = require('@cyclonedx/webpack-plugin');
+
+/** @type {import('@cyclonedx/webpack-plugin').CycloneDxWebpackPluginOptions} */
+const cycloneDxWebpackPluginOptions = {
+    specVersion: '1.4',
+    rootComponentType: 'library',
+    outputLocation: './bom'
+};
 
 module.exports = (env, argv) => {
     let config = {
@@ -78,7 +86,8 @@ module.exports = (env, argv) => {
         plugins: [
             new ModuleFederationPlugin(getModuleFederationConfig(packageJson)),
             new CleanWebpackPlugin({ verbose: false }),
-            new CopyWebpackPlugin({ patterns: [{ from: './package.json', to: '' }] })
+            new CopyWebpackPlugin({ patterns: [{ from: './package.json', to: '' }] }),
+            new CycloneDxWebpackPlugin(cycloneDxWebpackPluginOptions)
         ],
         performance: argv.mode === 'production' ? {
             hints: false
